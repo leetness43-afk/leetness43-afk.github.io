@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Insulin Sliding Scale</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @media print {
+            .no-print { display: none !important; }
+            body { margin: 0; padding: 0; background: white; }
+            .print-area {
+                width: 100%;
+                max-width: 100%;
+                margin: 0;
+                padding: 1cm;
+                box-shadow: none !important;
+                border: none !important;
+            }
+            table { page-break-inside: auto; }
+            tr { page-break-inside: avoid; page-break-after: auto; }
+        }
+        body { font-family: 'Inter', sans-serif; }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen p-4 sm:p-8">
+
+<div id="app" class="max-w-4xl mx-auto">
+    <header class="text-center mb-8 no-print">
+        <h1 class="text-3xl font-extrabold text-blue-800">Insulin Sliding Scale</h1>
+        <p class="text-gray-600 mt-2">Personalize your scale and print/save as a PDF.</p>
+    </header>
+
+    <div class="no-print bg-white p-6 rounded-xl shadow-lg mb-8 border border-blue-200">
+        <h3 class="text-lg font-medium text-gray-800 mb-3 border-b pb-1">1. Scale Settings</h3>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+            <div>
+                <label class="block text-sm font-medium text-gray-700">Correction Increment</label>
+                <input type="number" id="unitIncrement" list="incrementOptions" value="1" step="0.1" min="0" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border" oninput="generateScale()">
+                <datalist id="incrementOptions">
+                    <option value="0.5">
+                    <option value="1">
+                    <option value="2">
+                    <option value="3">
+                </datalist>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700">Rapid-Acting Insulin Name</label>
+                <input type="text" id="rapidType" value="Novolog" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border" oninput="generateScale()">
+            </div>
+        </div>
+
+        <h3 class="text-lg font-medium text-gray-800 mb-3 border-b pb-1">2. Mealtime Base Doses (BG 91-130)</h3>
+        <div class="grid grid-cols-3 gap-4 mb-6">
+            <input type="number" id="baseBreakfast" value="2" step="0.5" class="p-2 border rounded" oninput="generateScale()" placeholder="Breakfast">
+            <input type="number" id="baseLunch" value="2" step="0.5" class="p-2 border rounded" oninput="generateScale()" placeholder="Lunch">
+            <input type="number" id="baseDinner" value="3" step="0.5" class="p-2 border rounded" oninput="generateScale()" placeholder="Dinner">
+        </div>
+
+        <h3 class="text-lg font-medium text-gray-800 mb-3 border-b pb-1">3. Basal (Long-Acting)</h3>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <input type="text" id="basalType" value="Lantus" class="p-2 border rounded" oninput="generateScale()">
+            <select id="basalTime" class="p-2 border rounded" onchange="toggleBasalFields(); generateScale();">
+                <option value="Evening">Once Daily (Evening)</option>
+                <option value="Morning">Once Daily (Morning)</option>
+                <option value="Twice Daily" selected>Twice Daily</option>
+            </select>
+            <div id="basalInputs" class="flex gap-2">
+                <input type="number" id="basalMorningUnits" value="5" step="0.5" class="w-full p-2 border rounded" placeholder="AM Units" oninput="generateScale()">
+                <input type="number" id="basalEveningUnits" value="5" step="0.5" class="w-full p-2 border rounded" placeholder="PM Units" oninput="generateScale()">
+            </div>
+        </div>
+    </div>
+
+    <div class="print-area bg-white p-6 rounded-xl shadow-2xl border border-gray-300">
+        <div class="flex justify-between items-center mb-6 border-b pb-4">
+            <div>
+                <h1 class="text-2xl font-bold text-gray-800">Insulin Administration Scale</h1>
+                <p id="rapidTypeDisplay" class="text-sm text-gray-500 mt-1"></p>
+            </div>
+        </div>
+
+        <div id="scaleTableContainer" class="overflow-x-auto"></div>
+
+        <div id="basalInstructions" class="mt-8 text-sm text-gray-800 border-t pt-4 font-semibold text-center"></div>
+
+        <div class="mt-4 text-xs text-gray-500 border-t pt-4 italic">
+            <strong>Note:</strong> If not eating a meal, do not administer the full mealtime dose. Consult your provider for "correction-only" instructions.
+        </div>
+    </div>
+
+    <div class="text-center mt-8 no-print pb-12">
+        <button onclick="window.focus(); window.print();"
+            class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 px-10 rounded-full shadow-xl transition transform hover:scale-105">
+            🖨️ Print or Save as PDF
+        </button>
+    </div>
+</div>
+
+<script>
+const bgRanges = [
+    { label: "< 70", critical: true, text: "Treat hypoglycemia (15g carbs), recheck in 15m. If >70 and before meal, use 70-90 dose." },
+    { label: "70 - 90", factor: 0.6 },
+    { label: "91 - 130", factor: 1.0, isBase: true },
+    { label: "131 - 150", correctionStep: 1 },
+    { label: "151 - 200", correctionStep: 2 },
+    { label: "201 - 250", correctionStep: 3 },
+    { label: "251 - 300", correctionStep: 4, bedtimeStep: 1 },
+    { label: "301 - 350", correctionStep: 5, bedtimeStep: 2, critical: true },
+    { label: "351 - 400", correctionStep: 6, bedtimeStep: 3, critical: true },
+    { label: "401 - 450", correctionStep: 7, bedtimeStep: 4, critical: true },
+    { label: "> 450", correctionStep: 8, bedtimeStep: 5, critical: true }
+];
+
+function toggleBasalFields() {
+    const isTwice = document.getElementById('basalTime').value === 'Twice Daily';
+    document.getElementById('basalMorningUnits').classList.toggle('hidden', !isTwice);
+}
+
+function generateScale() {
+    const inc = parseFloat(document.getElementById('unitIncrement').value);
+    const rapid = document.getElementById('rapidType').value || 'Rapid Insulin';
+    const bases = [
+        parseFloat(document.getElementById('baseBreakfast').value) || 0,
+        parseFloat(document.getElementById('baseLunch').value) || 0,
+        parseFloat(document.getElementById('baseDinner').value) || 0
+    ];
+
+    document.getElementById('rapidTypeDisplay').textContent = `Dosing guide for ${rapid}`;
+
+    let html = `<table class="min-w-full border-collapse border border-gray-300 text-sm">
+        <thead class="bg-blue-600 text-white">
+            <tr>
+                <th class="border border-gray-300 p-2">BG Range</th>
+                <th class="border border-gray-300 p-2">Breakfast</th>
+                <th class="border border-gray-300 p-2">Lunch</th>
+                <th class="border border-gray-300 p-2">Dinner</th>
+                <th class="border border-gray-300 p-2">Bedtime</th>
+            </tr>
+        </thead><tbody>`;
+
+    bgRanges.forEach((range, i) => {
+        const criticalClass = range.critical ? 'bg-red-50 text-red-700 font-bold' : (i % 2 === 0 ? 'bg-white' : 'bg-gray-50');
+        html += `<tr class="${criticalClass}">
+            <td class="border border-gray-300 p-2 font-bold">${range.label}</td>`;
+        
+        if (range.text) {
+            html += `<td colspan="4" class="border border-gray-300 p-2 text-center">${range.text}</td>`;
+        } else {
+            bases.forEach(base => {
+                let dose = 0;
+                if (range.factor) dose = Math.floor(base * range.factor);
+                // Fallback to 0 if inc is NaN (e.g. while a user clears the field to type a new value)
+                if (range.correctionStep) dose = base + (range.correctionStep * (isNaN(inc) ? 0 : inc));
+                html += `<td class="border border-gray-300 p-2 text-center">${dose % 1 === 0 ? dose : dose.toFixed(1)}</td>`;
+            });
+            let btDose = range.bedtimeStep ? (range.bedtimeStep * (isNaN(inc) ? 0 : inc)) : 0;
+            html += `<td class="border border-gray-300 p-2 text-center font-bold text-blue-800">${btDose || '-'}</td>`;
+        }
+        html += `</tr>`;
+    });
+
+    document.getElementById('scaleTableContainer').innerHTML = html + `</tbody></table>`;
+    
+    // Update Basal Text
+    const bType = document.getElementById('basalType').value;
+    const bTime = document.getElementById('basalTime').value;
+    if (bTime === 'Twice Daily') {
+        const am = document.getElementById('basalMorningUnits').value;
+        const pm = document.getElementById('basalEveningUnits').value;
+        document.getElementById('basalInstructions').innerHTML = `${bType}: Take ${am} units in AM and ${pm} units in PM.`;
+    } else {
+        const am = document.getElementById('basalMorningUnits').value;
+        document.getElementById('basalInstructions').innerHTML = `${bType}: Take ${am} units once daily (${bTime}).`;
+    }
+}
+
+window.onload = () => { toggleBasalFields(); generateScale(); };
+</script>
+</body>
+</html>
