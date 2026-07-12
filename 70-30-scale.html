@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Twice-Daily Premixed Insulin Scale</title>
+<!-- Load Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+/* Define print styles to hide controls and ensure clean layout */
+@media print {
+.no-print {
+display: none !important;
+}
+body {
+margin: 0;
+padding: 0;
+}
+.print-area {
+width: 100%;
+max-width: 210mm; /* A4 width */
+min-height: 297mm; /* A4 height */
+margin: 0 auto;
+padding: 1.5cm;
+box-shadow: none !important;
+border: none !important;
+}
+.table-container {
+page-break-inside: avoid;
+}
+}
+
+/* Set base font */
+body {
+font-family: 'Inter', sans-serif;
+}
+
+/* Custom scrollbar for better aesthetics */
+::-webkit-scrollbar {
+width: 8px;
+}
+::-webkit-scrollbar-track {
+background: #f1f1f1;
+border-radius: 4px;
+}
+::-webkit-scrollbar-thumb {
+background: #cbd5e1;
+border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+background: #94a3b8;
+}
+</style>
+</head>
+<body class="bg-gray-50 min-h-screen p-4 sm:p-8">
+
+<!-- Main Container -->
+<div id="app" class="max-w-3xl mx-auto">
+<header class="text-center mb-8 no-print">
+<h1 class="text-3xl font-extrabold text-purple-800">Twice-Daily Premixed Insulin Scale</h1>
+<p class="text-gray-600 mt-2">Configure dosing for U-500 or 70/30 Insulin based on BG levels.</p>
+</header>
+
+<!-- Configuration Panel (Hidden on Print) -->
+<div class="no-print bg-white p-6 rounded-xl shadow-lg mb-8 border border-purple-200">
+<h2 class="text-xl font-semibold mb-4 text-purple-700">Twice-Daily Dosing Configuration</h2>
+
+<p class="text-sm text-gray-500 mb-4">Set your fixed doses and the correction factor for high blood glucose.</p>
+
+<div class="grid grid-cols-2 gap-4 mb-6">
+<!-- Insulin Type Selector -->
+<div>
+<label for="insulinType" class="block text-sm font-medium text-gray-700">Insulin Type</label>
+<select id="insulinType"
+class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 p-2 border"
+onchange="generateScale()">
+<option value="U500">U-500</option>
+<option value="70/30" selected>70/30 (e.g., Humulin/Novolin)</option>
+</select>
+</div>
+<!-- Correction Factor Increment -->
+<div>
+<label for="correctionIncrement" class="block text-sm font-medium text-gray-700">Correction Increment (Units)</label>
+<select id="correctionIncrement"
+class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 p-2 border"
+onchange="generateScale()">
+<option value="1">1.0 Unit</option>
+<option value="2" selected>2.0 Units</option>
+<option value="3">3.0 Units</option>
+<option value="4">4.0 Units</option>
+<option value="5">5.0 Units</option>
+</select>
+</div>
+</div>
+
+<!-- Base Dose Inputs -->
+<h3 class="text-lg font-medium text-gray-800 mb-3 border-b pb-1">Base Dose (For BG 91 - 130)</h3>
+<p class="text-xs text-gray-500 mb-4">These are the base units to be given in the morning and evening.</p>
+<div class="grid grid-cols-2 gap-4 mb-6">
+<div>
+<label for="baseMorning" class="block text-sm font-medium text-gray-700">Morning Base Dose (Units)</label>
+<input type="number" id="baseMorning" value="10" min="0" step="1"
+class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 p-2 border"
+oninput="generateScale()">
+</div>
+<div>
+<label for="baseEvening" class="block text-sm font-medium text-gray-700">Evening Base Dose (Units)</label>
+<input type="number" id="baseEvening" value="8" min="0" step="1"
+class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 p-2 border"
+oninput="generateScale()">
+</div>
+</div>
+
+</div>
+
+<!-- Printable Document Area -->
+<div class="print-area bg-white p-6 rounded-xl shadow-2xl border border-gray-300">
+<div class="flex justify-between items-center mb-6 border-b pb-4">
+<div>
+<h1 class="text-2xl font-bold text-gray-800">Total Dose Sliding Scale</h1>
+<p id="insulinTypeDisplay" class="text-sm text-gray-500 mt-1">For use with 70/30 Insulin</p>
+</div>
+</div>
+
+<div id="scaleTableContainer" class="table-container overflow-x-auto">
+<!-- Dynamic Table will be inserted here -->
+</div>
+
+<div class="mt-8 text-sm text-gray-800 border-t pt-4 font-semibold text-center">
+<p>Morning dose should be taken at least 15 minutes before <span class="text-purple-700">breakfast</span>. Evening dose should be taken at least 15 minutes before <span class="text-purple-700">dinner</span>.</p>
+</div>
+
+<!-- DOSE INSTRUCTIONS -->
+<div class="mt-4 text-xs text-gray-500 border-t pt-4">
+<!-- Instructions removed as requested -->
+</div>
+<!-- END DOSE INSTRUCTIONS -->
+</div>
+
+<!-- Print Button (Hidden on Print) -->
+<div class="text-center mt-8 no-print">
+<button onclick="window.print()"
+class="bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-8 rounded-full shadow-lg transition duration-150 ease-in-out transform hover:scale-105">
+🖨️ Print / Save as PDF
+</button>
+</div>
+
+</div>
+
+<script>
+// Simplified BG ranges for a twice-daily regimen. Multipliers are no longer used for calculation logic.
+const bgRanges = [
+{ label: "< 70", min: 0, max: 69, special: 'low', text: "Treat low BG, wait 15 min, recheck, THEN consult scale for next meal dose." },
+{ label: "70 - 90", min: 70, max: 90, special: '60percent' },
+{ label: "91 - 130 (Base Dose)", min: 91, max: 130, special: 'base' }, // Index 2
+{ label: "131 - 150", min: 131, max: 150 }, // Index 3: Base + 1x
+{ label: "151 - 200", min: 151, max: 200 }, // Index 4: Base + 2x
+{ label: "201 - 250", min: 201, max: 250 }, // Index 5: Base + 3x
+// Compounding steps continue for high BG correction
+{ label: "251 - 300", min: 251, max: 300, critical: true }, // Index 6: Base + 4x
+{ label: "301 - 350", min: 301, max: 350, critical: true }, // Index 7: Base + 5x
+{ label: "351 - 400", min: 351, max: 400, critical: true }, // Index 8: Base + 6x
+{ label: "401 - 450", min: 401, max: 450, critical: true }, // Index 9: Base + 7x
+{ label: "451 and above (Max Correction)", min: 451, max: 999, critical: true }, // Index 10: Base + 8x
+];
+
+// Core function to generate the scale based on inputs
+function generateScale() {
+// Get Inputs
+const insulinType = document.getElementById('insulinType').value.trim() || 'Premixed';
+const baseMorning = parseFloat(document.getElementById('baseMorning').value) || 0;
+const baseEvening = parseFloat(document.getElementById('baseEvening').value) || 0;
+const correctionIncrement = parseFloat(document.getElementById('correctionIncrement').value) || 2;
+
+// Simple integer formatter for these regimens
+const formatter = (dose) => {
+// Ensure dose is non-negative and rounded to the nearest integer
+return Math.max(0, Math.round(dose)).toString();
+};
+
+// Update display values
+document.getElementById('insulinTypeDisplay').textContent = `For use with ${insulinType} Insulin`;
+document.querySelector('.no-print h3').textContent = `Base Dose (For BG 91 - 130)`; // Update config panel header
+
+// --- 1. Generate Table HTML ---
+let tableHTML = `
+<table class="min-w-full divide-y divide-gray-300 rounded-lg overflow-hidden shadow-md">
+<thead class="bg-purple-600 text-white">
+<tr>
+<th class="px-3 py-3 text-left text-sm font-semibold tracking-wider w-2/5">Blood Glucose (mg/dL)</th>
+<th class="px-3 py-3 text-center text-sm font-semibold tracking-wider w-3/10">Total ${insulinType} (Morning)</th>
+<th class="px-3 py-3 text-center text-sm font-semibold tracking-wider w-3/10">Total ${insulinType} (Evening)</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-gray-200">
+`;
+const baseDoseIndex = 2; // Index of "91 - 130 (Base Dose)"
+bgRanges.forEach((range, index) => {
+let cellClass = (index % 2 === 0) ? 'bg-white' : 'bg-gray-50';
+// Critical is set for hypoglycemia (<70) and for high BG starting at 251
+const isCritical = range.critical || range.special === 'low';
+const criticalClass = isCritical ? 'bg-red-100 text-red-800 font-semibold' : '';
+
+let totalMorning = 0;
+let totalEvening = 0;
+let displayMorning, displayEvening;
+
+
+if (range.special === 'low') {
+// Hypoglycemia row rendering (Text instruction)
+tableHTML += `
+<tr class="${cellClass} hover:bg-purple-50 ${criticalClass}">
+<td class="px-3 py-2 whitespace-nowrap font-medium text-gray-900 align-top">${range.label}</td>
+<td class="px-3 py-2 text-left text-sm align-top" colspan="2">${range.text}</td>
+</tr>
+`;
+return; // Skip remaining logic for this row
+}
+// --- CALCULATION LOGIC FOR 70 and ABOVE ---
+
+if (range.special === "60percent") { // 70 - 90 range
+// 60% of the base dose, rounded to the nearest whole number.
+const reducedDoseMorning = baseMorning * 0.60;
+const reducedDoseEvening = baseEvening * 0.60;
+totalMorning = Math.round(reducedDoseMorning);
+totalEvening = Math.round(reducedDoseEvening);
+} else {
+let correctionDose = 0;
+// Compounding logic starts from the row AFTER the 91-130 base dose row (Index > 2)
+if (index > baseDoseIndex) {
+// The number of increments to add is the difference in index from the base dose row.
+// Index 3 (131-150) -> Step 1
+// Index 4 (151-200) -> Step 2
+// etc.
+const correctionStep = index - baseDoseIndex;
+correctionDose = correctionIncrement * correctionStep;
+}
+// For index 2 (91-130), correctionDose remains 0.
+
+// Calculate total doses (Base Dose + Compounded Correction)
+totalMorning = baseMorning + correctionDose;
+totalEvening = baseEvening + correctionDose;
+}
+displayMorning = formatter(totalMorning);
+displayEvening = formatter(totalEvening);
+
+// Standard row rendering
+tableHTML += `
+<tr class="${cellClass} hover:bg-purple-50 ${criticalClass}">
+<td class="px-3 py-2 whitespace-nowrap font-medium text-gray-900 align-top">${range.label}</td>
+<td class="px-3 py-2 whitespace-nowrap text-center align-top">${displayMorning} units</td>
+<td class="px-3 py-2 whitespace-nowrap text-center align-top">${displayEvening} units</td>
+</tr>
+`;
+});
+
+tableHTML += `
+</tbody>
+</table>
+`;
+
+document.getElementById('scaleTableContainer').innerHTML = tableHTML;
+}
+
+// Initialize the table on load
+window.onload = function() {
+generateScale();
+};
+
+// Event Listeners
+document.getElementById('insulinType').addEventListener('change', generateScale);
+document.getElementById('correctionIncrement').addEventListener('change', generateScale);
+document.getElementById('baseMorning').addEventListener('input', generateScale);
+document.getElementById('baseEvening').addEventListener('input', generateScale);
+</script>
+</body>
+</html>
