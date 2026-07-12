@@ -6,7 +6,6 @@
 <title>Twice-Daily Premixed Insulin Scale</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <style>
-/* Define print styles to hide controls and ensure clean layout */
 @media print {
 .no-print {
 display: none !important;
@@ -17,8 +16,8 @@ padding: 0;
 }
 .print-area {
 width: 100%;
-max-width: 210mm; /* A4 width */
-min-height: 297mm; /* A4 height */
+max-width: 210mm;
+min-height: 297mm;
 margin: 0 auto;
 padding: 1.5cm;
 box-shadow: none !important;
@@ -29,12 +28,10 @@ page-break-inside: avoid;
 }
 }
 
-/* Set base font */
 body {
 font-family: 'Inter', sans-serif;
 }
 
-/* Custom scrollbar for better aesthetics */
 ::-webkit-scrollbar {
 width: 8px;
 }
@@ -85,15 +82,16 @@ onchange="generateScale()">
 </div>
 <div>
 <label for="correctionIncrement" class="block text-sm font-medium text-gray-700">Correction Increment (Units)</label>
-<select id="correctionIncrement"
+<input type="number" id="correctionIncrement" list="7030IncrementOptions" value="2" step="0.5" min="0"
 class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 p-2 border"
-onchange="generateScale()">
-<option value="1">1.0 Unit</option>
-<option value="2" selected>2.0 Units</option>
-<option value="3">3.0 Units</option>
-<option value="4">4.0 Units</option>
-<option value="5">5.0 Units</option>
-</select>
+oninput="generateScale()">
+<datalist id="7030IncrementOptions">
+<option value="1">
+<option value="2">
+<option value="3">
+<option value="4">
+<option value="5">
+</datalist>
 </div>
 </div>
 
@@ -124,15 +122,13 @@ oninput="generateScale()">
 </div>
 </div>
 
-<div id="scaleTableContainer" class="table-container overflow-x-auto">
-</div>
+<div id="scaleTableContainer" class="table-container overflow-x-auto"></div>
 
 <div class="mt-8 text-sm text-gray-800 border-t pt-4 font-semibold text-center">
 <p>Morning dose should be taken at least 15 minutes before <span class="text-purple-700">breakfast</span>. Evening dose should be taken at least 15 minutes before <span class="text-purple-700">dinner</span>.</p>
 </div>
 
-<div class="mt-4 text-xs text-gray-500 border-t pt-4">
-</div>
+<div class="mt-4 text-xs text-gray-500 border-t pt-4"></div>
 </div>
 
 <div class="text-center mt-8 no-print">
@@ -145,41 +141,33 @@ class="bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-8 rounded-
 </div>
 
 <script>
-// Simplified BG ranges for a twice-daily regimen. Multipliers are no longer used for calculation logic.
 const bgRanges = [
 { label: "< 70", min: 0, max: 69, special: 'low', text: "Treat low BG, wait 15 min, recheck, THEN consult scale for next meal dose." },
 { label: "70 - 90", min: 70, max: 90, special: '60percent' },
-{ label: "91 - 130 (Base Dose)", min: 91, max: 130, special: 'base' }, // Index 2
-{ label: "131 - 150", min: 131, max: 150 }, // Index 3: Base + 1x
-{ label: "151 - 200", min: 151, max: 200 }, // Index 4: Base + 2x
-{ label: "201 - 250", min: 201, max: 250 }, // Index 5: Base + 3x
-// Compounding steps continue for high BG correction
-{ label: "251 - 300", min: 251, max: 300, critical: true }, // Index 6: Base + 4x
-{ label: "301 - 350", min: 301, max: 350, critical: true }, // Index 7: Base + 5x
-{ label: "351 - 400", min: 351, max: 400, critical: true }, // Index 8: Base + 6x
-{ label: "401 - 450", min: 401, max: 450, critical: true }, // Index 9: Base + 7x
-{ label: "451 and above (Max Correction)", min: 451, max: 999, critical: true }, // Index 10: Base + 8x
+{ label: "91 - 130 (Base Dose)", min: 91, max: 130, special: 'base' },
+{ label: "131 - 150", min: 131, max: 150 },
+{ label: "151 - 200", min: 151, max: 200 },
+{ label: "201 - 250", min: 201, max: 250 },
+{ label: "251 - 300", min: 251, max: 300, critical: true },
+{ label: "301 - 350", min: 301, max: 350, critical: true },
+{ label: "351 - 400", min: 351, max: 400, critical: true },
+{ label: "401 - 450", min: 401, max: 450, critical: true },
+{ label: "451 and above (Max Correction)", min: 451, max: 999, critical: true },
 ];
 
-// Core function to generate the scale based on inputs
 function generateScale() {
-// Get Inputs
 const insulinType = document.getElementById('insulinType').value.trim() || 'Premixed';
 const baseMorning = parseFloat(document.getElementById('baseMorning').value) || 0;
 const baseEvening = parseFloat(document.getElementById('baseEvening').value) || 0;
-const correctionIncrement = parseFloat(document.getElementById('correctionIncrement').value) || 2;
+const correctionIncrement = parseFloat(document.getElementById('correctionIncrement').value);
 
-// Simple integer formatter for these regimens
 const formatter = (dose) => {
-// Ensure dose is non-negative and rounded to the nearest integer
 return Math.max(0, Math.round(dose)).toString();
 };
 
-// Update display values
 document.getElementById('insulinTypeDisplay').textContent = `For use with ${insulinType} Insulin`;
-document.querySelector('.no-print h3').textContent = `Base Dose (For BG 91 - 130)`; // Update config panel header
+document.querySelector('.no-print h3').textContent = `Base Dose (For BG 91 - 130)`;
 
-// --- 1. Generate Table HTML ---
 let tableHTML = `
 <table class="min-w-full divide-y divide-gray-300 rounded-lg overflow-hidden shadow-md">
 <thead class="bg-purple-600 text-white">
@@ -191,10 +179,9 @@ let tableHTML = `
 </thead>
 <tbody class="divide-y divide-gray-200">
 `;
-const baseDoseIndex = 2; // Index of "91 - 130 (Base Dose)"
+const baseDoseIndex = 2;
 bgRanges.forEach((range, index) => {
 let cellClass = (index % 2 === 0) ? 'bg-white' : 'bg-gray-50';
-// Critical is set for hypoglycemia (<70) and for high BG starting at 251
 const isCritical = range.critical || range.special === 'low';
 const criticalClass = isCritical ? 'bg-red-100 text-red-800 font-semibold' : '';
 
@@ -202,46 +189,33 @@ let totalMorning = 0;
 let totalEvening = 0;
 let displayMorning, displayEvening;
 
-
 if (range.special === 'low') {
-// Hypoglycemia row rendering (Text instruction)
 tableHTML += `
 <tr class="${cellClass} hover:bg-purple-50 ${criticalClass}">
 <td class="px-3 py-2 whitespace-nowrap font-medium text-gray-900 align-top">${range.label}</td>
 <td class="px-3 py-2 text-left text-sm align-top" colspan="2">${range.text}</td>
 </tr>
 `;
-return; // Skip remaining logic for this row
+return;
 }
-// --- CALCULATION LOGIC FOR 70 and ABOVE ---
 
-if (range.special === "60percent") { // 70 - 90 range
-// 60% of the base dose, rounded to the nearest whole number.
+if (range.special === "60percent") {
 const reducedDoseMorning = baseMorning * 0.60;
 const reducedDoseEvening = baseEvening * 0.60;
 totalMorning = Math.round(reducedDoseMorning);
 totalEvening = Math.round(reducedDoseEvening);
 } else {
 let correctionDose = 0;
-// Compounding logic starts from the row AFTER the 91-130 base dose row (Index > 2)
 if (index > baseDoseIndex) {
-// The number of increments to add is the difference in index from the base dose row.
-// Index 3 (131-150) -> Step 1
-// Index 4 (151-200) -> Step 2
-// etc.
 const correctionStep = index - baseDoseIndex;
-correctionDose = correctionIncrement * correctionStep;
+correctionDose = (isNaN(correctionIncrement) ? 0 : correctionIncrement) * correctionStep;
 }
-// For index 2 (91-130), correctionDose remains 0.
-
-// Calculate total doses (Base Dose + Compounded Correction)
 totalMorning = baseMorning + correctionDose;
 totalEvening = baseEvening + correctionDose;
 }
 displayMorning = formatter(totalMorning);
 displayEvening = formatter(totalEvening);
 
-// Standard row rendering
 tableHTML += `
 <tr class="${cellClass} hover:bg-purple-50 ${criticalClass}">
 <td class="px-3 py-2 whitespace-nowrap font-medium text-gray-900 align-top">${range.label}</td>
@@ -259,14 +233,12 @@ tableHTML += `
 document.getElementById('scaleTableContainer').innerHTML = tableHTML;
 }
 
-// Initialize the table on load
 window.onload = function() {
 generateScale();
 };
 
-// Event Listeners
 document.getElementById('insulinType').addEventListener('change', generateScale);
-document.getElementById('correctionIncrement').addEventListener('change', generateScale);
+document.getElementById('correctionIncrement').addEventListener('input', generateScale);
 document.getElementById('baseMorning').addEventListener('input', generateScale);
 document.getElementById('baseEvening').addEventListener('input', generateScale);
 </script>
