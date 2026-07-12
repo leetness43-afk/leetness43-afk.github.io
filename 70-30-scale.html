@@ -4,7 +4,6 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Twice-Daily Premixed Insulin Scale</title>
-<!-- Load Tailwind CSS -->
 <script src="https://cdn.tailwindcss.com"></script>
 <style>
 /* Define print styles to hide controls and ensure clean layout */
@@ -54,21 +53,27 @@ background: #94a3b8;
 </head>
 <body class="bg-gray-50 min-h-screen p-4 sm:p-8">
 
-<!-- Main Container -->
 <div id="app" class="max-w-3xl mx-auto">
-<header class="text-center mb-8 no-print">
+<header class="text-center mb-6 no-print">
 <h1 class="text-3xl font-extrabold text-purple-800">Twice-Daily Premixed Insulin Scale</h1>
 <p class="text-gray-600 mt-2">Configure dosing for U-500 or 70/30 Insulin based on BG levels.</p>
 </header>
 
-<!-- Configuration Panel (Hidden on Print) -->
+<nav class="no-print mb-8 flex justify-center gap-4 border-b border-gray-200 pb-4">
+    <a href="index.html" class="text-gray-600 hover:text-blue-700 hover:bg-blue-50 px-4 py-2 rounded-md text-sm font-medium transition border border-transparent hover:border-blue-200">
+        Basal and Mealtime Dosing Chart
+    </a>
+    <a href="70-30-scale.html" class="bg-purple-600 text-white px-4 py-2 rounded-md text-sm font-medium shadow-sm transition">
+        Insulin 70/30 Dosing Chart
+    </a>
+</nav>
+
 <div class="no-print bg-white p-6 rounded-xl shadow-lg mb-8 border border-purple-200">
 <h2 class="text-xl font-semibold mb-4 text-purple-700">Twice-Daily Dosing Configuration</h2>
 
 <p class="text-sm text-gray-500 mb-4">Set your fixed doses and the correction factor for high blood glucose.</p>
 
 <div class="grid grid-cols-2 gap-4 mb-6">
-<!-- Insulin Type Selector -->
 <div>
 <label for="insulinType" class="block text-sm font-medium text-gray-700">Insulin Type</label>
 <select id="insulinType"
@@ -78,7 +83,6 @@ onchange="generateScale()">
 <option value="70/30" selected>70/30 (e.g., Humulin/Novolin)</option>
 </select>
 </div>
-<!-- Correction Factor Increment -->
 <div>
 <label for="correctionIncrement" class="block text-sm font-medium text-gray-700">Correction Increment (Units)</label>
 <select id="correctionIncrement"
@@ -93,7 +97,6 @@ onchange="generateScale()">
 </div>
 </div>
 
-<!-- Base Dose Inputs -->
 <h3 class="text-lg font-medium text-gray-800 mb-3 border-b pb-1">Base Dose (For BG 91 - 130)</h3>
 <p class="text-xs text-gray-500 mb-4">These are the base units to be given in the morning and evening.</p>
 <div class="grid grid-cols-2 gap-4 mb-6">
@@ -113,7 +116,6 @@ oninput="generateScale()">
 
 </div>
 
-<!-- Printable Document Area -->
 <div class="print-area bg-white p-6 rounded-xl shadow-2xl border border-gray-300">
 <div class="flex justify-between items-center mb-6 border-b pb-4">
 <div>
@@ -123,21 +125,16 @@ oninput="generateScale()">
 </div>
 
 <div id="scaleTableContainer" class="table-container overflow-x-auto">
-<!-- Dynamic Table will be inserted here -->
 </div>
 
 <div class="mt-8 text-sm text-gray-800 border-t pt-4 font-semibold text-center">
 <p>Morning dose should be taken at least 15 minutes before <span class="text-purple-700">breakfast</span>. Evening dose should be taken at least 15 minutes before <span class="text-purple-700">dinner</span>.</p>
 </div>
 
-<!-- DOSE INSTRUCTIONS -->
 <div class="mt-4 text-xs text-gray-500 border-t pt-4">
-<!-- Instructions removed as requested -->
 </div>
-<!-- END DOSE INSTRUCTIONS -->
 </div>
 
-<!-- Print Button (Hidden on Print) -->
 <div class="text-center mt-8 no-print">
 <button onclick="window.print()"
 class="bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-8 rounded-full shadow-lg transition duration-150 ease-in-out transform hover:scale-105">
