@@ -39,7 +39,7 @@
         <a href="fructosamine-calculator.html" class="bg-blue-600 text-white px-4 py-2 rounded-md text-sm font-medium shadow-sm transition">
             Fructosamine to A1c Calculator
         </a>
-        <a href="calcium-correction.html" class="bg-blue-600 text-white px-4 py-2 rounded-md text-sm font-medium shadow-sm transition">
+        <a href="calcium-correction.html" class="text-gray-600 hover:text-blue-700 hover:bg-blue-50 px-4 py-2 rounded-md text-sm font-medium transition border border-transparent hover:border-blue-200">
             Corrected Calcium
         </a>
     </nav>
@@ -91,87 +91,9 @@
                     </tr>
                 </thead>
                 <tbody id="matrixBody">
-                    </tbody>
+                </tbody>
             </table>
         </div>
 
         <div class="mt-6 text-xs text-gray-500 border-t pt-4 italic">
-            <strong>Clinical Note:</strong> Fructosamine measures glycated proteins (like albumin) with a shorter lifespan (14–21 days) than hemoglobin (120 days). This converter is useful when HbA1c is skewed by pregnancy, blood loss, hemolytic anemia, sickle cell trait, or erythropoietin therapy.
-        </div>
-    </div>
-
-    <div class="text-center mt-8 no-print pb-12">
-        <button onclick="window.focus(); window.print();"
-            class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 px-10 rounded-full shadow-xl transition transform hover:scale-105">
-            🖨️ Print Report or Save as PDF
-        </button>
-    </div>
-</div>
-
-<script>
-// Mathematical calculation configurations
-function calculateA1c() {
-    const fructVal = parseFloat(document.getElementById('fructosamineInput').value);
-    
-    const a1cField = document.getElementById('a1cResult');
-    const meaningField = document.getElementById('a1cMeaning');
-    const eagField = document.getElementById('eagResult');
-    const eagMmolField = document.getElementById('eagMmol');
-
-    if (isNaN(fructVal) || fructVal <= 0) {
-        a1cField.textContent = "-- %";
-        meaningField.textContent = "Please enter a valid number";
-        eagField.textContent = "-- mg/dL";
-        eagMmolField.textContent = "-- mmol/L";
-        return;
-    }
-
-    // Standard clinical formula: HbA1c = 0.017 * Fructosamine + 1.61
-    const computedA1c = (0.017 * fructVal) + 1.61;
-    a1cField.textContent = computedA1c.toFixed(1) + "%";
-
-    // Standard ADAG eAG formula: eAG = 28.7 * A1c - 46.7
-    const computedEagMg = (28.7 * computedA1c) - 46.7;
-    const computedEagMmol = computedEagMg / 18.016;
-
-    eagField.textContent = Math.round(computedEagMg) + " mg/dL";
-    eagMmolField.textContent = computedEagMmol.toFixed(1) + " mmol/L";
-
-    // Interpretations based on Ada/Clinical guidelines
-    if (computedA1c < 5.7) {
-        meaningField.innerHTML = `<span class="text-emerald-600 font-bold">Normal Range</span>`;
-    } else if (computedA1c >= 5.7 && computedA1c < 6.5) {
-        meaningField.innerHTML = `<span class="text-amber-500 font-bold">Prediabetes Range</span>`;
-    } else {
-        meaningField.innerHTML = `<span class="text-red-600 font-bold">Diabetic Range</span>`;
-    }
-}
-
-// Generate the table dynamically to avoid static HTML bloat
-function generateReferenceMatrix() {
-    const referencePoints = [200, 230, 258, 288, 317, 346, 375, 435, 494, 552, 611];
-    const tbody = document.getElementById('matrixBody');
-    let html = '';
-
-    referencePoints.forEach((fruct, i) => {
-        const a1c = (0.017 * fruct) + 1.61;
-        const eag = (28.7 * a1c) - 46.7;
-        const bgStyle = i % 2 === 0 ? 'bg-white' : 'bg-gray-50';
-        
-        html += `<tr class="${bgStyle}">
-            <td class="border border-gray-300 p-2 text-center font-bold text-gray-700">${fruct} µmol/L</td>
-            <td class="border border-gray-300 p-2 text-center text-blue-900 font-semibold">${a1c.toFixed(1)}%</td>
-            <td class="border border-gray-300 p-2 text-center text-emerald-900 font-medium">${Math.round(eag)} mg/dL (${(eag/18.016).toFixed(1)} mmol/L)</td>
-        </tr>`;
-    });
-
-    tbody.innerHTML = html;
-}
-
-window.onload = () => {
-    generateReferenceMatrix();
-    calculateA1c();
-};
-</script>
-</body>
-</html>
+            <strong>Clinical Note:</strong>
