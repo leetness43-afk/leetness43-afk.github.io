@@ -168,6 +168,7 @@ function generateScale() {
         if (range.text) {
             html += `<td colspan="4" class="border border-gray-300 p-2 text-center">${range.text}</td>`;
         } else {
+            // Calculate Breakfast, Lunch, Dinner columns using the Correction Increment multiplier
             bases.forEach(base => {
                 let dose = 0;
                 if (range.factor) dose = Math.floor(base * range.factor);
@@ -175,9 +176,9 @@ function generateScale() {
                 html += `<td class="border border-gray-300 p-2 text-center">${dose % 1 === 0 ? dose : dose.toFixed(1)}</td>`;
             });
             
-            // Fixed bedtime dose logic (no longer multiplied by the Correction Increment)
-            let btDose = range.bedtimeDose ? range.bedtimeDose : 0;
-            html += `<td class="border border-gray-300 p-2 text-center font-bold text-blue-800">${btDose || '0'}</td>`;
+            // Set the Bedtime column to exactly the fixed bedtimeDose value (0 if not defined)
+            let btDose = range.hasOwnProperty('bedtimeDose') ? range.bedtimeDose : 0;
+            html += `<td class="border border-gray-300 p-2 text-center font-bold text-blue-800">${btDose}</td>`;
         }
         html += `</tr>`;
     });
