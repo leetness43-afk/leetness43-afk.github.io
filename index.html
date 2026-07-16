@@ -122,8 +122,24 @@ const bgRanges = [
 ];
 
 function toggleBasalFields() {
-    const isTwice = document.getElementById('basalTime').value === 'Twice Daily';
-    document.getElementById('basalMorningUnits').classList.toggle('hidden', !isTwice);
+    const bTime = document.getElementById('basalTime').value;
+    const amInput = document.getElementById('basalMorningUnits');
+    const pmInput = document.getElementById('basalEveningUnits');
+
+    if (bTime === 'Twice Daily') {
+        amInput.classList.remove('hidden');
+        pmInput.classList.remove('hidden');
+        amInput.placeholder = "AM Units";
+        pmInput.placeholder = "PM Units";
+    } else if (bTime === 'Morning') {
+        amInput.classList.remove('hidden');
+        pmInput.classList.add('hidden');
+        amInput.placeholder = "AM Units";
+    } else { // Evening
+        amInput.classList.add('hidden');
+        pmInput.classList.remove('hidden');
+        pmInput.placeholder = "PM Units";
+    }
 }
 
 function generateScale() {
