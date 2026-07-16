@@ -96,4 +96,79 @@
         </div>
 
         <div class="mt-6 text-xs text-gray-500 border-t pt-4 italic">
-            <strong>Clinical Note:</strong>
+            <strong>Clinical Note:</strong> Fructosamine measures glycated proteins (like albumin) with a shorter lifespan (14–21 days) than hemoglobin (120 days). This converter is useful when HbA1c is skewed by pregnancy, blood loss, hemolytic anemia, sickle cell trait, or erythropoietin therapy.
+        </div>
+    </div>
+
+    <div class="text-center mt-8 no-print pb-12">
+        <button onclick="window.focus(); window.print();"
+            class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 px-10 rounded-full shadow-xl transition transform hover:scale-105">
+            🖨️ Print Report or Save as PDF
+        </button>
+    </div>
+</div>
+
+<script>
+function calculateA1c() {
+    const fructVal = parseFloat(document.getElementById('fructosamineInput').value);
+    
+    const a1cField = document.getElementById('a1cResult');
+    const meaningField = document.getElementById('a1cMeaning');
+    const eagField = document.getElementById('eagResult');
+    const eagMmolField = document.getElementById('eagMmol');
+
+    if (isNaN(fructVal) || fructVal <= 0) {
+        a1cField.textContent = "-- %";
+        meaningField.textContent = "Please enter a valid number";
+        eagField.textContent = "-- mg/dL";
+        eagMmolField.textContent = "-- mmol/L";
+        return;
+    }
+
+    const computedA1c = (0.017 * fructVal) + 1.61;
+    a1cField.textContent = computedA1c.toFixed(1) + "%";
+
+    const computedEagMg = (28.7 * computedA1c) - 46.7;
+    const computedEagMmol = computedEagMg / 18.016;
+
+    eagField.textContent = Math.round(computedEagMg) + " mg/dL";
+    eagMmolField.textContent = computedEagMmol.toFixed(1) + " mmol/L";
+
+    if (computedA1c < 5.7) {
+        meaningField.innerHTML = '<span class="text-emerald-600 font-bold">Normal Range</span>';
+    } else if (computedA1c >= 5.7 && computedA1c < 6.5) {
+        meaningField.innerHTML = '<span class="text-amber-500 font-bold">Prediabetes Range</span>';
+    } else {
+        meaningField.innerHTML = '<span class="text-red-600 font-bold">Diabetic Range</span>';
+    }
+}
+
+function generateReferenceMatrix() {
+    const referencePoints = [200, 230, 258, 288, 317, 346, 375, 435, 494, 552, 611];
+    const tbody = document.getElementById('matrixBody');
+    if (!tbody) return;
+    
+    let html = '';
+
+    referencePoints.forEach(function(fruct, i) {
+        const a1c = (0.017 * fruct) + 1.61;
+        const eag = (28.7 * a1c) - 46.7;
+        const bgStyle = (i % 2 === 0) ? 'bg-white' : 'bg-gray-50';
+        
+        html += '<tr class="' + bgStyle + '">';
+        html += '<td class="border border-gray-300 p-2 text-center font-bold text-gray-700">' + fruct + ' µmol/L</td>';
+        html += '<td class="border border-gray-300 p-2 text-center text-blue-900 font-semibold">' + a1c.toFixed(1) + '%</td>';
+        html += '<td class="border border-gray-300 p-2 text-center text-emerald-900 font-medium">' + Math.round(eag) + ' mg/dL (' + (eag / 18.016).toFixed(1) + ' mmol/L)</td>';
+        html += '</tr>';
+    });
+
+    tbody.innerHTML = html;
+}
+
+window.onload = function() {
+    generateReferenceMatrix();
+    calculateA1c();
+};
+</script>
+</body>
+</html>
