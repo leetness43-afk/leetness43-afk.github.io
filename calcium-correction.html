@@ -1,0 +1,219 @@
+<div class="calc-container">
+  <h2>Corrected Calcium Calculator</h2>
+  <p class="calc-subtitle">Adjusts total calcium levels for hypoalbuminemia using the Payne formula.</p>
+
+  <!-- Unit Toggle -->
+  <div class="toggle-group">
+    <button type="button" id="btn-us" class="toggle-btn active" onclick="setUnits('us')">US Units (mg/dL)</button>
+    <button type="button" id="btn-si" class="toggle-btn" onclick="setUnits('si')">SI Units (mmol/L)</button>
+  </div>
+
+  <!-- Input Form -->
+  <div class="input-grid">
+    <div class="input-field">
+      <label for="calcium">Measured Total Calcium (<span id="ca-unit">mg/dL</span>)</label>
+      <input type="number" id="calcium" step="0.1" value="8.5" oninput="calculate()">
+    </div>
+    <div class="input-field">
+      <label for="albumin">Serum Albumin (<span id="alb-unit">g/dL</span>)</label>
+      <input type="number" id="albumin" step="0.1" value="3.0" oninput="calculate()">
+    </div>
+  </div>
+
+  <!-- Results Area -->
+  <div class="results-box">
+    <div class="result-label">Corrected Calcium:</div>
+    <div id="result-value" class="result-value">8.50 mg/dL</div>
+    <div id="warning-box" class="warning-box" style="display: none;"></div>
+  </div>
+
+  <!-- Disclaimer -->
+  <p class="disclaimer">
+    <strong>Disclaimer:</strong> This tool is for informational and educational purposes only. The Payne formula is an approximation. Direct measurement of ionized calcium remains the clinical gold standard, especially in critically ill patients, renal disease, or acid-base imbalances.
+  </p>
+</div>
+
+<style>
+  .calc-container {
+    max-width: 500px;
+    margin: 20px auto;
+    padding: 24px;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    background-color: #ffffff;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: #1a202c;
+  }
+  .calc-container h2 {
+    margin-top: 0;
+    margin-bottom: 6px;
+    font-size: 20px;
+    font-weight: 700;
+    color: #2d3748;
+  }
+  .calc-subtitle {
+    margin-top: 0;
+    margin-bottom: 20px;
+    font-size: 13px;
+    color: #718096;
+  }
+  .toggle-group {
+    display: flex;
+    background-color: #edf2f7;
+    padding: 4px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+  }
+  .toggle-btn {
+    flex: 1;
+    border: none;
+    background: none;
+    padding: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    color: #4a5568;
+    cursor: pointer;
+    border-radius: 6px;
+    transition: all 0.2s;
+  }
+  .toggle-btn.active {
+    background-color: #ffffff;
+    color: #2b6cb0;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  }
+  .input-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 20px;
+  }
+  .input-field label {
+    display: block;
+    font-size: 12px;
+    font-weight: 600;
+    color: #4a5568;
+    margin-bottom: 6px;
+  }
+  .input-field input {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #cbd5e0;
+    border-radius: 6px;
+    font-size: 16px;
+    box-sizing: border-box;
+  }
+  .input-field input:focus {
+    outline: none;
+    border-color: #3182ce;
+    box-shadow: 0 0 0 3px rgba(66, 153, 225, 0.15);
+  }
+  .results-box {
+    background-color: #f7fafc;
+    border-radius: 8px;
+    padding: 16px;
+    text-align: center;
+    border: 1px solid #edf2f7;
+    margin-bottom: 16px;
+  }
+  .result-label {
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: #718096;
+    letter-spacing: 0.05em;
+    margin-bottom: 4px;
+  }
+  .result-value {
+    font-size: 28px;
+    font-weight: 800;
+    color: #2b6cb0;
+  }
+  .warning-box {
+    margin-top: 12px;
+    padding: 10px;
+    background-color: #fffaf0;
+    border: 1px solid #feebc8;
+    border-radius: 6px;
+    font-size: 12px;
+    color: #c05621;
+    text-align: left;
+    line-height: 1.4;
+  }
+  .disclaimer {
+    font-size: 11px;
+    color: #a0aec0;
+    line-height: 1.4;
+    margin: 0;
+  }
+</style>
+
+<script>
+  let currentUnit = 'us';
+
+  function setUnits(unit) {
+    if (currentUnit === unit) return;
+    currentUnit = unit;
+
+    const btnUs = document.getElementById('btn-us');
+    const btnSi = document.getElementById('btn-si');
+    const caUnit = document.getElementById('ca-unit');
+    const albUnit = document.getElementById('alb-unit');
+    const caInput = document.getElementById('calcium');
+    const albInput = document.getElementById('albumin');
+
+    if (unit === 'us') {
+      btnUs.classList.add('active');
+      btnSi.classList.remove('active');
+      caUnit.textContent = 'mg/dL';
+      albUnit.textContent = 'g/dL';
+      // Convert current values to US estimates
+      caInput.value = (parseFloat(caInput.value) * 4).toFixed(1);
+      albInput.value = (parseFloat(albInput.value) / 10).toFixed(1);
+    } else {
+      btnSi.classList.add('active');
+      btnUs.classList.remove('active');
+      caUnit.textContent = 'mmol/L';
+      albUnit.textContent = 'g/L';
+      // Convert current values to SI estimates
+      caInput.value = (parseFloat(caInput.value) / 4).toFixed(2);
+      albInput.value = (parseFloat(albInput.value) * 10).toFixed(0);
+    }
+    calculate();
+  }
+
+  function calculate() {
+    const ca = parseFloat(document.getElementById('calcium').value);
+    const alb = parseFloat(document.getElementById('albumin').value);
+    const resValue = document.getElementById('result-value');
+    const warningBox = document.getElementById('warning-box');
+
+    if (isNaN(ca) || isNaN(alb)) {
+      resValue.textContent = '--';
+      warningBox.style.display = 'none';
+      return;
+    }
+
+    let corrected;
+    let normalAlbuminRef = currentUnit === 'us' ? 4.0 : 40;
+    let isHyper = alb > normalAlbuminRef;
+
+    if (currentUnit === 'us') {
+      corrected = ca + 0.8 * (4.0 - alb);
+      resValue.textContent = corrected.toFixed(2) + ' mg/dL';
+    } else {
+      corrected = ca + 0.02 * (40 - alb);
+      resValue.textContent = corrected.toFixed(2) + ' mmol/L';
+    }
+
+    if (isHyper) {
+      warningBox.innerHTML = `<strong>Note:</strong> Serum albumin is elevated (${alb} ${currentUnit === 'us' ? 'g/dL' : 'g/L'}). The Payne correction formula is clinically unvalidated for hyperalbuminemia. Directly measuring ionized calcium is recommended.`;
+      warningBox.style.display = 'block';
+    } else {
+      warningBox.style.display = 'none';
+    }
+  }
+
+  // Initial calculation run
+  calculate();
+</script>
