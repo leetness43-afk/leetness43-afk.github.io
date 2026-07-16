@@ -129,16 +129,12 @@ function toggleBasalFields() {
     if (bTime === 'Twice Daily') {
         amInput.classList.remove('hidden');
         pmInput.classList.remove('hidden');
-        amInput.placeholder = "AM Units";
-        pmInput.placeholder = "PM Units";
     } else if (bTime === 'Morning') {
         amInput.classList.remove('hidden');
         pmInput.classList.add('hidden');
-        amInput.placeholder = "AM Units";
-    } else { // Evening
+    } else if (bTime === 'Evening') {
         amInput.classList.add('hidden');
         pmInput.classList.remove('hidden');
-        pmInput.placeholder = "PM Units";
     }
 }
 
@@ -175,7 +171,6 @@ function generateScale() {
             bases.forEach(base => {
                 let dose = 0;
                 if (range.factor) dose = Math.floor(base * range.factor);
-                // Fallback to 0 if inc is NaN (e.g. while a user clears the field to type a new value)
                 if (range.correctionStep) dose = base + (range.correctionStep * (isNaN(inc) ? 0 : inc));
                 html += `<td class="border border-gray-300 p-2 text-center">${dose % 1 === 0 ? dose : dose.toFixed(1)}</td>`;
             });
@@ -190,17 +185,23 @@ function generateScale() {
     // Update Basal Text
     const bType = document.getElementById('basalType').value;
     const bTime = document.getElementById('basalTime').value;
+    const am = document.getElementById('basalMorningUnits').value || '0';
+    const pm = document.getElementById('basalEveningUnits').value || '0';
+
     if (bTime === 'Twice Daily') {
-        const am = document.getElementById('basalMorningUnits').value;
-        const pm = document.getElementById('basalEveningUnits').value;
         document.getElementById('basalInstructions').innerHTML = `${bType}: Take ${am} units in AM and ${pm} units in PM.`;
-    } else {
-        const am = document.getElementById('basalMorningUnits').value;
-        document.getElementById('basalInstructions').innerHTML = `${bType}: Take ${am} units once daily (${bTime}).`;
+    } else if (bTime === 'Morning') {
+        document.getElementById('basalInstructions').innerHTML = `${bType}: Take ${am} units once daily (Morning).`;
+    } else if (bTime === 'Evening') {
+        document.getElementById('basalInstructions').innerHTML = `${bType}: Take ${pm} units once daily (Evening).`;
     }
 }
 
-window.onload = () => { toggleBasalFields(); generateScale(); };
+// Combine load operations to ensure proper rendering state on page startup
+window.onload = () => { 
+    toggleBasalFields(); 
+    generateScale(); 
+};
 </script>
 </body>
 </html>
