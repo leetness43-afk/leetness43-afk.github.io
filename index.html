@@ -114,11 +114,11 @@ const bgRanges = [
     { label: "131 - 150", correctionStep: 1 },
     { label: "151 - 200", correctionStep: 2 },
     { label: "201 - 250", correctionStep: 3 },
-    { label: "251 - 300", correctionStep: 4, bedtimeStep: 1 },
-    { label: "301 - 350", correctionStep: 5, bedtimeStep: 2, critical: true },
-    { label: "351 - 400", correctionStep: 6, bedtimeStep: 3, critical: true },
-    { label: "401 - 450", correctionStep: 7, bedtimeStep: 4, critical: true },
-    { label: "> 450", correctionStep: 8, bedtimeStep: 5, critical: true }
+    { label: "251 - 300", correctionStep: 4, bedtimeDose: 1 },
+    { label: "301 - 350", correctionStep: 5, bedtimeDose: 2, critical: true },
+    { label: "351 - 400", correctionStep: 6, bedtimeDose: 3, critical: true },
+    { label: "401 - 450", correctionStep: 7, bedtimeDose: 4, critical: true },
+    { label: "> 450", correctionStep: 8, bedtimeDose: 5, critical: true }
 ];
 
 function toggleBasalFields() {
@@ -174,7 +174,9 @@ function generateScale() {
                 if (range.correctionStep) dose = base + (range.correctionStep * (isNaN(inc) ? 0 : inc));
                 html += `<td class="border border-gray-300 p-2 text-center">${dose % 1 === 0 ? dose : dose.toFixed(1)}</td>`;
             });
-            let btDose = range.bedtimeStep ? (range.bedtimeStep * (isNaN(inc) ? 0 : inc)) : 0;
+            
+            // Fixed bedtime dose logic (no longer multiplied by the Correction Increment)
+            let btDose = range.bedtimeDose ? range.bedtimeDose : 0;
             html += `<td class="border border-gray-300 p-2 text-center font-bold text-blue-800">${btDose || '0'}</td>`;
         }
         html += `</tr>`;
@@ -197,7 +199,6 @@ function generateScale() {
     }
 }
 
-// Combine load operations to ensure proper rendering state on page startup
 window.onload = () => { 
     toggleBasalFields(); 
     generateScale(); 
