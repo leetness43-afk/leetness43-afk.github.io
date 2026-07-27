@@ -169,18 +169,25 @@ function generateScale() {
     bgRanges.forEach((range, i) => {
         const criticalClass = range.critical ? 'bg-red-50 text-red-700 font-bold' : (i % 2 === 0 ? 'bg-white' : 'bg-gray-50');
         html += `<tr class="${criticalClass}">
-            <td class="border border-gray-300 p-2 font-bold">${range.label}</td>`;
+            <td class="border border-gray-300 p-2 font-bold">
+    ${range.label}
+    ${range.subtitle ? `<br><span class="font-normal text-xs text-gray-500">${range.subtitle}</span>` : ''}
+</td>`;
         
         if (range.text) {
             html += `<td colspan="4" class="border border-gray-300 p-2 text-center">${range.text}</td>`;
         } else {
             // Calculate Breakfast, Lunch, Dinner columns using the Correction Increment multiplier
-            bases.forEach(base => {
-                let dose = 0;
-                if (range.factor) dose = base * range.factor;;
-                if (range.correctionStep) dose = base + (range.correctionStep * (isNaN(inc) ? 0 : inc));
-                html += `<td class="border border-gray-300 p-2 text-center">${dose % 1 === 0 ? dose : dose.toFixed(1)}</td>`;
-            });
+                bases.forEach(base => {
+                    let dose = 0;
+                    if (range.factor) dose = base * range.factor;
+                    if (range.correctionStep) dose = base + (range.correctionStep * (isNaN(inc) ? 0 : inc));
+    
+                    // Lock the dose to the lowest nearest 0.5 increment
+                    dose = Math.floor(dose * 2) / 2;
+    
+    html += `<td class="border border-gray-300 p-2 text-center">${dose % 1 === 0 ? dose : dose.toFixed(1)}</td>`;
+});
             
             // Set the Bedtime column to exactly the fixed bedtimeDose value (0 if not defined)
             let btDose = range.hasOwnProperty('bedtimeDose') ? range.bedtimeDose : 0;
