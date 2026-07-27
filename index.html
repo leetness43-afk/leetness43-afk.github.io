@@ -116,7 +116,7 @@
 const bgRanges = [
     { label: "< 70", critical: true, text: "Treat hypoglycemia (15g carbs), recheck in 15m. If >70 and before meal, use 70-90 dose." },
     { label: "70 - 90", factor: 0.6 },
-    { label: "91 - 130", factor: 1.0, isBase: true },
+    { label: "91 - 130", factor: 1.0, isBase: true, subtitle: "Base Dose" },
     { label: "131 - 150", correctionStep: 1 },
     { label: "151 - 200", correctionStep: 2 },
     { label: "201 - 250", correctionStep: 3 },
@@ -177,7 +177,7 @@ function generateScale() {
             // Calculate Breakfast, Lunch, Dinner columns using the Correction Increment multiplier
             bases.forEach(base => {
                 let dose = 0;
-                if (range.factor) dose = Math.floor(base * range.factor);
+                if (range.factor) dose = base * range.factor;;
                 if (range.correctionStep) dose = base + (range.correctionStep * (isNaN(inc) ? 0 : inc));
                 html += `<td class="border border-gray-300 p-2 text-center">${dose % 1 === 0 ? dose : dose.toFixed(1)}</td>`;
             });
