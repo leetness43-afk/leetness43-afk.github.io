@@ -177,19 +177,23 @@ function generateScale() {
         if (range.text) {
             html += `<td colspan="4" class="border border-gray-300 p-2 text-center">${range.text}</td>`;
         } else {
-            // Calculate Breakfast, Lunch, Dinner columns using the Correction Increment multiplier
-                bases.forEach(base => {
-                    let dose = 0;
-                    if (range.factor) dose = base * range.factor;
-                    if (range.correctionStep) dose = base + (range.correctionStep * (isNaN(inc) ? 0 : inc));
+            // Calculate Breakfast, Lunch, Dinner columns
+            bases.forEach(base => {
+                let dose = 0;
+                if (range.factor) dose = base * range.factor;
+                if (range.correctionStep) dose = base + (range.correctionStep * (isNaN(inc) ? 0 : inc));
     
-                    // Lock the dose to the lowest nearest 0.5 increment
-                    dose = Math.floor(dose * 2) / 2;
+                // RULE: If increment has no decimal, force whole numbers. Otherwise, lock to 0.5.
+                if (inc % 1 === 0) {
+                    dose = Math.round(dose); // Rounds to the nearest whole number
+                } else {
+                    dose = Math.floor(dose * 2) / 2; // Locks to the lowest nearest 0.5
+                }
     
-    html += `<td class="border border-gray-300 p-2 text-center">${dose % 1 === 0 ? dose : dose.toFixed(1)}</td>`;
-});
+                html += `<td class="border border-gray-300 p-2 text-center">${dose % 1 === 0 ? dose : dose.toFixed(1)}</td>`;
+            });
             
-            // Set the Bedtime column to exactly the fixed bedtimeDose value (0 if not defined)
+            // Set the Bedtime column
             let btDose = range.hasOwnProperty('bedtimeDose') ? range.bedtimeDose : 0;
             html += `<td class="border border-gray-300 p-2 text-center font-bold text-blue-800">${btDose}</td>`;
         }
@@ -212,7 +216,7 @@ function generateScale() {
         document.getElementById('basalInstructions').innerHTML = `${bType}: Take ${pm} units once daily (Evening).`;
     }
 }
-
+    
 window.onload = () => { 
     toggleBasalFields(); 
     generateScale(); 
