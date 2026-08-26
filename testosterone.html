@@ -115,7 +115,7 @@
                         <span id="inj90DayVol" class="font-bold text-gray-800">3.21 mL</span>
                     </div>
                     <div class="flex justify-between border-b pb-1">
-                        <span class="text-gray-600">Total Vials Needed:</span>
+                        <span id="injVialsLabel" class="text-gray-600">Total Vials Needed:</span>
                         <span id="injVialsNeeded" class="font-bold text-amber-800">1 Vial (10 mL vial)</span>
                     </div>
                     <div class="flex justify-between pt-1 font-semibold text-amber-900">
@@ -161,7 +161,7 @@
                         <span id="totalMgPerDay" class="font-bold text-gray-800">40.5 mg/day</span>
                     </div>
                     <div class="flex justify-between border-b pb-1">
-                        <span id="totalSupplyLabel" class="text-gray-600">Total Canisters Needed:</span>
+                        <span id="totalSupplyLabel" class="text-gray-600">Quantity per Fill:</span>
                         <span id="bottlesNeeded" class="font-bold text-amber-800">3 Canisters (225g)</span>
                     </div>
                     <div class="flex justify-between pt-1 font-semibold text-amber-900">
@@ -215,8 +215,14 @@ function calculateTestosterone() {
     // 90-Day injectable volume & vial calculations
     const dosesIn90Days = 90 / intervalDays;
     const totalVol90 = volumePerDose * dosesIn90Days;
-    const vialsNeeded = Math.ceil(totalVol90 / vialSize);
-    const injRefills = Math.max(0, vialsNeeded - 1);
+    const totalVialsNeeded = Math.ceil(totalVol90 / vialSize);
+    
+    // 30-Day fill calculation
+    const dosesIn30Days = 30 / intervalDays;
+    const totalVol30 = volumePerDose * dosesIn30Days;
+    const vials30Days = Math.ceil(totalVol30 / vialSize);
+    
+    const injRefills = Math.max(0, Math.ceil(totalVol90 / (totalVol30 || 1)) - 1);
 
     // Format frequency string for patient guide
     let freqText = "every 2 weeks";
@@ -226,15 +232,16 @@ function calculateTestosterone() {
     document.getElementById('injResult').textContent = `${formattedVolume} mL (${formattedVolume} cc)`;
     document.getElementById('inj90DayVol').textContent = `${totalVol90.toFixed(2)} mL`;
     
-    const vialLabel = vialsNeeded === 1 ? 'Vial' : 'Vials';
-    document.getElementById('injVialsNeeded').textContent = `${vialsNeeded} ${vialLabel} (${vialSize} mL vial)`;
-
-    if (vialsNeeded === 0) {
-        document.getElementById('injRefillPlan').textContent = 'N/A';
-    } else if (injDispenseMode === 'max') {
-        document.getElementById('injRefillPlan').textContent = `${vialsNeeded} ${vialLabel} (0 Refills)`;
+    if (injDispenseMode === 'max') {
+        document.getElementById('injVialsLabel').textContent = "Total Vials Needed:";
+        const vialLabel = totalVialsNeeded === 1 ? 'Vial' : 'Vials';
+        document.getElementById('injVialsNeeded').textContent = `${totalVialsNeeded} ${vialLabel} (${vialSize} mL vial)`;
+        document.getElementById('injRefillPlan').textContent = totalVialsNeeded === 0 ? 'N/A' : `${totalVialsNeeded} ${vialLabel} (0 Refills)`;
     } else {
-        document.getElementById('injRefillPlan').textContent = `1 Vial + ${injRefills} Refill(s)`;
+        document.getElementById('injVialsLabel').textContent = "Vials per Initial Fill:";
+        const vialLabel = vials30Days === 1 ? 'Vial' : 'Vials';
+        document.getElementById('injVialsNeeded').textContent = `${vials30Days} ${vialLabel} (${vialSize} mL vial)`;
+        document.getElementById('injRefillPlan').textContent = totalVialsNeeded === 0 ? 'N/A' : `${vials30Days} ${vialLabel} + ${injRefills} Refill(s)`;
     }
 
     // Update Print Guide Card Text
@@ -255,45 +262,62 @@ function calculateTestosterone() {
     if (productType === 'packet') {
         // --- PACKET CALCULATION ---
         document.getElementById('gelUnitsLabel').textContent = "Daily Prescribed Packets (Packets/Day)";
-        document.getElementById('totalSupplyLabel').textContent = "Total Packets Needed:";
         
         const totalPackets90 = unitsPerDay * 90;
-        const refillsPackets = Math.max(0, Math.ceil(totalPackets90 / 30) - 1);
-        const packetSizeG = selectedOption.getAttribute('data-packet-g') || "2.5";
+        const initialFillPackets = unitsPerDay * 30;
+        const packetSizeG = parseFloat(selectedOption.getAttribute('data-packet-g')) || 2.5;
+        
+        const totalGrams90 = totalPackets90 * packetSizeG;
+        const initialFillGrams = initialFillPackets * packetSizeG;
+        const refillsPackets = Math.max(0, Math.ceil(totalPackets90 / (initialFillPackets || 30)) - 1);
 
         document.getElementById('totalMgPerDay').textContent = `${totalMgDaily.toFixed(2).replace(/\.00$/, '')} mg/day`;
-        document.getElementById('bottlesNeeded').textContent = `${Math.round(totalPackets90)} Packets (${packetSizeG}g x packet)`;
 
         if (totalPackets90 === 0) {
+            document.getElementById('totalSupplyLabel').textContent = "Quantity per Fill:";
+            document.getElementById('bottlesNeeded').textContent = 'N/A';
             document.getElementById('refillPlan').textContent = 'N/A';
         } else if (dispenseMode === 'max') {
-            document.getElementById('refillPlan').textContent = `${Math.round(totalPackets90)} Packets (${packetSizeG}g x packet) (0 Refills)`;
+            document.getElementById('totalSupplyLabel').textContent = "Total Grams Needed:";
+            document.getElementById('bottlesNeeded').textContent = `${totalGrams90.toFixed(1).replace(/\.0$/, '')}g (${Math.round(totalPackets90)} Packets)`;
+            document.getElementById('refillPlan').textContent = `${totalGrams90.toFixed(1).replace(/\.0$/, '')}g (0 Refills)`;
         } else {
-            document.getElementById('refillPlan').textContent = `30 Packets (${packetSizeG}g x packet) + ${refillsPackets} Refill(s)`;
+            document.getElementById('totalSupplyLabel').textContent = "Initial Fill Quantity:";
+            document.getElementById('bottlesNeeded').textContent = `${initialFillGrams.toFixed(1).replace(/\.0$/, '')}g (${Math.round(initialFillPackets)} Packets)`;
+            document.getElementById('refillPlan').textContent = `${initialFillGrams.toFixed(1).replace(/\.0$/, '')}g + ${refillsPackets} Refill(s)`;
         }
     } else {
         // --- PUMP / CANISTER CALCULATION ---
         document.getElementById('gelUnitsLabel').textContent = "Daily Prescribed Pumps (Actuations/Day)";
-        document.getElementById('totalSupplyLabel').textContent = "Total Canisters Needed:";
 
         const totalPumps90 = unitsPerDay * 90;
         const pumpsPerBottle = 60; 
-        const bottles = Math.ceil(totalPumps90 / pumpsPerBottle);
         const bottleSizeG = parseFloat(selectedOption.getAttribute('data-bottle-g')) || 75;
         
-        const totalDispensedG = bottles * bottleSizeG;
-        const refills = Math.max(0, bottles - 1);
-        const bottleLabel = bottles === 1 ? 'Canister' : 'Canisters';
+        const totalBottles90 = Math.ceil(totalPumps90 / pumpsPerBottle);
+        const initialBottles30 = Math.ceil((unitsPerDay * 30) / pumpsPerBottle);
+        
+        const totalDispensedG90 = totalBottles90 * bottleSizeG;
+        const initialDispensedG30 = initialBottles30 * bottleSizeG;
+        
+        const refills = Math.max(0, Math.ceil(totalBottles90 / (initialBottles30 || 1)) - 1);
 
         document.getElementById('totalMgPerDay').textContent = `${totalMgDaily.toFixed(2).replace(/\.00$/, '')} mg/day`;
-        document.getElementById('bottlesNeeded').textContent = `${bottles} ${bottleLabel} (${totalDispensedG}g)`;
 
-        if (bottles === 0) {
+        if (totalBottles90 === 0) {
+            document.getElementById('totalSupplyLabel').textContent = "Quantity per Fill:";
+            document.getElementById('bottlesNeeded').textContent = 'N/A';
             document.getElementById('refillPlan').textContent = 'N/A';
         } else if (dispenseMode === 'max') {
-            document.getElementById('refillPlan').textContent = `${bottles} ${bottleLabel} (0 Refills)`;
+            document.getElementById('totalSupplyLabel').textContent = "Total Canisters Needed:";
+            const bottleLabel = totalBottles90 === 1 ? 'Canister' : 'Canisters';
+            document.getElementById('bottlesNeeded').textContent = `${totalBottles90} ${bottleLabel} (${totalDispensedG90}g)`;
+            document.getElementById('refillPlan').textContent = `${totalBottles90} ${bottleLabel} (0 Refills)`;
         } else {
-            document.getElementById('refillPlan').textContent = `1 Canister + ${refills} Refill(s)`;
+            document.getElementById('totalSupplyLabel').textContent = "Canisters per Initial Fill:";
+            const bottleLabel = initialBottles30 === 1 ? 'Canister' : 'Canisters';
+            document.getElementById('bottlesNeeded').textContent = `${initialBottles30} ${bottleLabel} (${initialDispensedG30}g)`;
+            document.getElementById('refillPlan').textContent = `${initialBottles30} ${bottleLabel} + ${refills} Refill(s)`;
         }
     }
 
