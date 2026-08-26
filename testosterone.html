@@ -76,6 +76,7 @@
                             <label class="block text-xs font-medium text-gray-700">Syringe Size</label>
                             <select id="syringeSize" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border text-sm" onchange="calculateTestosterone()">
                                 <option value="1" selected>1 mL Syringe</option>
+                                <option value="2">2 mL Syringe</option>
                                 <option value="3">3 mL Syringe</option>
                             </select>
                         </div>
@@ -150,7 +151,7 @@
         </div>
 
         <div class="flex justify-center my-4">
-            <canvas id="syringeCanvas" width="700" height="180" class="max-w-full h-auto"></canvas>
+            <canvas id="syringeCanvas" width="720" height="200" class="max-w-full h-auto"></canvas>
         </div>
     </div>
 
@@ -206,75 +207,103 @@ function drawSyringe(doseVolume, maxCapacity) {
     const ctx = canvas.getContext('2d');
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // Dimensions
+    // Layout Dimensions
     const startX = 100;
-    const endX = 580;
-    const barrelY = 70;
-    const barrelHeight = 45;
+    const endX = 600;
+    const barrelY = 75;
+    const barrelHeight = maxCapacity === 1 ? 40 : (maxCapacity === 2 ? 46 : 52); // Scaled height by volume
     const barrelLength = endX - startX;
 
-    // Cap dose volume to max syringe capacity for visual accuracy
+    // Target fill calculation
     const targetVol = Math.min(Math.max(doseVolume, 0), maxCapacity);
     const doseFraction = targetVol / maxCapacity;
     const fillX = startX + (doseFraction * barrelLength);
 
     // 1. Syringe Needle / Tip
     ctx.fillStyle = '#9ca3af';
-    ctx.fillRect(startX - 25, barrelY + 18, 25, 9);
-    ctx.fillRect(startX - 50, barrelY + 21, 25, 3);
+    ctx.fillRect(startX - 25, barrelY + (barrelHeight/2) - 4, 25, 8);
+    ctx.fillRect(startX - 50, barrelY + (barrelHeight/2) - 1.5, 25, 3);
 
     // 2. Syringe Flange (Back)
     ctx.fillStyle = '#d1d5db';
     ctx.fillRect(endX, barrelY - 12, 10, barrelHeight + 24);
 
     // 3. Liquid fill area
-    ctx.fillStyle = 'rgba(217, 119, 6, 0.25)';
+    ctx.fillStyle = 'rgba(217, 119, 6, 0.3)';
     ctx.fillRect(startX, barrelY + 1, fillX - startX, barrelHeight - 2);
 
     // 4. Plunger Rubber Stop
-    ctx.fillStyle = '#1f2937';
+    ctx.fillStyle = '#111827';
     ctx.fillRect(fillX, barrelY + 1, 14, barrelHeight - 2);
 
     // 5. Plunger Shaft & Handle
     ctx.fillStyle = '#e5e7eb';
-    ctx.fillRect(fillX + 14, barrelY + 16, endX - fillX + 40, 13);
+    ctx.fillRect(fillX + 14, barrelY + (barrelHeight/2) - 6, endX - fillX + 40, 12);
     ctx.fillRect(endX + 50, barrelY - 10, 8, barrelHeight + 20);
 
     // 6. Outer Glass Barrel
-    ctx.strokeStyle = '#6b7280';
+    ctx.strokeStyle = '#4b5563';
     ctx.lineWidth = 3;
     ctx.strokeRect(startX, barrelY, barrelLength, barrelHeight);
 
-    // 7. Tick Marks & Numbers
+    // 7. Tick Marks Generation
+    let totalSubTicks = 0;
+    let majorInterval = 1;
+
+    if (maxCapacity === 1) {
+        totalSubTicks = 100; // 0.01 mL per minor tick mark
+        majorInterval = 10;  // 0.1 mL major tick mark
+    } else if (maxCapacity === 2) {
+        totalSubTicks = 40;  // 0.05 mL per minor tick mark
+        majorInterval = 10;  // 0.5 mL major tick mark
+    } else { // 3 mL
+        totalSubTicks = 60;  // 0.05 mL per minor tick mark
+        majorInterval = 10;  // 0.5 mL major tick mark
+    }
+
     ctx.fillStyle = '#111827';
-    ctx.font = '12px sans-serif';
+    ctx.font = '11px sans-serif';
     ctx.textAlign = 'center';
 
-    const numTicks = maxCapacity === 1 ? 10 : 6; // 0.1 mL ticks vs 0.5 mL ticks
-    for (let i = 0; i <= numTicks; i++) {
-        const tickX = startX + (i / numTicks) * barrelLength;
-        const val = ((i / numTicks) * maxCapacity);
+    for (let i = 0; i <= totalSubTicks; i++) {
+        const tickX = startX + (i / totalSubTicks) * barrelLength;
+        const currentVol = (i / totalSubTicks) * maxCapacity;
         
+        let tickHeight = 5; // Minor tick
+        let isMajor = (i % majorInterval === 0);
+        let isMedium = (i % (majorInterval / 2) === 0 && !isMajor);
+
+        if (isMajor) tickHeight = 16;
+        else if (isMedium) tickHeight = 10;
+
         ctx.beginPath();
         ctx.moveTo(tickX, barrelY);
-        ctx.lineTo(tickX, barrelY + 14);
-        ctx.strokeStyle = '#374151';
-        ctx.lineWidth = 2;
+        ctx.lineTo(tickX, barrelY + tickHeight);
+        ctx.strokeStyle = isMajor ? '#000000' : '#4b5563';
+        ctx.lineWidth = isMajor ? 2 : 1;
         ctx.stroke();
 
-        let label = maxCapacity === 1 ? val.toFixed(1) : (val % 1 === 0 ? val.toFixed(0) : val.toFixed(1));
-        if (i === numTicks) label += ' mL';
-        ctx.fillText(label, tickX, barrelY - 8);
+        // Print Numbers on Major Ticks
+        if (isMajor) {
+            let label = '';
+            if (maxCapacity === 1) {
+                label = currentVol.toFixed(1);
+            } else {
+                label = currentVol % 1 === 0 ? currentVol.toFixed(0) : currentVol.toFixed(1);
+            }
+
+            if (i === totalSubTicks) label += ' mL';
+            ctx.fillText(label, tickX, barrelY - 8);
+        }
     }
 
     // 8. Indicator Arrow pointing to target dose
     ctx.fillStyle = '#b91c1c';
     ctx.strokeStyle = '#b91c1c';
-    ctx.lineWidth = 2;
 
     const arrowY = barrelY + barrelHeight + 35;
     ctx.beginPath();
-    ctx.moveTo(fillX, barrelY + barrelHeight + 5); // Tip
+    ctx.moveTo(fillX, barrelY + barrelHeight + 4); // Arrow head tip
     ctx.lineTo(fillX - 8, arrowY - 15);
     ctx.lineTo(fillX + 8, arrowY - 15);
     ctx.closePath();
