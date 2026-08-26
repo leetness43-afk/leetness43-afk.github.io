@@ -78,7 +78,7 @@
                 <div class="mt-6 p-4 bg-white rounded-md border border-amber-200 text-center">
                     <span class="text-xs text-gray-500 uppercase tracking-wider block font-semibold">Volume to Withdraw</span>
                     <span id="injResult" class="text-3xl font-extrabold text-amber-700">0.50 mL</span>
-                    <span class="text-xs text-gray-500 block mt-1">(0.50 cc)</span>
+                    <span id="injResultCc" class="text-xs text-gray-500 block mt-1">(0.50 cc)</span>
                 </div>
             </div>
 
@@ -142,7 +142,10 @@ function calculateTestosterone() {
     const doseMg = parseFloat(document.getElementById('testDoseMg').value) || 0;
     const conc = parseFloat(document.getElementById('testConcentration').value) || 1;
     const volume = doseMg / conc;
-    document.getElementById('injResult').textContent = `${volume.toFixed(2)} mL`;
+    
+    const formattedVolume = volume.toFixed(2);
+    document.getElementById('injResult').textContent = `${formattedVolume} mL`;
+    document.getElementById('injResultCc').textContent = `(${formattedVolume} cc)`;
 
     // 2. Topical/Gel calculation
     const gelDose = parseFloat(document.getElementById('gelDailyDose').value) || 0;
