@@ -27,7 +27,7 @@
     <!-- Header -->
     <header class="text-center mb-6 no-print">
         <h1 class="text-3xl font-extrabold text-amber-900">Testosterone Dosing & Supply Calculator</h1>
-        <p class="text-gray-600 mt-2">Calculate injectable withdrawal volumes, daily pump actuations, and 3-month supply requirements.</p>
+        <p class="text-gray-600 mt-2">Calculate injectable withdrawal volumes, daily actuations/packets, and 3-month supply requirements.</p>
     </header>
 
     <!-- Navigation Bar -->
@@ -116,11 +116,11 @@
                     </div>
                     <div class="flex justify-between border-b pb-1">
                         <span class="text-gray-600">Total Vials Needed:</span>
-                        <span id="injVialsNeeded" class="font-bold text-amber-800">1 Vial(s)</span>
+                        <span id="injVialsNeeded" class="font-bold text-amber-800">1 Vial (10 mL vial)</span>
                     </div>
                     <div class="flex justify-between pt-1 font-semibold text-amber-900">
                         <span>Dispense Plan (Rx Line):</span>
-                        <span id="injRefillPlan">1 Vial(s) (0 Refills)</span>
+                        <span id="injRefillPlan">1 Vial (0 Refills)</span>
                     </div>
                 </div>
             </div>
@@ -133,23 +133,23 @@
                     </h3>
                     <div class="space-y-4">
                         <div>
-                            <label class="block text-xs font-medium text-gray-700">Daily Prescribed Pumps (Actuations/Day)</label>
+                            <label id="gelUnitsLabel" class="block text-xs font-medium text-gray-700">Daily Prescribed Pumps (Actuations/Day)</label>
                             <input type="number" id="gelDailyPumps" value="2" min="0" step="1" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border text-sm" oninput="calculateTestosterone()">
                         </div>
                         <div>
                             <label class="block text-xs font-medium text-gray-700">Product / Concentration</label>
                             <select id="gelProduct" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border text-sm" onchange="calculateTestosterone()">
-                                <option value="20.25" selected>AndroGel 1.62% Pump (20.25 mg / pump)</option>
-                                <option value="12.5">AndroGel 1% Pump (12.5 mg / pump)</option>
-                                <option value="10">Testim / Fortesta Pump (10 mg / pump)</option>
-                                <option value="30">Vogelxo Pump (30 mg / pump)</option>
+                                <option value="20.25" data-type="pump" data-bottle-g="75" selected>AndroGel 1.62% Pump (20.25 mg / pump)</option>
+                                <option value="25" data-type="packet" data-packet-g="2.5">AndroGel 1% Packets (25 mg / 2.5g packet)</option>
+                                <option value="10" data-type="pump" data-bottle-g="60">Testim / Fortesta Pump (10 mg / pump)</option>
+                                <option value="30" data-type="pump" data-bottle-g="60">Vogelxo Pump (30 mg / pump)</option>
                             </select>
                         </div>
                         <div>
                             <label class="block text-xs font-medium text-gray-700">Dispensing Strategy</label>
                             <select id="dispenseMode" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border text-sm font-semibold text-amber-900 bg-amber-50" onchange="calculateTestosterone()">
                                 <option value="max" selected>Max Quantity upfront (Max 90-Day Supply, 0 Refills)</option>
-                                <option value="standard">Standard 30-Day Fill + Refills (1 Bottle + Refills)</option>
+                                <option value="standard">Standard 30-Day Fill + Refills (1 Month Fill + Refills)</option>
                             </select>
                         </div>
                     </div>
@@ -161,16 +161,12 @@
                         <span id="totalMgPerDay" class="font-bold text-gray-800">40.5 mg/day</span>
                     </div>
                     <div class="flex justify-between border-b pb-1">
-                        <span class="text-gray-600">90-Day Total Actuations:</span>
-                        <span id="totalPumps90" class="font-bold text-gray-800">180 pumps</span>
-                    </div>
-                    <div class="flex justify-between border-b pb-1">
-                        <span class="text-gray-600">Total Bottles Needed:</span>
-                        <span id="bottlesNeeded" class="font-bold text-amber-800">3 Bottle(s)</span>
+                        <span id="totalSupplyLabel" class="text-gray-600">Total Canisters Needed:</span>
+                        <span id="bottlesNeeded" class="font-bold text-amber-800">3 Canisters (225g)</span>
                     </div>
                     <div class="flex justify-between pt-1 font-semibold text-amber-900">
                         <span>Dispense Plan (Rx Line):</span>
-                        <span id="refillPlan">3 Bottle(s) (0 Refills)</span>
+                        <span id="refillPlan">3 Canisters (0 Refills)</span>
                     </div>
                 </div>
             </div>
@@ -229,12 +225,14 @@ function calculateTestosterone() {
 
     document.getElementById('injResult').textContent = `${formattedVolume} mL (${formattedVolume} cc)`;
     document.getElementById('inj90DayVol').textContent = `${totalVol90.toFixed(2)} mL`;
-    document.getElementById('injVialsNeeded').textContent = `${vialsNeeded} Vial(s) (${vialSize} mL vial)`;
+    
+    const vialLabel = vialsNeeded === 1 ? 'Vial' : 'Vials';
+    document.getElementById('injVialsNeeded').textContent = `${vialsNeeded} ${vialLabel} (${vialSize} mL vial)`;
 
     if (vialsNeeded === 0) {
         document.getElementById('injRefillPlan').textContent = 'N/A';
     } else if (injDispenseMode === 'max') {
-        document.getElementById('injRefillPlan').textContent = `${vialsNeeded} Vial(s) (0 Refills)`;
+        document.getElementById('injRefillPlan').textContent = `${vialsNeeded} ${vialLabel} (0 Refills)`;
     } else {
         document.getElementById('injRefillPlan').textContent = `1 Vial + ${injRefills} Refill(s)`;
     }
@@ -244,26 +242,59 @@ function calculateTestosterone() {
     document.getElementById('guideFreq').textContent = freqText;
 
     // 2. Topical/Gel calculation
-    const pumpsPerDay = parseFloat(document.getElementById('gelDailyPumps').value) || 0;
-    const mgPerPump = parseFloat(document.getElementById('gelProduct').value) || 0;
+    const unitsPerDay = parseFloat(document.getElementById('gelDailyPumps').value) || 0;
+    const gelSelect = document.getElementById('gelProduct');
+    const selectedOption = gelSelect.options[gelSelect.selectedIndex];
+    
+    const mgPerUnit = parseFloat(gelSelect.value) || 0;
+    const productType = selectedOption.getAttribute('data-type');
     const dispenseMode = document.getElementById('dispenseMode').value;
     
-    const totalMgDaily = pumpsPerDay * mgPerPump;
-    const totalPumps90 = pumpsPerDay * 90;
-    const pumpsPerBottle = 60; 
-    const bottles = Math.ceil(totalPumps90 / pumpsPerBottle);
-    const refills = Math.max(0, bottles - 1);
+    const totalMgDaily = unitsPerDay * mgPerUnit;
 
-    document.getElementById('totalMgPerDay').textContent = `${totalMgDaily.toFixed(2).replace(/\.00$/, '')} mg/day`;
-    document.getElementById('totalPumps90').textContent = `${Math.round(totalPumps90)} pumps`;
-    document.getElementById('bottlesNeeded').textContent = `${bottles} Bottle(s)`;
+    if (productType === 'packet') {
+        // --- PACKET CALCULATION ---
+        document.getElementById('gelUnitsLabel').textContent = "Daily Prescribed Packets (Packets/Day)";
+        document.getElementById('totalSupplyLabel').textContent = "Total Packets Needed:";
+        
+        const totalPackets90 = unitsPerDay * 90;
+        const refillsPackets = Math.max(0, Math.ceil(totalPackets90 / 30) - 1);
+        const packetSizeG = selectedOption.getAttribute('data-packet-g') || "2.5";
 
-    if (bottles === 0) {
-        document.getElementById('refillPlan').textContent = 'N/A';
-    } else if (dispenseMode === 'max') {
-        document.getElementById('refillPlan').textContent = `${bottles} Bottle(s) (0 Refills)`;
+        document.getElementById('totalMgPerDay').textContent = `${totalMgDaily.toFixed(2).replace(/\.00$/, '')} mg/day`;
+        document.getElementById('bottlesNeeded').textContent = `${Math.round(totalPackets90)} Packets (${packetSizeG}g x packet)`;
+
+        if (totalPackets90 === 0) {
+            document.getElementById('refillPlan').textContent = 'N/A';
+        } else if (dispenseMode === 'max') {
+            document.getElementById('refillPlan').textContent = `${Math.round(totalPackets90)} Packets (${packetSizeG}g x packet) (0 Refills)`;
+        } else {
+            document.getElementById('refillPlan').textContent = `30 Packets (${packetSizeG}g x packet) + ${refillsPackets} Refill(s)`;
+        }
     } else {
-        document.getElementById('refillPlan').textContent = `1 Bottle + ${refills} Refill(s)`;
+        // --- PUMP / CANISTER CALCULATION ---
+        document.getElementById('gelUnitsLabel').textContent = "Daily Prescribed Pumps (Actuations/Day)";
+        document.getElementById('totalSupplyLabel').textContent = "Total Canisters Needed:";
+
+        const totalPumps90 = unitsPerDay * 90;
+        const pumpsPerBottle = 60; 
+        const bottles = Math.ceil(totalPumps90 / pumpsPerBottle);
+        const bottleSizeG = parseFloat(selectedOption.getAttribute('data-bottle-g')) || 75;
+        
+        const totalDispensedG = bottles * bottleSizeG;
+        const refills = Math.max(0, bottles - 1);
+        const bottleLabel = bottles === 1 ? 'Canister' : 'Canisters';
+
+        document.getElementById('totalMgPerDay').textContent = `${totalMgDaily.toFixed(2).replace(/\.00$/, '')} mg/day`;
+        document.getElementById('bottlesNeeded').textContent = `${bottles} ${bottleLabel} (${totalDispensedG}g)`;
+
+        if (bottles === 0) {
+            document.getElementById('refillPlan').textContent = 'N/A';
+        } else if (dispenseMode === 'max') {
+            document.getElementById('refillPlan').textContent = `${bottles} ${bottleLabel} (0 Refills)`;
+        } else {
+            document.getElementById('refillPlan').textContent = `1 Canister + ${refills} Refill(s)`;
+        }
     }
 
     // Render Syringe Diagram
