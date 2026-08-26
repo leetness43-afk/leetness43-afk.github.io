@@ -13,7 +13,7 @@
                 width: 100%;
                 max-width: 100%;
                 margin: 0;
-                padding: 1cm;
+                padding: 0.5cm;
                 box-shadow: none !important;
                 border: none !important;
             }
@@ -25,7 +25,7 @@
 
 <div id="app" class="max-w-4xl mx-auto">
     <!-- Header -->
-    <header class="text-center mb-6">
+    <header class="text-center mb-6 no-print">
         <h1 class="text-3xl font-extrabold text-amber-900">Testosterone Dosing & Supply Calculator</h1>
         <p class="text-gray-600 mt-2">Calculate injectable withdrawal volumes, daily pump actuations, and 3-month supply requirements.</p>
     </header>
@@ -44,7 +44,7 @@
     </nav>
 
     <!-- Main Calculator Panel -->
-    <div class="bg-white p-6 rounded-xl shadow-lg mb-8 border border-amber-200">
+    <div class="no-print bg-white p-6 rounded-xl shadow-lg mb-8 border border-amber-200">
         <div class="flex items-center justify-between border-b pb-2 mb-6">
             <h2 class="text-xl font-bold text-amber-900 flex items-center gap-2">
                 🧪 Clinical Dosing & Supply Breakdown
@@ -71,6 +71,17 @@
                                 <option value="100">100 mg/mL</option>
                                 <option value="250">250 mg/mL (Sustanon)</option>
                             </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-gray-700">Syringe Size</label>
+                            <select id="syringeSize" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border text-sm" onchange="calculateTestosterone()">
+                                <option value="1" selected>1 mL Syringe</option>
+                                <option value="3">3 mL Syringe</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-gray-700">Injection Frequency</label>
+                            <input type="text" id="injectionFreq" value="every week" placeholder="e.g. every week, every 2 weeks" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border text-sm" oninput="calculateTestosterone()">
                         </div>
                     </div>
                 </div>
@@ -127,6 +138,22 @@
         </div>
     </div>
 
+    <!-- Printable Patient Injection Guide Card -->
+    <div class="print-area bg-white p-6 rounded-xl shadow-xl border border-gray-300">
+        <div class="text-center mb-4">
+            <h2 class="text-2xl font-bold text-gray-800">Patient Testosterone Injection Guide</h2>
+            <p class="text-lg text-gray-700 mt-2">
+                Take <span id="guideVolume" class="font-bold text-amber-800 border-b-2 border-gray-400 px-2">0.50</span> mL injection 
+                <span id="guideFreq" class="font-bold text-amber-800 border-b-2 border-gray-400 px-2">every week</span>.
+            </p>
+            <p class="text-sm text-gray-500 mt-1">Fill syringe to the mark indicated below:</p>
+        </div>
+
+        <div class="flex justify-center my-4">
+            <canvas id="syringeCanvas" width="700" height="180" class="max-w-full h-auto"></canvas>
+        </div>
+    </div>
+
     <!-- Print Button -->
     <div class="text-center mt-8 no-print pb-12">
         <button onclick="window.focus(); window.print();"
@@ -141,21 +168,25 @@ function calculateTestosterone() {
     // 1. Injectable calculation
     const doseMg = parseFloat(document.getElementById('testDoseMg').value) || 0;
     const conc = parseFloat(document.getElementById('testConcentration').value) || 1;
-    const volume = doseMg / conc;
+    const syringeCapacity = parseFloat(document.getElementById('syringeSize').value) || 1;
+    const freqText = document.getElementById('injectionFreq').value.trim() || 'as directed';
     
+    const volume = doseMg / conc;
     const formattedVolume = volume.toFixed(2);
+
     document.getElementById('injResult').textContent = `${formattedVolume} mL`;
     document.getElementById('injResultCc').textContent = `(${formattedVolume} cc)`;
+
+    // Update Print Guide Card Text
+    document.getElementById('guideVolume').textContent = formattedVolume;
+    document.getElementById('guideFreq').textContent = freqText;
 
     // 2. Topical/Gel calculation
     const pumpsPerDay = parseFloat(document.getElementById('gelDailyPumps').value) || 0;
     const mgPerPump = parseFloat(document.getElementById('gelProduct').value) || 0;
     
-    // Calculate total daily mg dose
     const totalMgDaily = pumpsPerDay * mgPerPump;
     const totalPumps90 = pumpsPerDay * 90;
-    
-    // Standard pump canisters provide 60 metered actuations/pumps
     const pumpsPerBottle = 60; 
     const bottles = Math.ceil(totalPumps90 / pumpsPerBottle);
     const refills = Math.max(0, bottles - 1);
@@ -164,6 +195,93 @@ function calculateTestosterone() {
     document.getElementById('totalPumps90').textContent = `${Math.round(totalPumps90)} pumps`;
     document.getElementById('bottlesNeeded').textContent = `${bottles} Canister(s)`;
     document.getElementById('refillPlan').textContent = `${bottles > 0 ? '1 Canister + ' + refills + ' Refill(s)' : 'N/A'}`;
+
+    // Render Syringe Diagram
+    drawSyringe(volume, syringeCapacity);
+}
+
+function drawSyringe(doseVolume, maxCapacity) {
+    const canvas = document.getElementById('syringeCanvas');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // Dimensions
+    const startX = 100;
+    const endX = 580;
+    const barrelY = 70;
+    const barrelHeight = 45;
+    const barrelLength = endX - startX;
+
+    // Cap dose volume to max syringe capacity for visual accuracy
+    const targetVol = Math.min(Math.max(doseVolume, 0), maxCapacity);
+    const doseFraction = targetVol / maxCapacity;
+    const fillX = startX + (doseFraction * barrelLength);
+
+    // 1. Syringe Needle / Tip
+    ctx.fillStyle = '#9ca3af';
+    ctx.fillRect(startX - 25, barrelY + 18, 25, 9);
+    ctx.fillRect(startX - 50, barrelY + 21, 25, 3);
+
+    // 2. Syringe Flange (Back)
+    ctx.fillStyle = '#d1d5db';
+    ctx.fillRect(endX, barrelY - 12, 10, barrelHeight + 24);
+
+    // 3. Liquid fill area
+    ctx.fillStyle = 'rgba(217, 119, 6, 0.25)';
+    ctx.fillRect(startX, barrelY + 1, fillX - startX, barrelHeight - 2);
+
+    // 4. Plunger Rubber Stop
+    ctx.fillStyle = '#1f2937';
+    ctx.fillRect(fillX, barrelY + 1, 14, barrelHeight - 2);
+
+    // 5. Plunger Shaft & Handle
+    ctx.fillStyle = '#e5e7eb';
+    ctx.fillRect(fillX + 14, barrelY + 16, endX - fillX + 40, 13);
+    ctx.fillRect(endX + 50, barrelY - 10, 8, barrelHeight + 20);
+
+    // 6. Outer Glass Barrel
+    ctx.strokeStyle = '#6b7280';
+    ctx.lineWidth = 3;
+    ctx.strokeRect(startX, barrelY, barrelLength, barrelHeight);
+
+    // 7. Tick Marks & Numbers
+    ctx.fillStyle = '#111827';
+    ctx.font = '12px sans-serif';
+    ctx.textAlign = 'center';
+
+    const numTicks = maxCapacity === 1 ? 10 : 6; // 0.1 mL ticks vs 0.5 mL ticks
+    for (let i = 0; i <= numTicks; i++) {
+        const tickX = startX + (i / numTicks) * barrelLength;
+        const val = ((i / numTicks) * maxCapacity);
+        
+        ctx.beginPath();
+        ctx.moveTo(tickX, barrelY);
+        ctx.lineTo(tickX, barrelY + 14);
+        ctx.strokeStyle = '#374151';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        let label = maxCapacity === 1 ? val.toFixed(1) : (val % 1 === 0 ? val.toFixed(0) : val.toFixed(1));
+        if (i === numTicks) label += ' mL';
+        ctx.fillText(label, tickX, barrelY - 8);
+    }
+
+    // 8. Indicator Arrow pointing to target dose
+    ctx.fillStyle = '#b91c1c';
+    ctx.strokeStyle = '#b91c1c';
+    ctx.lineWidth = 2;
+
+    const arrowY = barrelY + barrelHeight + 35;
+    ctx.beginPath();
+    ctx.moveTo(fillX, barrelY + barrelHeight + 5); // Tip
+    ctx.lineTo(fillX - 8, arrowY - 15);
+    ctx.lineTo(fillX + 8, arrowY - 15);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.font = 'bold 13px sans-serif';
+    ctx.fillText(`Fill to ${doseVolume.toFixed(2)} mL`, fillX, arrowY);
 }
 
 window.onload = () => { 
