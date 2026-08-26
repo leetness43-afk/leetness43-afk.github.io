@@ -165,12 +165,12 @@
                         <span id="totalPumps90" class="font-bold text-gray-800">180 pumps</span>
                     </div>
                     <div class="flex justify-between border-b pb-1">
-                        <span class="text-gray-600">Total Canisters Needed:</span>
-                        <span id="bottlesNeeded" class="font-bold text-amber-800">3 Canister(s)</span>
+                        <span class="text-gray-600">Total Bottles Needed:</span>
+                        <span id="bottlesNeeded" class="font-bold text-amber-800">3 Bottle(s)</span>
                     </div>
                     <div class="flex justify-between pt-1 font-semibold text-amber-900">
                         <span>Dispense Plan (Rx Line):</span>
-                        <span id="refillPlan">Dispense #3 Canisters (0 Refills)</span>
+                        <span id="refillPlan">Dispense #3 Bottles (0 Refills)</span>
                     </div>
                 </div>
             </div>
@@ -256,14 +256,14 @@ function calculateTestosterone() {
 
     document.getElementById('totalMgPerDay').textContent = `${totalMgDaily.toFixed(2).replace(/\.00$/, '')} mg/day`;
     document.getElementById('totalPumps90').textContent = `${Math.round(totalPumps90)} pumps`;
-    document.getElementById('bottlesNeeded').textContent = `${bottles} Canister(s)`;
+    document.getElementById('bottlesNeeded').textContent = `${bottles} Bottle(s)`;
 
     if (bottles === 0) {
         document.getElementById('refillPlan').textContent = 'N/A';
     } else if (dispenseMode === 'max') {
-        document.getElementById('refillPlan').textContent = `Dispense #${bottles} Canister(s) (0 Refills)`;
+        document.getElementById('refillPlan').textContent = `Dispense #${bottles} Bottle(s) (0 Refills)`;
     } else {
-        document.getElementById('refillPlan').textContent = `Dispense #1 Canister + ${refills} Refill(s)`;
+        document.getElementById('refillPlan').textContent = `Dispense #1 Bottle + ${refills} Refill(s)`;
     }
 
     // Render Syringe Diagram
