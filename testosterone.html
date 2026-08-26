@@ -53,13 +53,13 @@
         </div>
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-            <!-- Part 1: Injectable Volume Calculator -->
+            <!-- Part 1: Injectable Volume Calculator & Dispense Plan -->
             <div class="bg-amber-50/50 p-5 rounded-lg border border-amber-100 flex flex-col justify-between">
                 <div>
                     <h3 class="text-md font-bold text-gray-800 mb-3 border-b border-amber-200 pb-1">
-                        1. Injectable Volume Calculator
+                        1. Injectable Volume & Supply Calculator
                     </h3>
-                    <div class="space-y-4">
+                    <div class="space-y-3">
                         <div>
                             <label class="block text-xs font-medium text-gray-700">Target Dose (mg)</label>
                             <input type="number" id="testDoseMg" value="100" min="0" step="5" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border text-sm" oninput="calculateTestosterone()">
@@ -73,24 +73,55 @@
                             </select>
                         </div>
                         <div>
-                            <label class="block text-xs font-medium text-gray-700">Syringe Size</label>
+                            <label class="block text-xs font-medium text-gray-700">Injection Frequency</label>
+                            <select id="injectionFreqSelect" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border text-sm" onchange="calculateTestosterone()">
+                                <option value="7" selected>Every week (7 days)</option>
+                                <option value="3.5">Twice weekly (3.5 days)</option>
+                                <option value="14">Every 2 weeks (14 days)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-gray-700">Vial Size to Dispense</label>
+                            <select id="vialSize" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border text-sm" onchange="calculateTestosterone()">
+                                <option value="10" selected>10 mL Multi-Dose Vial</option>
+                                <option value="1">1 mL Single-Dose Vial</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-gray-700">Dispensing Strategy</label>
+                            <select id="injDispenseMode" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border text-sm font-semibold text-amber-900 bg-amber-50" onchange="calculateTestosterone()">
+                                <option value="max" selected>Max Quantity upfront (Max 90-Day Supply, 0 Refills)</option>
+                                <option value="standard">Standard Fill + Refills (1 Month Fill + Refills)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-gray-700">Syringe Size (For Visual Guide)</label>
                             <select id="syringeSize" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border text-sm" onchange="calculateTestosterone()">
                                 <option value="1" selected>1 mL Syringe</option>
                                 <option value="2">2 mL Syringe</option>
                                 <option value="3">3 mL Syringe</option>
                             </select>
                         </div>
-                        <div>
-                            <label class="block text-xs font-medium text-gray-700">Injection Frequency</label>
-                            <input type="text" id="injectionFreq" value="every week" placeholder="e.g. every week, every 2 weeks" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border text-sm" oninput="calculateTestosterone()">
-                        </div>
                     </div>
                 </div>
 
-                <div class="mt-6 p-4 bg-white rounded-md border border-amber-200 text-center">
-                    <span class="text-xs text-gray-500 uppercase tracking-wider block font-semibold">Volume to Withdraw</span>
-                    <span id="injResult" class="text-3xl font-extrabold text-amber-700">0.50 mL</span>
-                    <span id="injResultCc" class="text-xs text-gray-500 block mt-1">(0.50 cc)</span>
+                <div class="mt-4 p-3 bg-white rounded-md border border-amber-200 text-sm space-y-1.5">
+                    <div class="flex justify-between border-b pb-1">
+                        <span class="text-gray-600">Volume per Dose:</span>
+                        <span id="injResult" class="font-bold text-amber-700">0.50 mL (0.50 cc)</span>
+                    </div>
+                    <div class="flex justify-between border-b pb-1">
+                        <span class="text-gray-600">90-Day Volume Needed:</span>
+                        <span id="inj90DayVol" class="font-bold text-gray-800">6.43 mL</span>
+                    </div>
+                    <div class="flex justify-between border-b pb-1">
+                        <span class="text-gray-600">Total Vials Needed:</span>
+                        <span id="injVialsNeeded" class="font-bold text-amber-800">1 Vial(s)</span>
+                    </div>
+                    <div class="flex justify-between pt-1 font-semibold text-amber-900">
+                        <span>Dispense Plan (Rx Line):</span>
+                        <span id="injRefillPlan">Dispense #1 Vial (0 Refills)</span>
+                    </div>
                 </div>
             </div>
 
@@ -114,10 +145,17 @@
                                 <option value="30">Vogelxo Pump (30 mg / pump)</option>
                             </select>
                         </div>
+                        <div>
+                            <label class="block text-xs font-medium text-gray-700">Dispensing Strategy</label>
+                            <select id="dispenseMode" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border text-sm font-semibold text-amber-900 bg-amber-50" onchange="calculateTestosterone()">
+                                <option value="max" selected>Max Quantity upfront (Max 90-Day Supply, 0 Refills)</option>
+                                <option value="standard">Standard 30-Day Fill + Refills (1 Bottle + Refills)</option>
+                            </select>
+                        </div>
                     </div>
                 </div>
 
-                <div class="mt-6 p-4 bg-white rounded-md border border-amber-200 text-sm space-y-2">
+                <div class="mt-6 p-3 bg-white rounded-md border border-amber-200 text-sm space-y-1.5">
                     <div class="flex justify-between border-b pb-1">
                         <span class="text-gray-600">Daily Requirement:</span>
                         <span id="totalMgPerDay" class="font-bold text-gray-800">40.5 mg/day</span>
@@ -127,12 +165,12 @@
                         <span id="totalPumps90" class="font-bold text-gray-800">180 pumps</span>
                     </div>
                     <div class="flex justify-between border-b pb-1">
-                        <span class="text-gray-600">Canisters Needed (60 pumps/canister):</span>
+                        <span class="text-gray-600">Total Canisters Needed:</span>
                         <span id="bottlesNeeded" class="font-bold text-amber-800">3 Canister(s)</span>
                     </div>
                     <div class="flex justify-between pt-1 font-semibold text-amber-900">
-                        <span>Dispense Plan (3-Month Supply):</span>
-                        <span id="refillPlan">1 Canister + 2 Refill(s)</span>
+                        <span>Dispense Plan (Rx Line):</span>
+                        <span id="refillPlan">Dispense #3 Canisters (0 Refills)</span>
                     </div>
                 </div>
             </div>
@@ -169,14 +207,37 @@ function calculateTestosterone() {
     // 1. Injectable calculation
     const doseMg = parseFloat(document.getElementById('testDoseMg').value) || 0;
     const conc = parseFloat(document.getElementById('testConcentration').value) || 1;
+    const intervalDays = parseFloat(document.getElementById('injectionFreqSelect').value) || 7;
+    const vialSize = parseFloat(document.getElementById('vialSize').value) || 10;
+    const injDispenseMode = document.getElementById('injDispenseMode').value;
     const syringeCapacity = parseFloat(document.getElementById('syringeSize').value) || 1;
-    const freqText = document.getElementById('injectionFreq').value.trim() || 'as directed';
     
-    const volume = doseMg / conc;
-    const formattedVolume = volume.toFixed(2);
+    // Per dose volume
+    const volumePerDose = doseMg / conc;
+    const formattedVolume = volumePerDose.toFixed(2);
 
-    document.getElementById('injResult').textContent = `${formattedVolume} mL`;
-    document.getElementById('injResultCc').textContent = `(${formattedVolume} cc)`;
+    // 90-Day injectable volume & vial calculations
+    const dosesIn90Days = 90 / intervalDays;
+    const totalVol90 = volumePerDose * dosesIn90Days;
+    const vialsNeeded = Math.ceil(totalVol90 / vialSize);
+    const injRefills = Math.max(0, vialsNeeded - 1);
+
+    // Format frequency string for patient guide
+    let freqText = "every week";
+    if (intervalDays === 3.5) freqText = "twice weekly";
+    if (intervalDays === 14) freqText = "every 2 weeks";
+
+    document.getElementById('injResult').textContent = `${formattedVolume} mL (${formattedVolume} cc)`;
+    document.getElementById('inj90DayVol').textContent = `${totalVol90.toFixed(2)} mL`;
+    document.getElementById('injVialsNeeded').textContent = `${vialsNeeded} Vial(s) (${vialSize} mL vial)`;
+
+    if (vialsNeeded === 0) {
+        document.getElementById('injRefillPlan').textContent = 'N/A';
+    } else if (injDispenseMode === 'max') {
+        document.getElementById('injRefillPlan').textContent = `Dispense #${vialsNeeded} Vial(s) (0 Refills)`;
+    } else {
+        document.getElementById('injRefillPlan').textContent = `Dispense #1 Vial + ${injRefills} Refill(s)`;
+    }
 
     // Update Print Guide Card Text
     document.getElementById('guideVolume').textContent = formattedVolume;
@@ -185,6 +246,7 @@ function calculateTestosterone() {
     // 2. Topical/Gel calculation
     const pumpsPerDay = parseFloat(document.getElementById('gelDailyPumps').value) || 0;
     const mgPerPump = parseFloat(document.getElementById('gelProduct').value) || 0;
+    const dispenseMode = document.getElementById('dispenseMode').value;
     
     const totalMgDaily = pumpsPerDay * mgPerPump;
     const totalPumps90 = pumpsPerDay * 90;
@@ -195,10 +257,17 @@ function calculateTestosterone() {
     document.getElementById('totalMgPerDay').textContent = `${totalMgDaily.toFixed(2).replace(/\.00$/, '')} mg/day`;
     document.getElementById('totalPumps90').textContent = `${Math.round(totalPumps90)} pumps`;
     document.getElementById('bottlesNeeded').textContent = `${bottles} Canister(s)`;
-    document.getElementById('refillPlan').textContent = `${bottles > 0 ? '1 Canister + ' + refills + ' Refill(s)' : 'N/A'}`;
+
+    if (bottles === 0) {
+        document.getElementById('refillPlan').textContent = 'N/A';
+    } else if (dispenseMode === 'max') {
+        document.getElementById('refillPlan').textContent = `Dispense #${bottles} Canister(s) (0 Refills)`;
+    } else {
+        document.getElementById('refillPlan').textContent = `Dispense #1 Canister + ${refills} Refill(s)`;
+    }
 
     // Render Syringe Diagram
-    drawSyringe(volume, syringeCapacity);
+    drawSyringe(volumePerDose, syringeCapacity);
 }
 
 function drawSyringe(doseVolume, maxCapacity) {
@@ -211,7 +280,7 @@ function drawSyringe(doseVolume, maxCapacity) {
     const startX = 100;
     const endX = 600;
     const barrelY = 75;
-    const barrelHeight = maxCapacity === 1 ? 40 : (maxCapacity === 2 ? 46 : 52); // Scaled height by volume
+    const barrelHeight = maxCapacity === 1 ? 40 : (maxCapacity === 2 ? 46 : 52);
     const barrelLength = endX - startX;
 
     // Target fill calculation
@@ -269,7 +338,7 @@ function drawSyringe(doseVolume, maxCapacity) {
         const tickX = startX + (i / totalSubTicks) * barrelLength;
         const currentVol = (i / totalSubTicks) * maxCapacity;
         
-        let tickHeight = 5; // Minor tick
+        let tickHeight = 5; 
         let isMajor = (i % majorInterval === 0);
         let isMedium = (i % (majorInterval / 2) === 0 && !isMajor);
 
@@ -303,7 +372,7 @@ function drawSyringe(doseVolume, maxCapacity) {
 
     const arrowY = barrelY + barrelHeight + 35;
     ctx.beginPath();
-    ctx.moveTo(fillX, barrelY + barrelHeight + 4); // Arrow head tip
+    ctx.moveTo(fillX, barrelY + barrelHeight + 4); 
     ctx.lineTo(fillX - 8, arrowY - 15);
     ctx.lineTo(fillX + 8, arrowY - 15);
     ctx.closePath();
