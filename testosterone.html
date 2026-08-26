@@ -90,8 +90,8 @@
                     </h3>
                     <div class="space-y-4">
                         <div>
-                            <label class="block text-xs font-medium text-gray-700">Daily Prescribed Dose (mg)</label>
-                            <input type="number" id="gelDailyDose" value="40.5" min="0" step="1.25" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border text-sm" oninput="calculateTestosterone()">
+                            <label class="block text-xs font-medium text-gray-700">Daily Prescribed Pumps (Actuations/Day)</label>
+                            <input type="number" id="gelDailyPumps" value="2" min="0" step="1" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border text-sm" oninput="calculateTestosterone()">
                         </div>
                         <div>
                             <label class="block text-xs font-medium text-gray-700">Product / Concentration</label>
@@ -108,7 +108,7 @@
                 <div class="mt-6 p-4 bg-white rounded-md border border-amber-200 text-sm space-y-2">
                     <div class="flex justify-between border-b pb-1">
                         <span class="text-gray-600">Daily Requirement:</span>
-                        <span id="pumpsPerDay" class="font-bold text-gray-800">2 pumps/day</span>
+                        <span id="totalMgPerDay" class="font-bold text-gray-800">40.5 mg/day</span>
                     </div>
                     <div class="flex justify-between border-b pb-1">
                         <span class="text-gray-600">90-Day Total Actuations:</span>
@@ -116,11 +116,11 @@
                     </div>
                     <div class="flex justify-between border-b pb-1">
                         <span class="text-gray-600">Canisters Needed (60 pumps/canister):</span>
-                        <span id="bottlesNeeded" class="font-bold text-amber-800">3 Canisters</span>
+                        <span id="bottlesNeeded" class="font-bold text-amber-800">3 Canister(s)</span>
                     </div>
                     <div class="flex justify-between pt-1 font-semibold text-amber-900">
                         <span>Dispense Plan (3-Month Supply):</span>
-                        <span id="refillPlan">1 Canister + 2 Refills</span>
+                        <span id="refillPlan">1 Canister + 2 Refill(s)</span>
                     </div>
                 </div>
             </div>
@@ -148,10 +148,11 @@ function calculateTestosterone() {
     document.getElementById('injResultCc').textContent = `(${formattedVolume} cc)`;
 
     // 2. Topical/Gel calculation
-    const gelDose = parseFloat(document.getElementById('gelDailyDose').value) || 0;
-    const mgPerPump = parseFloat(document.getElementById('gelProduct').value) || 1;
+    const pumpsPerDay = parseFloat(document.getElementById('gelDailyPumps').value) || 0;
+    const mgPerPump = parseFloat(document.getElementById('gelProduct').value) || 0;
     
-    const pumpsPerDay = gelDose / mgPerPump;
+    // Calculate total daily mg dose
+    const totalMgDaily = pumpsPerDay * mgPerPump;
     const totalPumps90 = pumpsPerDay * 90;
     
     // Standard pump canisters provide 60 metered actuations/pumps
@@ -159,7 +160,7 @@ function calculateTestosterone() {
     const bottles = Math.ceil(totalPumps90 / pumpsPerBottle);
     const refills = Math.max(0, bottles - 1);
 
-    document.getElementById('pumpsPerDay').textContent = `${pumpsPerDay.toFixed(1)} pumps/day`;
+    document.getElementById('totalMgPerDay').textContent = `${totalMgDaily.toFixed(2).replace(/\.00$/, '')} mg/day`;
     document.getElementById('totalPumps90').textContent = `${Math.round(totalPumps90)} pumps`;
     document.getElementById('bottlesNeeded').textContent = `${bottles} Canister(s)`;
     document.getElementById('refillPlan').textContent = `${bottles > 0 ? '1 Canister + ' + refills + ' Refill(s)' : 'N/A'}`;
