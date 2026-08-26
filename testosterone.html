@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Clinical Calculators & Insulin Scale</title>
+    <title>Testosterone Dosing & Supply Calculator</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         @media print {
@@ -17,8 +17,6 @@
                 box-shadow: none !important;
                 border: none !important;
             }
-            table { page-break-inside: auto; }
-            tr { page-break-inside: avoid; page-break-after: auto; }
         }
         body { font-family: 'Inter', sans-serif; }
     </style>
@@ -26,17 +24,16 @@
 <body class="bg-gray-50 min-h-screen p-4 sm:p-8">
 
 <div id="app" class="max-w-4xl mx-auto">
-    <header class="text-center mb-6 no-print">
-        <h1 class="text-3xl font-extrabold text-blue-800">Clinical Calculators & Insulin Scale</h1>
-        <p class="text-gray-600 mt-2">Personalize dosing scales, calculate testosterone therapies, and print/save summaries.</p>
+    <!-- Header -->
+    <header class="text-center mb-6">
+        <h1 class="text-3xl font-extrabold text-amber-900">Testosterone Dosing & Supply Calculator</h1>
+        <p class="text-gray-600 mt-2">Calculate injectable withdrawal volumes, daily pump actuations, and 3-month supply requirements.</p>
     </header>
 
+    <!-- Navigation Bar -->
     <nav class="no-print mb-8 flex flex-wrap justify-center gap-4 border-b border-gray-200 pb-4">
-        <a href="index.html" class="bg-blue-600 text-white px-4 py-2 rounded-md text-sm font-medium shadow-sm transition">
-            Basal and Mealtime Dosing Chart
-        </a>
-        <a href="70-30-scale.html" class="text-gray-600 hover:text-purple-700 hover:bg-purple-50 px-4 py-2 rounded-md text-sm font-medium transition border border-transparent hover:border-purple-200">
-            Insulin 70/30 Dosing Chart
+        <a href="index.html" class="bg-amber-700 text-white px-4 py-2 rounded-md text-sm font-medium shadow-sm transition">
+            Testosterone Dosing Calculator
         </a>
         <a href="fructosamine-calculator.html" class="text-gray-600 hover:text-blue-700 hover:bg-blue-50 px-4 py-2 rounded-md text-sm font-medium transition border border-transparent hover:border-blue-200">
             Fructosamine to A1c Calculator
@@ -46,85 +43,100 @@
         </a>
     </nav>
 
-    <!-- NEW SECTION: Testosterone Dosage & Supply Calculator -->
-    <div class="no-print bg-white p-6 rounded-xl shadow-lg mb-8 border border-amber-200">
-        <div class="flex items-center justify-between border-b pb-2 mb-4">
+    <!-- Main Calculator Panel -->
+    <div class="bg-white p-6 rounded-xl shadow-lg mb-8 border border-amber-200">
+        <div class="flex items-center justify-between border-b pb-2 mb-6">
             <h2 class="text-xl font-bold text-amber-900 flex items-center gap-2">
-                🧪 Testosterone Dosing & Supply Calculator
+                🧪 Clinical Dosing & Supply Breakdown
             </h2>
             <span class="text-xs bg-amber-100 text-amber-800 font-semibold px-2.5 py-0.5 rounded">Clinical Tool</span>
         </div>
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
             <!-- Part 1: Injectable Volume Calculator -->
-            <div class="bg-amber-50/50 p-4 rounded-lg border border-amber-100">
-                <h3 class="text-md font-bold text-gray-800 mb-3 border-b border-amber-200 pb-1">
-                    1. Injectable Volume Calculator
-                </h3>
-                <div class="space-y-3">
-                    <div>
-                        <label class="block text-xs font-medium text-gray-700">Target Dose (mg)</label>
-                        <input type="number" id="testDoseMg" value="100" min="0" step="5" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border text-sm" oninput="calculateTestosterone()">
+            <div class="bg-amber-50/50 p-5 rounded-lg border border-amber-100 flex flex-col justify-between">
+                <div>
+                    <h3 class="text-md font-bold text-gray-800 mb-3 border-b border-amber-200 pb-1">
+                        1. Injectable Volume Calculator
+                    </h3>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-xs font-medium text-gray-700">Target Dose (mg)</label>
+                            <input type="number" id="testDoseMg" value="100" min="0" step="5" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border text-sm" oninput="calculateTestosterone()">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-gray-700">Vial Concentration (mg/mL)</label>
+                            <select id="testConcentration" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border text-sm" onchange="calculateTestosterone()">
+                                <option value="200" selected>200 mg/mL (Standard Cypionate/Enanthate)</option>
+                                <option value="100">100 mg/mL</option>
+                                <option value="250">250 mg/mL (Sustanon)</option>
+                            </select>
+                        </div>
                     </div>
-                    <div>
-                        <label class="block text-xs font-medium text-gray-700">Vial Concentration (mg/mL)</label>
-                        <select id="testConcentration" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border text-sm" onchange="calculateTestosterone()">
-                            <option value="200" selected>200 mg/mL (Standard Cypionate/Enanthate)</option>
-                            <option value="100">100 mg/mL</option>
-                            <option value="250">250 mg/mL (Sustanon)</option>
-                        </select>
-                    </div>
-                    <div class="mt-4 p-3 bg-white rounded-md border border-amber-200 text-center">
-                        <span class="text-xs text-gray-500 uppercase tracking-wider block">Volume to Withdraw</span>
-                        <span id="injResult" class="text-2xl font-extrabold text-amber-700">0.50 mL</span>
-                        <span class="text-xs text-gray-500 block">(0.50 cc)</span>
-                    </div>
+                </div>
+
+                <div class="mt-6 p-4 bg-white rounded-md border border-amber-200 text-center">
+                    <span class="text-xs text-gray-500 uppercase tracking-wider block font-semibold">Volume to Withdraw</span>
+                    <span id="injResult" class="text-3xl font-extrabold text-amber-700">0.50 mL</span>
+                    <span class="text-xs text-gray-500 block mt-1">(0.50 cc)</span>
                 </div>
             </div>
 
             <!-- Part 2: Topical/Gel 3-Month Supply Calculator -->
-            <div class="bg-amber-50/50 p-4 rounded-lg border border-amber-100">
-                <h3 class="text-md font-bold text-gray-800 mb-3 border-b border-amber-200 pb-1">
-                    2. Topical Gel / 3-Month Supply Calculator
-                </h3>
-                <div class="space-y-3">
-                    <div>
-                        <label class="block text-xs font-medium text-gray-700">Daily Prescribed Dose (mg)</label>
-                        <input type="number" id="gelDailyDose" value="40.5" min="0" step="1.25" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border text-sm" oninput="calculateTestosterone()">
+            <div class="bg-amber-50/50 p-5 rounded-lg border border-amber-100 flex flex-col justify-between">
+                <div>
+                    <h3 class="text-md font-bold text-gray-800 mb-3 border-b border-amber-200 pb-1">
+                        2. Topical Gel / 3-Month Supply Calculator
+                    </h3>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-xs font-medium text-gray-700">Daily Prescribed Dose (mg)</label>
+                            <input type="number" id="gelDailyDose" value="40.5" min="0" step="1.25" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border text-sm" oninput="calculateTestosterone()">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-gray-700">Product / Concentration</label>
+                            <select id="gelProduct" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border text-sm" onchange="calculateTestosterone()">
+                                <option value="20.25" selected>AndroGel 1.62% Pump (20.25 mg / pump)</option>
+                                <option value="12.5">AndroGel 1% Pump (12.5 mg / pump)</option>
+                                <option value="10">Testim / Fortesta Pump (10 mg / pump)</option>
+                                <option value="30">Vogelxo Pump (30 mg / pump)</option>
+                            </select>
+                        </div>
                     </div>
-                    <div>
-                        <label class="block text-xs font-medium text-gray-700">Product / Concentration</label>
-                        <select id="gelProduct" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border text-sm" onchange="calculateTestosterone()">
-                            <option value="20.25" selected>AndroGel 1.62% Pump (20.25 mg / pump)</option>
-                            <option value="12.5">AndroGel 1% Pump (12.5 mg / pump)</option>
-                            <option value="10">Testim / Fortesta Pump (10 mg / pump)</option>
-                            <option value="30">Vogelxo Pump (30 mg / pump)</option>
-                        </select>
+                </div>
+
+                <div class="mt-6 p-4 bg-white rounded-md border border-amber-200 text-sm space-y-2">
+                    <div class="flex justify-between border-b pb-1">
+                        <span class="text-gray-600">Daily Requirement:</span>
+                        <span id="pumpsPerDay" class="font-bold text-gray-800">2 pumps/day</span>
                     </div>
-                    <div class="mt-4 p-3 bg-white rounded-md border border-amber-200 text-sm space-y-1">
-                        <div class="flex justify-between border-b pb-1">
-                            <span class="text-gray-600">Daily Requirement:</span>
-                            <span id="pumpsPerDay" class="font-bold text-gray-800">2 pumps/day</span>
-                        </div>
-                        <div class="flex justify-between border-b pb-1 pt-1">
-                            <span class="text-gray-600">90-Day Total Pumps:</span>
-                            <span id="totalPumps90" class="font-bold text-gray-800">180 pumps</span>
-                        </div>
-                        <div class="flex justify-between border-b pb-1 pt-1">
-                            <span class="text-gray-600">Bottles Needed (60 pumps/canister):</span>
-                            <span id="bottlesNeeded" class="font-bold text-amber-800">3 Canisters</span>
-                        </div>
-                        <div class="flex justify-between pt-1 font-semibold text-amber-900">
-                            <span>Dispense Plan (3-Month):</span>
-                            <span id="refillPlan">1 Bottle + 2 Refills</span>
-                        </div>
+                    <div class="flex justify-between border-b pb-1">
+                        <span class="text-gray-600">90-Day Total Actuations:</span>
+                        <span id="totalPumps90" class="font-bold text-gray-800">180 pumps</span>
+                    </div>
+                    <div class="flex justify-between border-b pb-1">
+                        <span class="text-gray-600">Canisters Needed (60 pumps/canister):</span>
+                        <span id="bottlesNeeded" class="font-bold text-amber-800">3 Canisters</span>
+                    </div>
+                    <div class="flex justify-between pt-1 font-semibold text-amber-900">
+                        <span>Dispense Plan (3-Month Supply):</span>
+                        <span id="refillPlan">1 Canister + 2 Refills</span>
                     </div>
                 </div>
             </div>
         </div>
     </div>
 
+    <!-- Print Button -->
+    <div class="text-center mt-8 no-print pb-12">
+        <button onclick="window.focus(); window.print();"
+            class="bg-amber-700 hover:bg-amber-800 text-white font-bold py-4 px-10 rounded-full shadow-xl transition transform hover:scale-105">
+            🖨️ Print or Save Summary
+        </button>
+    </div>
+</div>
 
+<script>
 function calculateTestosterone() {
     // 1. Injectable calculation
     const doseMg = parseFloat(document.getElementById('testDoseMg').value) || 0;
@@ -147,12 +159,10 @@ function calculateTestosterone() {
     document.getElementById('pumpsPerDay').textContent = `${pumpsPerDay.toFixed(1)} pumps/day`;
     document.getElementById('totalPumps90').textContent = `${Math.round(totalPumps90)} pumps`;
     document.getElementById('bottlesNeeded').textContent = `${bottles} Canister(s)`;
-    document.getElementById('refillPlan').textContent = `${bottles > 0 ? '1 Bottle + ' + refills + ' Refill(s)' : 'N/A'}`;
+    document.getElementById('refillPlan').textContent = `${bottles > 0 ? '1 Canister + ' + refills + ' Refill(s)' : 'N/A'}`;
 }
 
 window.onload = () => { 
-    toggleBasalFields(); 
-    generateScale(); 
     calculateTestosterone();
 };
 </script>
