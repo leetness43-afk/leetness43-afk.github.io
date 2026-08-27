@@ -53,16 +53,29 @@
             <div>
                 <label class="block text-sm font-medium text-gray-700">Insulin Brand / Type</label>
                 <select id="insulinSelect" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border focus:ring-orange-500 focus:border-orange-500" onchange="updateInsulinPreset(); calculateDispense();">
-                    <option value="novolog">NovoLog / Fiasp (U-100) - 3mL Pen</option>
-                    <option value="humalog">Humalog / Lyumjev (U-100) - 3mL Pen</option>
-                    <option value="lantus">Lantus / Semglee / Rezvoglar (U-100) - 3mL Pen</option>
-                    <option value="basaglar">Basaglar (U-100) - 3mL KwikPen</option>
-                    <option value="tresiba100">Tresiba (U-100) - 3mL Flextouch</option>
-                    <option value="tresiba200">Tresiba (U-200) - 3mL Flextouch</option>
-                    <option value="toujeo">Toujeo SoloStar (U-300) - 1.5mL Pen</option>
-                    <option value="toujeoMax">Toujeo Max SoloStar (U-300) - 3mL Pen</option>
-                    <option value="humulinU500">Humulin R (U-500) - 3mL KwikPen</option>
-                    <option value="custom">Custom Insulin Spec</option>
+                    <optgroup label="Rapid & Fast-Acting">
+                        <option value="novolog">NovoLog / Fiasp (U-100) - 3mL Pen</option>
+                        <option value="humalog">Humalog / Lyumjev (U-100) - 3mL Pen</option>
+                    </optgroup>
+                    <optgroup label="Long-Acting Basal">
+                        <option value="lantus">Lantus / Semglee / Rezvoglar (U-100) - 3mL Pen</option>
+                        <option value="basaglar">Basaglar (U-100) - 3mL KwikPen</option>
+                        <option value="tresiba100">Tresiba (U-100) - 3mL Flextouch</option>
+                        <option value="tresiba200">Tresiba (U-200) - 3mL Flextouch</option>
+                        <option value="toujeo">Toujeo SoloStar (U-300) - 1.5mL Pen</option>
+                        <option value="toujeoMax">Toujeo Max SoloStar (U-300) - 3mL Pen</option>
+                    </optgroup>
+                    <optgroup label="Premixed Insulins (70/30, Mixes)">
+                        <option value="humulin7030">Humulin 70/30 (U-100) - 3mL KwikPen</option>
+                        <option value="novolin7030">Novolin 70/30 (U-100) - 3mL FlexPen</option>
+                        <option value="novologmix7030">NovoLog Mix 70/30 (U-100) - 3mL FlexPen</option>
+                        <option value="humalogmix7525">Humalog Mix 75/25 (U-100) - 3mL KwikPen</option>
+                        <option value="humalogmix5050">Humalog Mix 50/50 (U-100) - 3mL KwikPen</option>
+                    </optgroup>
+                    <optgroup label="High-Concentration & Custom">
+                        <option value="humulinU500">Humulin R (U-500) - 3mL KwikPen</option>
+                        <option value="custom">Custom Insulin Spec</option>
+                    </optgroup>
                 </select>
             </div>
             <div>
@@ -115,7 +128,7 @@
             </div>
         </div>
 
-        <div id="dispenseTableContainer" class="overflow-x-auto"></div>
+        <div id="scaleTableContainer" class="overflow-x-auto"></div>
 
         <div id="dispenseNotes" class="mt-6 text-sm text-gray-800 border-t pt-4 text-center font-medium"></div>
 
@@ -142,6 +155,11 @@ const presets = {
     tresiba200: { name: "Tresiba FlexTouch (U-200)", unitsPerMl: 200, mlPerPen: 3, unitsPerPen: 600, pensPerBox: 3 },
     toujeo: { name: "Toujeo SoloStar (U-300)", unitsPerMl: 300, mlPerPen: 1.5, unitsPerPen: 450, pensPerBox: 3 },
     toujeoMax: { name: "Toujeo Max SoloStar (U-300)", unitsPerMl: 300, mlPerPen: 3, unitsPerPen: 900, pensPerBox: 3 },
+    humulin7030: { name: "Humulin 70/30 KwikPen (U-100)", unitsPerMl: 100, mlPerPen: 3, unitsPerPen: 300, pensPerBox: 5 },
+    novolin7030: { name: "Novolin 70/30 FlexPen (U-100)", unitsPerMl: 100, mlPerPen: 3, unitsPerPen: 300, pensPerBox: 5 },
+    novologmix7030: { name: "NovoLog Mix 70/30 FlexPen (U-100)", unitsPerMl: 100, mlPerPen: 3, unitsPerPen: 300, pensPerBox: 5 },
+    humalogmix7525: { name: "Humalog Mix 75/25 KwikPen (U-100)", unitsPerMl: 100, mlPerPen: 3, unitsPerPen: 300, pensPerBox: 5 },
+    humalogmix5050: { name: "Humalog Mix 50/50 KwikPen (U-100)", unitsPerMl: 100, mlPerPen: 3, unitsPerPen: 300, pensPerBox: 5 },
     humulinU500: { name: "Humulin R KwikPen (U-500)", unitsPerMl: 500, mlPerPen: 3, unitsPerPen: 1500, pensPerBox: 2 },
     custom: { name: "Custom Insulin Pen", unitsPerMl: 100, mlPerPen: 3, unitsPerPen: 300, pensPerBox: 5 }
 };
@@ -179,7 +197,6 @@ function syncCustomUnits() {
 }
 
 function calculateDispense() {
-    const key = document.getElementById('insulinSelect').value;
     const name = document.getElementById('customName').value || 'Insulin';
     const tdd = parseFloat(document.getElementById('tdd').value) || 0;
     const unitsPerPen = parseFloat(document.getElementById('unitsPerPen').value) || 300;
@@ -230,7 +247,7 @@ function calculateDispense() {
     });
 
     html += `</tbody></table>`;
-    document.getElementById('dispenseTableContainer').innerHTML = html;
+    document.getElementById('scaleTableContainer').innerHTML = html;
 
     const currentMlPerPen = unitsPerMl > 0 ? (unitsPerPen / unitsPerMl) : 0;
     document.getElementById('dispenseNotes').innerHTML = 
