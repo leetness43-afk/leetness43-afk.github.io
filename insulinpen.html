@@ -116,6 +116,9 @@
 
         <div id="scaleTableContainer" class="overflow-x-auto"></div>
 
+        <!-- Dynamic Output Section for Product Image -->
+        <div id="productImageContainer" class="mt-6 flex flex-col items-center justify-center p-4 bg-gray-50 border border-gray-200 rounded-lg"></div>
+
         <div id="dispenseNotes" class="mt-6 text-sm text-gray-800 border-t pt-4 text-center font-medium"></div>
 
         <div class="mt-4 text-xs text-gray-500 border-t pt-4 italic">
@@ -133,36 +136,43 @@
 
 <script>
 const penPresets = {
-    novolog: { name: "NovoLog FlexPen (U-100)", unitsPerMl: 100, mlPerContainer: 3, unitsPerContainer: 300, pensPerBox: 5 },
-    humalog: { name: "Humalog KwikPen (U-100)", unitsPerMl: 100, mlPerContainer: 3, unitsPerContainer: 300, pensPerBox: 5 },
-    lantus: { name: "Lantus SoloStar (U-100)", unitsPerMl: 100, mlPerContainer: 3, unitsPerContainer: 300, pensPerBox: 5 },
-    basaglar: { name: "Basaglar KwikPen (U-100)", unitsPerMl: 100, mlPerContainer: 3, unitsPerContainer: 300, pensPerBox: 5 },
-    tresiba100: { name: "Tresiba FlexTouch (U-100)", unitsPerMl: 100, mlPerContainer: 3, unitsPerContainer: 300, pensPerBox: 5 },
-    tresiba200: { name: "Tresiba FlexTouch (U-200)", unitsPerMl: 200, mlPerContainer: 3, unitsPerContainer: 600, pensPerBox: 3 },
-    toujeo: { name: "Toujeo SoloStar (U-300)", unitsPerMl: 300, mlPerContainer: 1.5, unitsPerContainer: 450, pensPerBox: 3 },
-    toujeoMax: { name: "Toujeo Max SoloStar (U-300)", unitsPerMl: 300, mlPerContainer: 3, unitsPerContainer: 900, pensPerBox: 3 },
-    humulin7030: { name: "Humulin 70/30 KwikPen (U-100)", unitsPerMl: 100, mlPerContainer: 3, unitsPerContainer: 300, pensPerBox: 5 },
-    novolin7030: { name: "Novolin 70/30 FlexPen (U-100)", unitsPerMl: 100, mlPerContainer: 3, unitsPerContainer: 300, pensPerBox: 5 },
-    novologmix7030: { name: "NovoLog Mix 70/30 FlexPen (U-100)", unitsPerMl: 100, mlPerContainer: 3, unitsPerContainer: 300, pensPerBox: 5 },
-    humalogmix7525: { name: "Humalog Mix 75/25 KwikPen (U-100)", unitsPerMl: 100, mlPerContainer: 3, unitsPerContainer: 300, pensPerBox: 5 },
-    humalogmix5050: { name: "Humalog Mix 50/50 KwikPen (U-100)", unitsPerMl: 100, mlPerContainer: 3, unitsPerContainer: 300, pensPerBox: 5 },
-    humulinU500: { name: "Humulin R KwikPen (U-500)", unitsPerMl: 500, mlPerContainer: 3, unitsPerContainer: 1500, pensPerBox: 2 },
-    custom: { name: "Custom Insulin Pen", unitsPerMl: 100, mlPerContainer: 3, unitsPerContainer: 300, pensPerBox: 5 }
+    novolog: { name: "NovoLog FlexPen (U-100)", unitsPerMl: 100, mlPerContainer: 3, unitsPerContainer: 300, pensPerBox: 5, img: "https://www.henryschein.com/Products/2283110_US_front_01_600x600.jpg" },
+    humalog: { name: "Humalog KwikPen (U-100)", unitsPerMl: 100, mlPerContainer: 3, unitsPerContainer: 300, pensPerBox: 5, img: "https://insulin.store/wp-content/uploads/2021/03/Humalog-kwikpen.png" },
+    lantus: { name: "Lantus SoloStar (U-100)", unitsPerMl: 100, mlPerContainer: 3, unitsPerContainer: 300, pensPerBox: 5, img: "https://shop.banfield.com/dw/image/v2/BGLG_PRD/on/demandware.static/-/Sites-banfield-master-catalog/default/dw24cff74a/images/files/AAF21905SY/front_image/AAF21905SY_FRONTED_EDITED400x400.jpg?sw=400&sh=400" },
+    basaglar: { name: "Basaglar KwikPen (U-100)", unitsPerMl: 100, mlPerContainer: 3, unitsPerContainer: 300, pensPerBox: 5, img: "https://www.fpanetwork.org/wp-content/uploads/2022/05/s_152192.jpg" },
+    tresiba100: { name: "Tresiba FlexTouch (U-100)", unitsPerMl: 100, mlPerContainer: 3, unitsPerContainer: 300, pensPerBox: 5, img: "https://www.tresiba.com/how-to-take-tresiba/tresiba-dosing/_jcr_content/root/content/container_1474201265/parsys/columns/parsys/image.coreimg.png/1709911614077/tre-penu100-2x.png" },
+    tresiba200: { name: "Tresiba FlexTouch (U-200)", unitsPerMl: 200, mlPerContainer: 3, unitsPerContainer: 600, pensPerBox: 3, img: "https://www.tresiba.com/how-to-take-tresiba/tresiba-dosing/_jcr_content/root/content/container_1474201265/parsys/columns/parsys/image.coreimg.png/1709911614077/tre-penu100-2x.png" },
+    toujeo: { name: "Toujeo SoloStar (U-300)", unitsPerMl: 300, mlPerContainer: 1.5, unitsPerContainer: 450, pensPerBox: 3, img: "https://www.toujeo.com/dam/jcr:6e150bf8-3718-4527-a82b-ecf66af689bb/900-units.2023-06-07-21-37-17.svg" },
+    toujeoMax: { name: "Toujeo Max SoloStar (U-300)", unitsPerMl: 300, mlPerContainer: 3, unitsPerContainer: 900, pensPerBox: 3, img: "https://www.toujeo.com/dam/jcr:6e150bf8-3718-4527-a82b-ecf66af689bb/900-units.2023-06-07-21-37-17.svg" },
+    humulin7030: { name: "Humulin 70/30 KwikPen (U-100)", unitsPerMl: 100, mlPerContainer: 3, unitsPerContainer: 300, pensPerBox: 5, img: "https://www.fpanetwork.org/wp-content/uploads/2022/05/s_129144.jpg" },
+    novolin7030: { name: "Novolin 70/30 FlexPen (U-100)", unitsPerMl: 100, mlPerContainer: 3, unitsPerContainer: 300, pensPerBox: 5, img: "https://consumerguide.diabetes.org/sites/consumerguide/files/2025-10/Novolin-70-30-Pen-Cap-On-_high-resolution_-_003.jpg" },
+    novologmix7030: { name: "NovoLog Mix 70/30 FlexPen (U-100)", unitsPerMl: 100, mlPerContainer: 3, unitsPerContainer: 300, pensPerBox: 5, img: "https://consumerguide.diabetes.org/sites/consumerguide/files/2025-10/NovoLog-Mix-7030-Pen-Cap-Off-cropped.jpg" },
+    humalogmix7525: { name: "Humalog Mix 75/25 KwikPen (U-100)", unitsPerMl: 100, mlPerContainer: 3, unitsPerContainer: 300, pensPerBox: 5, img: "https://www.drugs.com/images/pills/custom/pill33119-1.png" },
+    humalogmix5050: { name: "Humalog Mix 50/50 KwikPen (U-100)", unitsPerMl: 100, mlPerContainer: 3, unitsPerContainer: 300, pensPerBox: 5, img: "https://www.grxstatic.com/d4fuqqd5l3dbz/products/Package_18382.JPG" },
+    humulinU500: { name: "Humulin R KwikPen (U-500)", unitsPerMl: 500, mlPerContainer: 3, unitsPerContainer: 1500, pensPerBox: 2, img: "https://m.media-amazon.com/images/I/41HFEx7FBEL.jpg" },
+    custom: { name: "Custom Insulin Pen", unitsPerMl: 100, mlPerContainer: 3, unitsPerContainer: 300, pensPerBox: 5, img: "" }
 };
 
 const vialPresets = {
-    novologVial: { name: "NovoLog Vial (U-100 10mL)", unitsPerMl: 100, mlPerContainer: 10, unitsPerContainer: 1000 },
-    humalogVial: { name: "Humalog Vial (U-100 10mL)", unitsPerMl: 100, mlPerContainer: 10, unitsPerContainer: 1000 },
-    lantusVial: { name: "Lantus Vial (U-100 10mL)", unitsPerMl: 100, mlPerContainer: 10, unitsPerContainer: 1000 },
-    levemirVial: { name: "Levemir Vial (U-100 10mL)", unitsPerMl: 100, mlPerContainer: 10, unitsPerContainer: 1000 },
-    humulinNVial: { name: "Humulin N Vial (U-100 10mL)", unitsPerMl: 100, mlPerContainer: 10, unitsPerContainer: 1000 },
-    novolinNVial: { name: "Novolin N Vial (U-100 10mL)", unitsPerMl: 100, mlPerContainer: 10, unitsPerContainer: 1000 },
-    humulinRVial: { name: "Humulin R Vial (U-100 10mL)", unitsPerMl: 100, mlPerContainer: 10, unitsPerContainer: 1000 },
-    novolinRVial: { name: "Novolin R Vial (U-100 10mL)", unitsPerMl: 100, mlPerContainer: 10, unitsPerContainer: 1000 },
-    humulin7030Vial: { name: "Humulin 70/30 Vial (U-100 10mL)", unitsPerMl: 100, mlPerContainer: 10, unitsPerContainer: 1000 },
-    novolin7030Vial: { name: "Novolin 70/30 Vial (U-100 10mL)", unitsPerMl: 100, mlPerContainer: 10, unitsPerContainer: 1000 },
-    humulinU500Vial: { name: "Humulin R U-500 Vial (U-500 20mL)", unitsPerMl: 500, mlPerContainer: 20, unitsPerContainer: 10000 },
-    customVial: { name: "Custom Insulin Vial", unitsPerMl: 100, mlPerContainer: 10, unitsPerContainer: 1000 }
+    novologVial10: { name: "NovoLog Vial (U-100 10mL)", unitsPerMl: 100, mlPerContainer: 10, unitsPerContainer: 1000, img: "https://www.novolog.com/taking-novolog/_jcr_content/root/content/container/parsys/columns/parsys/columns/parsys2/image.coreimg.png/1742896861994/novolog-vial-full-2025.png" },
+    humalogVial10: { name: "Humalog Vial (U-100 10mL)", unitsPerMl: 100, mlPerContainer: 10, unitsPerContainer: 1000, img: "https://www.mcguff.com/content/images/thumbs/0012912_humalog-insulin-lispro-injection-100-uml-single-dose-vial-10-ml-each.jpeg" },
+    fiaspVial10: { name: "Fiasp Vial (U-100 10mL)", unitsPerMl: 100, mlPerContainer: 10, unitsPerContainer: 1000, img: "https://www.novolog.com/taking-novolog/_jcr_content/root/content/container/parsys/columns/parsys/columns/parsys2/image.coreimg.png/1742896861994/novolog-vial-full-2025.png" },
+    lyumjevVial10: { name: "Lyumjev Vial (U-100 10mL)", unitsPerMl: 100, mlPerContainer: 10, unitsPerContainer: 1000, img: "https://www.mcguff.com/content/images/thumbs/0012912_humalog-insulin-lispro-injection-100-uml-single-dose-vial-10-ml-each.jpeg" },
+    lantusVial10: { name: "Lantus Vial (U-100 10mL)", unitsPerMl: 100, mlPerContainer: 10, unitsPerContainer: 1000, img: "https://i5.walmartimages.com/asr/fb756508-1b0f-4052-98ec-5fb06f8fc6e9.7183f409816a0d4bc554fbea0407dcac.jpeg" },
+    levemirVial10: { name: "Levemir Vial (U-100 10mL)", unitsPerMl: 100, mlPerContainer: 10, unitsPerContainer: 1000, img: "https://usmed-media.usamedpremium.com/public/assets/Catalog/Images/USAMP-67326801.webp" },
+    humulinNVial10: { name: "Humulin N / NPH Vial (U-100 10mL)", unitsPerMl: 100, mlPerContainer: 10, unitsPerContainer: 1000, img: "https://m.media-amazon.com/images/I/41dudLuVsCL.jpg" },
+    novolinNVial10: { name: "Novolin N / NPH Vial (U-100 10mL)", unitsPerMl: 100, mlPerContainer: 10, unitsPerContainer: 1000, img: "https://image.chewy.com/catalog/general/images/moe/0689b13b-1ec1-7f13-8000-57749f6872fb._AC_SX500_SY400_QL75_V1_.jpg" },
+    humulinRVial10: { name: "Humulin R / Regular Vial (U-100 10mL)", unitsPerMl: 100, mlPerContainer: 10, unitsPerContainer: 1000, img: "https://d3pq5rjvq8yvv1.cloudfront.net/catalog/product/cache/1/image/9df78eab33525d08d6e5fb8d27136e95/1/0/10003393-58-abc700wx700h.jpg" },
+    novolinRVial10: { name: "Novolin R / Regular Vial (U-100 10mL)", unitsPerMl: 100, mlPerContainer: 10, unitsPerContainer: 1000, img: "https://www.grxstatic.com/d4fuqqd5l3dbz/products/Package_24117.JPG" },
+    humulin7030Vial10: { name: "Humulin 70/30 Vial (U-100 10mL)", unitsPerMl: 100, mlPerContainer: 10, unitsPerContainer: 1000, img: "https://www.mcguff.com/content/images/thumbs/0016896_humulin7030-insulin-human-injection-100-uml-multiple-dose-vial-10-ml-each.jpeg" },
+    novolin7030Vial10: { name: "Novolin 70/30 Vial (U-100 10mL)", unitsPerMl: 100, mlPerContainer: 10, unitsPerContainer: 1000, img: "https://www.healthwarehouse.com/_next/image?url=https%3A%2F%2Fd3pq5rjvq8yvv1.cloudfront.net%2Fcatalog%2Fproduct%2Fcache%2F1%2Fimage%2F9df78eab33525d08d6e5fb8d27136e95%2Fn%2Fo%2Fnovolin_7030.jpg&w=3840&q=75" },
+    humalogVial3: { name: "Humalog Vial (U-100 3mL)", unitsPerMl: 100, mlPerContainer: 3, unitsPerContainer: 300, img: "https://www.mcguff.com/content/images/thumbs/0012912_humalog-insulin-lispro-injection-100-uml-single-dose-vial-10-ml-each.jpeg" },
+    novologVial3: { name: "NovoLog Vial (U-100 3mL)", unitsPerMl: 100, mlPerContainer: 3, unitsPerContainer: 300, img: "https://www.novolog.com/taking-novolog/_jcr_content/root/content/container/parsys/columns/parsys/columns/parsys2/image.coreimg.png/1742896861994/novolog-vial-full-2025.png" },
+    fiaspVial3: { name: "Fiasp Vial (U-100 3mL)", unitsPerMl: 100, mlPerContainer: 3, unitsPerContainer: 300, img: "https://www.novolog.com/taking-novolog/_jcr_content/root/content/container/parsys/columns/parsys/columns/parsys2/image.coreimg.png/1742896861994/novolog-vial-full-2025.png" },
+    lyumjevVial3: { name: "Lyumjev Vial (U-100 3mL)", unitsPerMl: 100, mlPerContainer: 3, unitsPerContainer: 300, img: "https://www.mcguff.com/content/images/thumbs/0012912_humalog-insulin-lispro-injection-100-uml-single-dose-vial-10-ml-each.jpeg" },
+    humulinRVial3: { name: "Humulin R / Regular Vial (U-100 3mL)", unitsPerMl: 100, mlPerContainer: 3, unitsPerContainer: 300, img: "https://d3pq5rjvq8yvv1.cloudfront.net/catalog/product/cache/1/image/9df78eab33525d08d6e5fb8d27136e95/1/0/10003393-58-abc700wx700h.jpg" },
+    humulinU500Vial20: { name: "Humulin R U-500 Vial (U-500 20mL)", unitsPerMl: 500, mlPerContainer: 20, unitsPerContainer: 10000, img: "https://consumerguide.diabetes.org/sites/consumerguide/files/2025-12/humulin_r_u_500.png" },
+    customVial: { name: "Custom Insulin Vial", unitsPerMl: 100, mlPerContainer: 10, unitsPerContainer: 1000, img: "" }
 };
 
 function populateInsulinOptions() {
@@ -197,20 +207,29 @@ function populateInsulinOptions() {
             </optgroup>`;
     } else {
         select.innerHTML = `
-            <optgroup label="Standard 10mL Vials (U-100)">
-                <option value="novologVial">NovoLog Vial (1000 Units/10mL)</option>
-                <option value="humalogVial">Humalog Vial (1000 Units/10mL)</option>
-                <option value="lantusVial">Lantus Vial (1000 Units/10mL)</option>
-                <option value="levemirVial">Levemir Vial (1000 Units/10mL)</option>
-                <option value="humulinNVial">Humulin N Vial (1000 Units/10mL)</option>
-                <option value="novolinNVial">Novolin N Vial (1000 Units/10mL)</option>
-                <option value="humulinRVial">Humulin R Vial (1000 Units/10mL)</option>
-                <option value="novolinRVial">Novolin R Vial (1000 Units/10mL)</option>
-                <option value="humulin7030Vial">Humulin 70/30 Vial (1000 Units/10mL)</option>
-                <option value="novolin7030Vial">Novolin 70/30 Vial (1000 Units/10mL)</option>
+            <optgroup label="10 mL Standard Vials (U-100)">
+                <option value="humulinRVial10">Humulin R / Regular (1000 Units/10mL)</option>
+                <option value="novolinRVial10">Novolin R / Regular (1000 Units/10mL)</option>
+                <option value="humulinNVial10">Humulin N / NPH (1000 Units/10mL)</option>
+                <option value="novolinNVial10">Novolin N / NPH (1000 Units/10mL)</option>
+                <option value="humulin7030Vial10">Humulin 70/30 (1000 Units/10mL)</option>
+                <option value="novolin7030Vial10">Novolin 70/30 (1000 Units/10mL)</option>
+                <option value="novologVial10">NovoLog Vial (1000 Units/10mL)</option>
+                <option value="humalogVial10">Humalog Vial (1000 Units/10mL)</option>
+                <option value="fiaspVial10">Fiasp Vial (1000 Units/10mL)</option>
+                <option value="lyumjevVial10">Lyumjev Vial (1000 Units/10mL)</option>
+                <option value="lantusVial10">Lantus Vial (1000 Units/10mL)</option>
+                <option value="levemirVial10">Levemir Vial (1000 Units/10mL)</option>
+            </optgroup>
+            <optgroup label="3 mL Specialty / Pump Vials (U-100)">
+                <option value="humalogVial3">Humalog 3mL Vial (300 Units/3mL)</option>
+                <option value="novologVial3">NovoLog 3mL Vial (300 Units/3mL)</option>
+                <option value="fiaspVial3">Fiasp 3mL Vial (300 Units/3mL)</option>
+                <option value="lyumjevVial3">Lyumjev 3mL Vial (300 Units/3mL)</option>
+                <option value="humulinRVial3">Humulin R 3mL Vial (300 Units/3mL)</option>
             </optgroup>
             <optgroup label="High-Concentration & Custom">
-                <option value="humulinU500Vial">Humulin R U-500 Vial (10,000 Units/20mL)</option>
+                <option value="humulinU500Vial20">Humulin R U-500 Vial (10,000 Units/20mL)</option>
                 <option value="customVial">Custom Insulin Vial</option>
             </optgroup>`;
     }
@@ -226,7 +245,6 @@ function updateInsulinPreset() {
     const unitsPerContainerInput = document.getElementById('unitsPerContainer');
     const boxGroup = document.getElementById('boxFieldGroup');
 
-    // Labels update dynamically based on pen vs vial
     document.getElementById('unitsPerContainerLabel').textContent = format === 'pen' ? 'Calculated Units per Pen' : 'Calculated Units per Vial';
     document.getElementById('containerVolLabel').textContent = format === 'pen' ? 'Volume per Pen (mL)' : 'Volume per Vial (mL)';
 
@@ -265,6 +283,7 @@ function syncCustomUnits() {
 
 function calculateDispense() {
     const format = document.getElementById('formatSelect').value;
+    const key = document.getElementById('insulinSelect').value;
     const name = document.getElementById('customName').value || 'Insulin';
     const tdd = parseFloat(document.getElementById('tdd').value) || 0;
     const unitsPerContainer = parseFloat(document.getElementById('unitsPerContainer').value) || 300;
@@ -316,6 +335,22 @@ function calculateDispense() {
 
     html += `</tbody></table>`;
     document.getElementById('scaleTableContainer').innerHTML = html;
+
+    // Render Product Image dynamically
+    const presets = format === 'pen' ? penPresets : vialPresets;
+    const currentPreset = presets[key];
+    const imageContainer = document.getElementById('productImageContainer');
+
+    if (currentPreset && currentPreset.img) {
+        imageContainer.innerHTML = `
+            <img src="${currentPreset.img}" alt="${name}" class="max-h-48 max-w-full object-contain mb-2 rounded shadow-sm border p-2 bg-white" />
+            <span class="text-xs font-semibold text-gray-600">${name} (${format === 'pen' ? 'Pen' : 'Vial'} Product Reference)</span>
+        `;
+        imageContainer.classList.remove('hidden');
+    } else {
+        imageContainer.innerHTML = '';
+        imageContainer.classList.add('hidden');
+    }
 
     const currentMlPerContainer = unitsPerMl > 0 ? (unitsPerContainer / unitsPerMl) : 0;
     
