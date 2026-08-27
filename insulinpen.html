@@ -50,6 +50,398 @@
     <div class="no-print bg-white p-6 rounded-xl shadow-lg mb-8 border border-orange-200">
         <h3 class="text-lg font-medium text-gray-800 mb-3 border-b pb-1">1. Select Delivery Format & Insulin Brand</h3>
         
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-700">Delivery Format</label>
+                <select id="formatSelect" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border focus:ring-orange-500 focus:border-orange-500 font-semibold text-orange-900" onchange="populateInsulinOptions(); updateInsulinPreset(); calculateDispense();">
+                    <option value="pen" selected>Insulin Pens</option>
+                    <option value="vial">Insulin Vials</option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700">Insulin Brand / Type (Generic Name)</label>
+                <select id="insulinSelect" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border focus:ring-orange-500 focus:border-orange-500" onchange="updateInsulinPreset(); calculateDispense();">
+                    <!-- Dynamic Options Populated via JS -->
+                </select>
+            </div>
+        </div>
+
+        <!-- Custom Concentration Fields (Revealed only when Custom is chosen) -->
+        <div id="customSpecFields" class="hidden bg-orange-50 p-4 rounded-lg border border-orange-200 mb-6">
+            <h4 class="text-sm font-semibold text-orange-900 mb-2">Custom Dosing Parameters</h4>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-xs font-semibold text-gray-700 mb-1">Concentration (Units/mL)</label>
+                    <input type="number" id="customUnitsPerMl" value="100" min="1" step="1" class="w-full p-2 border rounded bg-white focus:ring-orange-500" oninput="syncCustomUnits(); calculateDispense();">
+                </div>
+                <div>
+                    <label id="containerVolLabel" class="block text-xs font-semibold text-gray-700 mb-1">Volume per Pen (mL)</label>
+                    <input type="number" id="customMlPerContainer" value="3" min="0.1" step="0.1" class="w-full p-2 border rounded bg-white focus:ring-orange-500" oninput="syncCustomUnits(); calculateDispense();">
+                </div>
+            </div>
+        </div>
+
+        <h3 class="text-lg font-medium text-gray-800 mb-3 border-b pb-1">2. Dosing & Package Specifications</h3>
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-2">
+            <div>
+                <label class="block text-xs font-semibold text-gray-600 mb-1">Total Daily Dose (Units/Day)</label>
+                <input type="number" id="tdd" value="30" min="1" step="1" class="w-full p-2 border rounded focus:ring-orange-500 focus:border-orange-500" oninput="calculateDispense()">
+            </div>
+            <div>
+                <label id="unitsPerContainerLabel" class="block text-xs font-semibold text-gray-600 mb-1">Units per Pen</label>
+                <input type="number" id="unitsPerContainer" value="300" min="10" step="10" class="w-full p-2 border rounded bg-gray-100" readonly oninput="calculateDispense()">
+            </div>
+            <div id="boxFieldGroup">
+                <label class="block text-xs font-semibold text-gray-600 mb-1">Pens per Box</label>
+                <input type="number" id="pensPerBox" value="5" min="1" step="1" class="w-full p-2 border rounded" oninput="calculateDispense()">
+            </div>
+            <div>
+                <label class="block text-xs font-semibold text-gray-600 mb-1">Priming Waste (Units/Day)</label>
+                <input type="number" id="primeWaste" value="2" min="0" step="1" class="w-full p-2 border rounded" oninput="calculateDispense()">
+            </div>
+        </div>
+    </div>
+
+    <div class="print-area bg-white p-6 rounded-xl shadow-2xl border border-gray-300">
+        <div class="flex justify-between items-center mb-6 border-b pb-4">
+            <div>
+                <h1 class="text-2xl font-bold text-gray-800">Insulin Dispensing Summary</h1>
+                <p id="dispenseSummaryHeader" class="text-sm text-gray-500 mt-1"></p>
+            </div>
+        </div>
+
+        <div id="scaleTableContainer" class="overflow-x-auto"></div>
+
+        <!-- Dynamic Output Section for Product Image -->
+        <div id="productImageContainer" class="mt-6 flex flex-col items-center justify-center p-4 bg-gray-50 border border-gray-200 rounded-lg"></div>
+
+        <div id="dispenseNotes" class="mt-6 text-sm text-gray-800 border-t pt-4 text-center font-medium"></div>
+
+        <div class="mt-4 text-xs text-gray-500 border-t pt-4 italic">
+            <strong>Pharmacy Note:</strong> Calculations round up to the nearest whole pen/vial and unbroken box package where full unbroken boxes are required by regional dispensing guidelines. Priming waste defaults to 2 units per day.
+        </div>
+    </div>
+
+    <div class="text-center mt-8 no-print pb-12">
+        <button onclick="window.focus(); window.print();"
+            class="bg-orange-600 hover:bg-orange-700 text-white font-bold py-4 px-10 rounded-full shadow-xl transition transform hover:scale-105">
+            🖨️ Print or Save as PDF
+        </button>
+    </div>
+</div>
+
+<script>
+const penPresets = {
+    novolog: { name: "NovoLog FlexPen (insulin aspart) [U-100]", unitsPerMl: 100, mlPerContainer: 3, unitsPerContainer: 300, pensPerBox: 5, img: "https://www.henryschein.com/Products/2283110_US_front_01_600x600.jpg" },
+    relionNovologPen: { name: "ReliOn NovoLog FlexPen (insulin aspart) [U-100]", unitsPerMl: 100, mlPerContainer: 3, unitsPerContainer: 300, pensPerBox: 5, img: "https://www.henryschein.com/Products/2283110_US_front_01_600x600.jpg" },
+    humalog: { name: "Humalog KwikPen (insulin lispro) [U-100]", unitsPerMl: 100, mlPerContainer: 3, unitsPerContainer: 300, pensPerBox: 5, img: "https://insulin.store/wp-content/uploads/2021/03/Humalog-kwikpen.png" },
+    fiaspPen: { name: "Fiasp FlexTouch (insulin aspart fast-acting) [U-100]", unitsPerMl: 100, mlPerContainer: 3, unitsPerContainer: 300, pensPerBox: 5, img: "https://www.henryschein.com/Products/2283110_US_front_01_600x600.jpg" },
+    lyumjevPen: { name: "Lyumjev KwikPen (insulin lispro-aabc) [U-100]", unitsPerMl: 100, mlPerContainer: 3, unitsPerContainer: 300, pensPerBox: 5, img: "https://insulin.store/wp-content/uploads/2021/03/Humalog-kwikpen.png" },
+    lantus: { name: "Lantus SoloStar (insulin glargine) [U-100]", unitsPerMl: 100, mlPerContainer: 3, unitsPerContainer: 300, pensPerBox: 5, img: "https://shop.banfield.com/dw/image/v2/BGLG_PRD/on/demandware.static/-/Sites-banfield-master-catalog/default/dw24cff74a/images/files/AAF21905SY/front_image/AAF21905SY_FRONTED_EDITED400x400.jpg?sw=400&sh=400" },
+    basaglar: { name: "Basaglar KwikPen (insulin glargine) [U-100]", unitsPerMl: 100, mlPerContainer: 3, unitsPerContainer: 300, pensPerBox: 5, img: "https://www.fpanetwork.org/wp-content/uploads/2022/05/s_152192.jpg" },
+    semgleePen: { name: "Semglee / Rezvoglar (insulin glargine-yfgn) [U-100]", unitsPerMl: 100, mlPerContainer: 3, unitsPerContainer: 300, pensPerBox: 5, img: "https://shop.banfield.com/dw/image/v2/BGLG_PRD/on/demandware.static/-/Sites-banfield-master-catalog/default/dw24cff74a/images/files/AAF21905SY/front_image/AAF21905SY_FRONTED_EDITED400x400.jpg?sw=400&sh=400" },
+    tresiba100: { name: "Tresiba FlexTouch (insulin degludec) [U-100]", unitsPerMl: 100, mlPerContainer: 3, unitsPerContainer: 300, pensPerBox: 5, img: "https://www.tresiba.com/how-to-take-tresiba/tresiba-dosing/_jcr_content/root/content/container_1474201265/parsys/columns/parsys/image.coreimg.png/1709911614077/tre-penu100-2x.png" },
+    tresiba200: { name: "Tresiba FlexTouch (insulin degludec) [U-200]", unitsPerMl: 200, mlPerContainer: 3, unitsPerContainer: 600, pensPerBox: 3, img: "https://www.tresiba.com/how-to-take-tresiba/tresiba-dosing/_jcr_content/root/content/container_1474201265/parsys/columns/parsys/image.coreimg.png/1709911614077/tre-penu100-2x.png" },
+    toujeo: { name: "Toujeo SoloStar (insulin glargine) [U-300]", unitsPerMl: 300, mlPerContainer: 1.5, unitsPerContainer: 450, pensPerBox: 3, img: "https://www.toujeo.com/dam/jcr:6e150bf8-3718-4527-a82b-ecf66af689bb/900-units.2023-06-07-21-37-17.svg" },
+    toujeoMax: { name: "Toujeo Max SoloStar (insulin glargine) [U-300]", unitsPerMl: 300, mlPerContainer: 3, unitsPerContainer: 900, pensPerBox: 3, img: "https://www.toujeo.com/dam/jcr:6e150bf8-3718-4527-a82b-ecf66af689bb/900-units.2023-06-07-21-37-17.svg" },
+    humulin7030: { name: "Humulin 70/30 KwikPen (human NPH / regular) [U-100]", unitsPerMl: 100, mlPerContainer: 3, unitsPerContainer: 300, pensPerBox: 5, img: "https://www.fpanetwork.org/wp-content/uploads/2022/05/s_129144.jpg" },
+    novolin7030: { name: "Novolin 70/30 FlexPen (human NPH / regular) [U-100]", unitsPerMl: 100, mlPerContainer: 3, unitsPerContainer: 300, pensPerBox: 5, img: "https://consumerguide.diabetes.org/sites/consumerguide/files/2025-10/Novolin-70-30-Pen-Cap-On-_high-resolution_-_003.jpg" },
+    relionNovolin7030Pen: { name: "ReliOn Novolin 70/30 FlexPen (human NPH / regular) [U-100]", unitsPerMl: 100, mlPerContainer: 3, unitsPerContainer: 300, pensPerBox: 5, img: "https://consumerguide.diabetes.org/sites/consumerguide/files/2025-10/Novolin-70-30-Pen-Cap-On-_high-resolution_-_003.jpg" },
+    relionNovolinNPen: { name: "ReliOn Novolin N FlexPen (human NPH insulin) [U-100]", unitsPerMl: 100, mlPerContainer: 3, unitsPerContainer: 300, pensPerBox: 5, img: "https://consumerguide.diabetes.org/sites/consumerguide/files/2025-10/Novolin-70-30-Pen-Cap-On-_high-resolution_-_003.jpg" },
+    novologmix7030: { name: "NovoLog Mix 70/30 FlexPen (insulin aspart protamine / aspart) [U-100]", unitsPerMl: 100, mlPerContainer: 3, unitsPerContainer: 300, pensPerBox: 5, img: "https://consumerguide.diabetes.org/sites/consumerguide/files/2025-10/NovoLog-Mix-7030-Pen-Cap-Off-cropped.jpg" },
+    humalogmix7525: { name: "Humalog Mix 75/25 KwikPen (insulin lispro protamine / lispro) [U-100]", unitsPerMl: 100, mlPerContainer: 3, unitsPerContainer: 300, pensPerBox: 5, img: "https://www.drugs.com/images/pills/custom/pill33119-1.png" },
+    humalogmix5050: { name: "Humalog Mix 50/50 KwikPen (insulin lispro protamine / lispro) [U-100]", unitsPerMl: 100, mlPerContainer: 3, unitsPerContainer: 300, pensPerBox: 5, img: "https://www.grxstatic.com/d4fuqqd5l3dbz/products/Package_18382.JPG" },
+    humulinU500: { name: "Humulin R KwikPen (concentrated human regular) [U-500]", unitsPerMl: 500, mlPerContainer: 3, unitsPerContainer: 1500, pensPerBox: 2, img: "https://m.media-amazon.com/images/I/41HFEx7FBEL.jpg" },
+    custom: { name: "Custom Insulin Pen", unitsPerMl: 100, mlPerContainer: 3, unitsPerContainer: 300, pensPerBox: 5, img: "" }
+};
+
+const vialPresets = {
+    relionNovolinRVial10: { name: "ReliOn Novolin R Vial (human regular insulin) [U-100 10mL]", unitsPerMl: 100, mlPerContainer: 10, unitsPerContainer: 1000, img: "https://www.californiapetpharmacy.com/mm5/graphics/00000001/novolinRRELION.jpg" },
+    relionNovolinNVial10: { name: "ReliOn Novolin N Vial (human NPH insulin) [U-100 10mL]", unitsPerMl: 100, mlPerContainer: 10, unitsPerContainer: 1000, img: "https://www.californiapetpharmacy.com/mm5/graphics/00000001/novolinRRELION.jpg" },
+    relionNovolin7030Vial10: { name: "ReliOn Novolin 70/30 Vial (human NPH / regular) [U-100 10mL]", unitsPerMl: 100, mlPerContainer: 10, unitsPerContainer: 1000, img: "https://www.healthwarehouse.com/_next/image?url=https%3A%2F%2Fd3pq5rjvq8yvv1.cloudfront.net%2Fcatalog%2Fproduct%2Fcache%2F1%2Fimage%2F9df78eab33525d08d6e5fb8d27136e95%2Fn%2Fo%2Fnovolin_7030.jpg&w=3840&q=75" },
+    relionNovologVial10: { name: "ReliOn NovoLog Vial (insulin aspart) [U-100 10mL]", unitsPerMl: 100, mlPerContainer: 10, unitsPerContainer: 1000, img: "https://www.novolog.com/taking-novolog/_jcr_content/root/content/container/parsys/columns/parsys/columns/parsys2/image.coreimg.png/1742896861994/novolog-vial-full-2025.png" },
+    humulinRVial10: { name: "Humulin R Vial (human regular insulin) [U-100 10mL]", unitsPerMl: 100, mlPerContainer: 10, unitsPerContainer: 1000, img: "https://d3pq5rjvq8yvv1.cloudfront.net/catalog/product/cache/1/image/9df78eab33525d08d6e5fb8d27136e95/1/0/10003393-58-abc700wx700h.jpg" },
+    novolinRVial10: { name: "Novolin R Vial (human regular insulin) [U-100 10mL]", unitsPerMl: 100, mlPerContainer: 10, unitsPerContainer: 1000, img: "https://www.grxstatic.com/d4fuqqd5l3dbz/products/Package_24117.JPG" },
+    humulinNVial10: { name: "Humulin N Vial (human NPH insulin) [U-100 10mL]", unitsPerMl: 100, mlPerContainer: 10, unitsPerContainer: 1000, img: "https://m.media-amazon.com/images/I/41dudLuVsCL.jpg" },
+    novolinNVial10: { name: "Novolin N Vial (human NPH insulin) [U-100 10mL]", unitsPerMl: 100, mlPerContainer: 10, unitsPerContainer: 1000, img: "https://image.chewy.com/catalog/general/images/moe/0689b13b-1ec1-7f13-8000-57749f6872fb._AC_SX500_SY400_QL75_V1_.jpg" },
+    humulin7030Vial10: { name: "Humulin 70/30 Vial (human NPH / regular) [U-100 10mL]", unitsPerMl: 100, mlPerContainer: 10, unitsPerContainer: 1000, img: "https://www.mcguff.com/content/images/thumbs/0016896_humulin7030-insulin-human-injection-100-uml-multiple-dose-vial-10-ml-each.jpeg" },
+    novolin7030Vial10: { name: "Novolin 70/30 Vial (human NPH / regular) [U-100 10mL]", unitsPerMl: 100, mlPerContainer: 10, unitsPerContainer: 1000, img: "https://www.healthwarehouse.com/_next/image?url=https%3A%2F%2Fd3pq5rjvq8yvv1.cloudfront.net%2Fcatalog%2Fproduct%2Fcache%2F1%2Fimage%2F9df78eab33525d08d6e5fb8d27136e95%2Fn%2Fo%2Fnovolin_7030.jpg&w=3840&q=75" },
+    novologVial10: { name: "NovoLog Vial (insulin aspart) [U-100 10mL]", unitsPerMl: 100, mlPerContainer: 10, unitsPerContainer: 1000, img: "https://www.novolog.com/taking-novolog/_jcr_content/root/content/container/parsys/columns/parsys/columns/parsys2/image.coreimg.png/1742896861994/novolog-vial-full-2025.png" },
+    humalogVial10: { name: "Humalog Vial (insulin lispro) [U-100 10mL]", unitsPerMl: 100, mlPerContainer: 10, unitsPerContainer: 1000, img: "https://www.mcguff.com/content/images/thumbs/0012912_humalog-insulin-lispro-injection-100-uml-single-dose-vial-10-ml-each.jpeg" },
+    fiaspVial10: { name: "Fiasp Vial (insulin aspart fast-acting) [U-100 10mL]", unitsPerMl: 100, mlPerContainer: 10, unitsPerContainer: 1000, img: "https://www.novolog.com/taking-novolog/_jcr_content/root/content/container/parsys/columns/parsys/columns/parsys2/image.coreimg.png/1742896861994/novolog-vial-full-2025.png" },
+    lyumjevVial10: { name: "Lyumjev Vial (insulin lispro-aabc) [U-100 10mL]", unitsPerMl: 100, mlPerContainer: 10, unitsPerContainer: 1000, img: "https://www.mcguff.com/content/images/thumbs/0012912_humalog-insulin-lispro-injection-100-uml-single-dose-vial-10-ml-each.jpeg" },
+    lantusVial10: { name: "Lantus Vial (insulin glargine) [U-100 10mL]", unitsPerMl: 100, mlPerContainer: 10, unitsPerContainer: 1000, img: "https://i5.walmartimages.com/asr/fb756508-1b0f-4052-98ec-5fb06f8fc6e9.7183f409816a0d4bc554fbea0407dcac.jpeg" },
+    levemirVial10: { name: "Levemir Vial (insulin detemir) [U-100 10mL]", unitsPerMl: 100, mlPerContainer: 10, unitsPerContainer: 1000, img: "https://usmed-media.usamedpremium.com/public/assets/Catalog/Images/USAMP-67326801.webp" },
+    humalogVial3: { name: "Humalog Vial (insulin lispro) [U-100 3mL]", unitsPerMl: 100, mlPerContainer: 3, unitsPerContainer: 300, img: "https://www.mcguff.com/content/images/thumbs/0012912_humalog-insulin-lispro-injection-100-uml-single-dose-vial-10-ml-each.jpeg" },
+    novologVial3: { name: "NovoLog Vial (insulin aspart) [U-100 3mL]", unitsPerMl: 100, mlPerContainer: 3, unitsPerContainer: 300, img: "https://www.novolog.com/taking-novolog/_jcr_content/root/content/container/parsys/columns/parsys/columns/parsys2/image.coreimg.png/1742896861994/novolog-vial-full-2025.png" },
+    fiaspVial3: { name: "Fiasp Vial (insulin aspart fast-acting) [U-100 3mL]", unitsPerMl: 100, mlPerContainer: 3, unitsPerContainer: 300, img: "https://www.novolog.com/taking-novolog/_jcr_content/root/content/container/parsys/columns/parsys/columns/parsys2/image.coreimg.png/1742896861994/novolog-vial-full-2025.png" },
+    lyumjevVial3: { name: "Lyumjev Vial (insulin lispro-aabc) [U-100 3mL]", unitsPerMl: 100, mlPerContainer: 3, unitsPerContainer: 300, img: "https://www.mcguff.com/content/images/thumbs/0012912_humalog-insulin-lispro-injection-100-uml-single-dose-vial-10-ml-each.jpeg" },
+    humulinRVial3: { name: "Humulin R Vial (human regular insulin) [U-100 3mL]", unitsPerMl: 100, mlPerContainer: 3, unitsPerContainer: 300, img: "https://d3pq5rjvq8yvv1.cloudfront.net/catalog/product/cache/1/image/9df78eab33525d08d6e5fb8d27136e95/1/0/10003393-58-abc700wx700h.jpg" },
+    humulinU500Vial20: { name: "Humulin R U-500 Vial (concentrated human regular) [U-500 20mL]", unitsPerMl: 500, mlPerContainer: 20, unitsPerContainer: 10000, img: "https://consumerguide.diabetes.org/sites/consumerguide/files/2025-12/humulin_r_u_500.png" },
+    customVial: { name: "Custom Insulin Vial", unitsPerMl: 100, mlPerContainer: 10, unitsPerContainer: 1000, img: "" }
+};
+
+function populateInsulinOptions() {
+    const format = document.getElementById('formatSelect').value;
+    const select = document.getElementById('insulinSelect');
+    select.innerHTML = '';
+
+    if (format === 'pen') {
+        select.innerHTML = `
+            <optgroup label="ReliOn Brand Pens (Walmart)">
+                <option value="relionNovologPen">ReliOn NovoLog FlexPen (insulin aspart) [U-100]</option>
+                <option value="relionNovolin7030Pen">ReliOn Novolin 70/30 FlexPen (human NPH / regular) [U-100]</option>
+                <option value="relionNovolinNPen">ReliOn Novolin N FlexPen (human NPH insulin) [U-100]</option>
+            </optgroup>
+            <optgroup label="Rapid & Fast-Acting">
+                <option value="novolog">NovoLog FlexPen (insulin aspart) [U-100]</option>
+                <option value="humalog">Humalog KwikPen (insulin lispro) [U-100]</option>
+                <option value="fiaspPen">Fiasp FlexTouch (insulin aspart fast-acting) [U-100]</option>
+                <option value="lyumjevPen">Lyumjev KwikPen (insulin lispro-aabc) [U-100]</option>
+            </optgroup>
+            <optgroup label="Long-Acting Basal">
+                <option value="lantus">Lantus SoloStar (insulin glargine) [U-100]</option>
+                <option value="basaglar">Basaglar KwikPen (insulin glargine) [U-100]</option>
+                <option value="semgleePen">Semglee / Rezvoglar (insulin glargine-yfgn) [U-100]</option>
+                <option value="tresiba100">Tresiba FlexTouch (insulin degludec) [U-100]</option>
+                <option value="tresiba200">Tresiba FlexTouch (insulin degludec) [U-200]</option>
+                <option value="toujeo">Toujeo SoloStar (insulin glargine) [U-300] 1.5mL</option>
+                <option value="toujeoMax">Toujeo Max SoloStar (insulin glargine) [U-300] 3mL</option>
+            </optgroup>
+            <optgroup label="Premixed Insulins (70/30, Mixes)">
+                <option value="humulin7030">Humulin 70/30 KwikPen (human NPH / regular) [U-100]</option>
+                <option value="novolin7030">Novolin 70/30 FlexPen (human NPH / regular) [U-100]</option>
+                <option value="novologmix7030">NovoLog Mix 70/30 FlexPen (insulin aspart protamine / aspart) [U-100]</option>
+                <option value="humalogmix7525">Humalog Mix 75/25 KwikPen (insulin lispro protamine / lispro) [U-100]</option>
+                <option value="humalogmix5050">Humalog Mix 50/50 KwikPen (insulin lispro protamine / lispro) [U-100]</option>
+            </optgroup>
+            <optgroup label="High-Concentration & Custom">
+                <option value="humulinU500">Humulin R KwikPen (concentrated human regular) [U-500]</option>
+                <option value="custom">Custom Insulin Spec</option>
+            </optgroup>`;
+    } else {
+        select.innerHTML = `
+            <optgroup label="ReliOn Brand Vials (Walmart)">
+                <option value="relionNovolinRVial10">ReliOn Novolin R (human regular insulin) [1000 Units/10mL]</option>
+                <option value="relionNovolinNVial10">ReliOn Novolin N (human NPH insulin) [1000 Units/10mL]</option>
+                <option value="relionNovolin7030Vial10">ReliOn Novolin 70/30 (human NPH / regular) [1000 Units/10mL]</option>
+                <option value="relionNovologVial10">ReliOn NovoLog (insulin aspart) [1000 Units/10mL]</option>
+            </optgroup>
+            <optgroup label="10 mL Standard Vials (U-100)">
+                <option value="humulinRVial10">Humulin R (human regular insulin) [1000 Units/10mL]</option>
+                <option value="novolinRVial10">Novolin R (human regular insulin) [1000 Units/10mL]</option>
+                <option value="humulinNVial10">Humulin N (human NPH insulin) [1000 Units/10mL]</option>
+                <option value="novolinNVial10">Novolin N (human NPH insulin) [1000 Units/10mL]</option>
+                <option value="humulin7030Vial10">Humulin 70/30 (human NPH / regular) [1000 Units/10mL]</option>
+                <option value="novolin7030Vial10">Novolin 70/30 (human NPH / regular) [1000 Units/10mL]</option>
+                <option value="novologVial10">NovoLog (insulin aspart) [1000 Units/10mL]</option>
+                <option value="humalogVial10">Humalog (insulin lispro) [1000 Units/10mL]</option>
+                <option value="fiaspVial10">Fiasp (insulin aspart fast-acting) [1000 Units/10mL]</option>
+                <option value="lyumjevVial10">Lyumjev (insulin lispro-aabc) [1000 Units/10mL]</option>
+                <option value="lantusVial10">Lantus (insulin glargine) [1000 Units/10mL]</option>
+                <option value="levemirVial10">Levemir (insulin detemir) [1000 Units/10mL]</option>
+            </optgroup>
+            <optgroup label="3 mL Specialty / Pump Vials (U-100)">
+                <option value="humalogVial3">Humalog 3mL Vial (insulin lispro) [300 Units/3mL]</option>
+                <option value="novologVial3">NovoLog 3mL Vial (insulin aspart) [300 Units/3mL]</option>
+                <option value="fiaspVial3">Fiasp 3mL Vial (insulin aspart fast-acting) [300 Units/3mL]</option>
+                <option value="lyumjevVial3">Lyumjev 3mL Vial (insulin lispro-aabc) [300 Units/3mL]</option>
+                <option value="humulinRVial3">Humulin R 3mL Vial (human regular) [300 Units/3mL]</option>
+            </optgroup>
+            <optgroup label="High-Concentration & Custom">
+                <option value="humulinU500Vial20">Humulin R U-500 Vial (concentrated human regular) [10,000 Units/20mL]</option>
+                <option value="customVial">Custom Insulin Vial</option>
+            </optgroup>`;
+    }
+}
+
+function updateInsulinPreset() {
+    const format = document.getElementById('formatSelect').value;
+    const key = document.getElementById('insulinSelect').value;
+    const presets = format === 'pen' ? penPresets : vialPresets;
+    const preset = presets[key];
+
+    const customSection = document.getElementById('customSpecFields');
+    const unitsPerContainerInput = document.getElementById('unitsPerContainer');
+    const boxGroup = document.getElementById('boxFieldGroup');
+
+    document.getElementById('unitsPerContainerLabel').textContent = format === 'pen' ? 'Calculated Units per Pen' : 'Calculated Units per Vial';
+    document.getElementById('containerVolLabel').textContent = format === 'pen' ? 'Volume per Pen (mL)' : 'Volume per Vial (mL)';
+
+    if (format === 'vial') {
+        boxGroup.classList.add('hidden');
+    } else {
+        boxGroup.classList.remove('hidden');
+    }
+
+    if (key === 'custom' || key === 'customVial') {
+        customSection.classList.remove('hidden');
+        unitsPerContainerInput.removeAttribute('readonly');
+        unitsPerContainerInput.classList.remove('bg-gray-100');
+        syncCustomUnits();
+    } else {
+        customSection.classList.add('hidden');
+        unitsPerContainerInput.setAttribute('readonly', true);
+        unitsPerContainerInput.classList.add('bg-gray-100');
+        if (preset) {
+            document.getElementById('unitsPerContainer').value = preset.unitsPerContainer;
+            if (format === 'pen') {
+                document.getElementById('pensPerBox').value = preset.pensPerBox;
+            }
+            document.getElementById('customUnitsPerMl').value = preset.unitsPerMl;
+            document.getElementById('customMlPerContainer').value = preset.mlPerContainer;
+        }
+    }
+}
+
+function syncCustomUnits() {
+    const unitsPerMl = parseFloat(document.getElementById('customUnitsPerMl').value) || 0;
+    const mlPerContainer = parseFloat(document.getElementById('customMlPerContainer').value) || 0;
+    document.getElementById('unitsPerContainer').value = unitsPerMl * mlPerContainer;
+}
+
+function calculateDispense() {
+    const format = document.getElementById('formatSelect').value;
+    const key = document.getElementById('insulinSelect').value;
+    const presets = format === 'pen' ? penPresets : vialPresets;
+    const currentPreset = presets[key];
+    const name = currentPreset ? currentPreset.name : 'Insulin';
+
+    const tdd = parseFloat(document.getElementById('tdd').value) || 0;
+    const unitsPerContainer = parseFloat(document.getElementById('unitsPerContainer').value) || 300;
+    const pensPerBox = parseFloat(document.getElementById('pensPerBox').value) || 5;
+    const primeWaste = parseFloat(document.getElementById('primeWaste').value) || 0;
+    const unitsPerMl = parseFloat(document.getElementById('customUnitsPerMl').value) || 100;
+
+    const totalDailyUnits = tdd + primeWaste;
+    
+    document.getElementById('dispenseSummaryHeader').textContent = 
+        `Dosing Profile: ${tdd} units/day + ${primeWaste} units/day priming safety margin (${totalDailyUnits} units total/day)`;
+
+    const periods = [
+        { name: "30-Day Supply", days: 30 },
+        { name: "60-Day Supply", days: 60 },
+        { name: "90-Day Supply", days: 90 }
+    ];
+
+    let html = `<table class="min-w-full border-collapse border border-gray-300 text-sm">
+        <thead class="bg-orange-600 text-white">
+            <tr>
+                <th class="border border-gray-300 p-2">Supply Period</th>
+                <th class="border border-gray-300 p-2">Total Units Needed</th>
+                <th class="border border-gray-300 p-2">${format === 'pen' ? 'Exact Pens Needed' : 'Exact Vials Needed'}</th>
+                <th class="border border-gray-300 p-2">${format === 'pen' ? 'Pens to Dispense' : 'Vials to Dispense'}</th>
+                ${format === 'pen' ? '<th class="border border-gray-300 p-2">Full Boxes (Unbroken)</th>' : ''}
+                <th class="border border-gray-300 p-2">Total Volume (mL)</th>
+            </tr>
+        </thead><tbody>`;
+
+    periods.forEach((period, index) => {
+        const totalUnits = totalDailyUnits * period.days;
+        const exactContainers = unitsPerContainer > 0 ? (totalUnits / unitsPerContainer) : 0;
+        const containersToDispense = Math.ceil(exactContainers);
+        const boxesToDispense = format === 'pen' ? Math.ceil(containersToDispense / pensPerBox) : 0;
+        const totalVolumeMl = unitsPerMl > 0 ? (containersToDispense * unitsPerContainer) / unitsPerMl : 0;
+
+        const bgClass = index % 2 === 0 ? 'bg-white' : 'bg-orange-50';
+
+        html += `<tr class="${bgClass}">
+            <td class="border border-gray-300 p-2 font-bold text-gray-800">${period.name}</td>
+            <td class="border border-gray-300 p-2 text-center">${totalUnits.toLocaleString()} U</td>
+            <td class="border border-gray-300 p-2 text-center text-gray-600">${exactContainers.toFixed(2)}</td>
+            <td class="border border-gray-300 p-2 text-center font-bold text-orange-800">${containersToDispense} ${format === 'pen' ? (containersToDispense > 1 ? 'Pens' : 'Pen') : (containersToDispense > 1 ? 'Vials' : 'Vial')}</td>
+            ${format === 'pen' ? `<td class="border border-gray-300 p-2 text-center font-bold text-orange-900">${boxesToDispense} Box${boxesToDispense > 1 ? 'es' : ''}</td>` : ''}
+            <td class="border border-gray-300 p-2 text-center">${totalVolumeMl.toFixed(1)} mL</td>
+        </tr>`;
+    });
+
+    html += `</tbody></table>`;
+    document.getElementById('scaleTableContainer').innerHTML = html;
+
+    // Render Product Image dynamically
+    const imageContainer = document.getElementById('productImageContainer');
+
+    if (currentPreset && currentPreset.img) {
+        imageContainer.innerHTML = `
+            <img src="${currentPreset.img}" alt="${name}" class="max-h-48 max-w-full object-contain mb-2 rounded shadow-sm border p-2 bg-white" />
+            <span class="text-xs font-semibold text-gray-600">${name} (${format === 'pen' ? 'Pen' : 'Vial'} Reference Image)</span>
+        `;
+        imageContainer.classList.remove('hidden');
+    } else {
+        imageContainer.innerHTML = '';
+        imageContainer.classList.add('hidden');
+    }
+
+    const currentMlPerContainer = unitsPerMl > 0 ? (unitsPerContainer / unitsPerMl) : 0;
+    
+    if (format === 'pen') {
+        document.getElementById('dispenseNotes').innerHTML = 
+            `${name} (U-${unitsPerMl}): Each pen contains ${currentMlPerContainer.toFixed(1)} mL (${unitsPerContainer} units/pen). Each box of ${pensPerBox} pens contains ${unitsPerContainer * pensPerBox} total units.`;
+    } else {
+        document.getElementById('dispenseNotes').innerHTML = 
+            `${name} (U-${unitsPerMl}): Each vial contains ${currentMlPerContainer.toFixed(1)} mL (${unitsPerContainer.toLocaleString()} units/vial).`;
+    }
+}
+
+window.onload = () => {
+    populateInsulinOptions();
+    updateInsulinPreset();
+    calculateDispense();
+};
+</script>
+</body>
+</html><!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Insulin Dispensing Calculator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @media print {
+            .no-print { display: none !important; }
+            body { margin: 0; padding: 0; background: white; color: black; }
+            .print-area {
+                width: 100%;
+                max-width: 100%;
+                margin: 0;
+                padding: 0.5cm;
+                box-shadow: none !important;
+                border: none !important;
+            }
+            table { page-break-inside: auto; border-collapse: collapse !important; }
+            tr { page-break-inside: avoid; page-break-after: auto; }
+            th, td { border: 1px solid #000 !important; color: #000 !important; }
+        }
+        body { font-family: 'Inter', sans-serif; }
+    </style>
+</head>
+<body class="bg-amber-50 min-h-screen p-4 sm:p-8">
+
+<div id="app" class="max-w-4xl mx-auto">
+    <header class="text-center mb-6 no-print">
+        <h1 class="text-3xl font-extrabold text-orange-800">Insulin Dispensing Calculator</h1>
+        <p class="text-gray-600 mt-2">Calculate required pens, vials, and boxes for 30-day, 60-day, and 90-day supplies.</p>
+    </header>
+
+    <nav class="no-print mb-8 flex flex-wrap justify-center gap-4 border-b border-orange-200 pb-4">
+        <a href="index.html" class="text-gray-600 hover:text-orange-700 hover:bg-orange-100 px-4 py-2 rounded-md text-sm font-medium transition border border-transparent">
+            Basal and Mealtime Dosing Chart
+        </a>
+        <a href="pen-calculator.html" class="bg-orange-600 text-white px-4 py-2 rounded-md text-sm font-medium shadow-sm transition">
+            Insulin Quantity Calculator
+        </a>
+        <a href="70-30-scale.html" class="text-gray-600 hover:text-purple-700 hover:bg-purple-50 px-4 py-2 rounded-md text-sm font-medium transition border border-transparent hover:border-purple-200">
+            Insulin 70/30 Dosing Chart
+        </a>
+        <a href="fructosamine-calculator.html" class="text-gray-600 hover:text-blue-700 hover:bg-blue-50 px-4 py-2 rounded-md text-sm font-medium transition border border-transparent hover:border-blue-200">
+            Fructosamine to A1c Calculator
+        </a>
+    </nav>
+
+    <div class="no-print bg-white p-6 rounded-xl shadow-lg mb-8 border border-orange-200">
+        <h3 class="text-lg font-medium text-gray-800 mb-3 border-b pb-1">1. Select Delivery Format & Insulin Brand</h3>
+        
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
             <div>
                 <label class="block text-sm font-medium text-gray-700">Delivery Format</label>
