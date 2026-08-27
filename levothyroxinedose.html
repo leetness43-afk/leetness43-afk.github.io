@@ -7,19 +7,36 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         @media print {
-            .no-print { display: none !important; }
-            body { margin: 0; padding: 0; background: white; color: black; }
-            .print-area {
-                width: 100%;
-                max-width: 100%;
+            @page {
+                size: portrait;
                 margin: 0;
-                padding: 0.5cm;
+            }
+
+            .no-print { display: none !important; }
+            
+            html, body {
+                margin: 0 !important;
+                padding: 0 !important;
+                background: white !important;
+                width: 100vw;
+                height: 100vh;
+                overflow: hidden;
+            }
+
+            .print-area {
+                width: 100% !important;
+                max-width: 100% !important;
+                margin: 0 auto !important;
+                padding: 1.2cm !important;
                 box-shadow: none !important;
                 border: none !important;
+                transform: scale(0.92);
+                transform-origin: top center;
             }
-            table { page-break-inside: auto; border-collapse: collapse !important; }
-            tr { page-break-inside: avoid; page-break-after: auto; }
-            th, td { border: 1px solid #000 !important; color: #000 !important; }
+
+            table { page-break-inside: avoid !important; border-collapse: collapse !important; }
+            tr { page-break-inside: avoid !important; page-break-after: auto; }
+            th, td { border: 1px solid #000 !important; color: #000 !important; padding: 4px 6px !important; }
         }
         body { font-family: 'Inter', sans-serif; }
     </style>
@@ -120,8 +137,13 @@
 
         <div class="border-t pt-4">
             <h4 class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Patient Directions (Sig)</h4>
-            <div id="patientInstructions" class="p-4 bg-gray-50 border border-gray-200 rounded-lg text-lg font-bold text-gray-800 text-center">
-                --
+            <div class="flex items-center gap-2">
+                <div id="patientInstructions" class="flex-1 p-4 bg-gray-50 border border-gray-200 rounded-lg text-lg font-bold text-gray-800 text-center">
+                    --
+                </div>
+                <button id="copySigBtn" onclick="copyPatientSig()" class="no-print bg-pink-700 hover:bg-pink-800 text-white font-semibold px-4 py-4 rounded-lg shadow transition flex items-center gap-1.5 text-sm whitespace-nowrap">
+                    📋 Copy
+                </button>
             </div>
         </div>
 
@@ -246,6 +268,25 @@ function renderInstructions(strength, multipliers) {
 
     document.getElementById('patientInstructions').textContent = 
         `Take Levothyroxine ${strength} mcg: ` + descriptions.join('; ') + '.';
+}
+
+function copyPatientSig() {
+    const textToCopy = document.getElementById('patientInstructions').textContent.trim();
+    if (!textToCopy || textToCopy === '--') return;
+
+    navigator.clipboard.writeText(textToCopy).then(() => {
+        const btn = document.getElementById('copySigBtn');
+        const originalText = btn.innerHTML;
+        btn.innerHTML = '✅ Copied!';
+        btn.classList.remove('bg-pink-700', 'hover:bg-pink-800');
+        btn.classList.add('bg-green-600', 'hover:bg-green-700');
+
+        setTimeout(() => {
+            btn.innerHTML = originalText;
+            btn.classList.remove('bg-green-600', 'hover:bg-green-700');
+            btn.classList.add('bg-pink-700', 'hover:bg-pink-800');
+        }, 2000);
+    });
 }
 
 window.onload = () => {
