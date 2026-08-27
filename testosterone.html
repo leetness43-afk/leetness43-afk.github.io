@@ -7,17 +7,37 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         @media print {
-            .no-print { display: none !important; }
-            body { margin: 0; padding: 0; background: white; }
-            .print-area {
-                width: 100%;
-                max-width: 100%;
+            /* Removes default browser header/footer (date, time, URL, title) */
+            @page {
+                size: portrait;
                 margin: 0;
-                padding: 0.5cm;
+            }
+
+            .no-print { display: none !important; }
+            
+            html, body {
+                margin: 0 !important;
+                padding: 0 !important;
+                background: white !important;
+                width: 100vw;
+                height: 100vh;
+                overflow: hidden;
+            }
+
+            /* Container scaling for safe single-page fit */
+            .print-area {
+                width: 100% !important;
+                max-width: 100% !important;
+                margin: 0 auto !important;
+                padding: 1.5cm !important; /* Safe inner margin replacing @page margin */
                 box-shadow: none !important;
                 border: none !important;
+                
+                transform: scale(0.95);
+                transform-origin: top center;
             }
         }
+
         body { font-family: 'Inter', sans-serif; }
     </style>
 </head>
