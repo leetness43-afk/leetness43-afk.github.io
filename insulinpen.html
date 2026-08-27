@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Insulin Pen Dispensing Calculator</title>
+    <title>Insulin Dispensing Calculator</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         @media print {
@@ -28,8 +28,8 @@
 
 <div id="app" class="max-w-4xl mx-auto">
     <header class="text-center mb-6 no-print">
-        <h1 class="text-3xl font-extrabold text-orange-800">Insulin Pen Dispensing Calculator</h1>
-        <p class="text-gray-600 mt-2">Calculate required pens and boxes for 30-day and 90-day supplies.</p>
+        <h1 class="text-3xl font-extrabold text-orange-800">Insulin Dispensing Calculator</h1>
+        <p class="text-gray-600 mt-2">Calculate required pens, vials, and boxes for 30-day, 60-day, and 90-day supplies.</p>
     </header>
 
     <nav class="no-print mb-8 flex flex-wrap justify-center gap-4 border-b border-orange-200 pb-4">
@@ -37,7 +37,7 @@
             Basal and Mealtime Dosing Chart
         </a>
         <a href="pen-calculator.html" class="bg-orange-600 text-white px-4 py-2 rounded-md text-sm font-medium shadow-sm transition">
-            Insulin Pen Quantity Calculator
+            Insulin Quantity Calculator
         </a>
         <a href="70-30-scale.html" class="text-gray-600 hover:text-purple-700 hover:bg-purple-50 px-4 py-2 rounded-md text-sm font-medium transition border border-transparent hover:border-purple-200">
             Insulin 70/30 Dosing Chart
@@ -48,34 +48,20 @@
     </nav>
 
     <div class="no-print bg-white p-6 rounded-xl shadow-lg mb-8 border border-orange-200">
-        <h3 class="text-lg font-medium text-gray-800 mb-3 border-b pb-1">1. Select Insulin & Package Profile</h3>
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+        <h3 class="text-lg font-medium text-gray-800 mb-3 border-b pb-1">1. Select Delivery Format & Insulin Brand</h3>
+        
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-700">Delivery Format</label>
+                <select id="formatSelect" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border focus:ring-orange-500 focus:border-orange-500 font-semibold text-orange-900" onchange="populateInsulinOptions(); updateInsulinPreset(); calculateDispense();">
+                    <option value="pen" selected>Insulin Pens</option>
+                    <option value="vial">Insulin Vials</option>
+                </select>
+            </div>
             <div>
                 <label class="block text-sm font-medium text-gray-700">Insulin Brand / Type</label>
                 <select id="insulinSelect" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border focus:ring-orange-500 focus:border-orange-500" onchange="updateInsulinPreset(); calculateDispense();">
-                    <optgroup label="Rapid & Fast-Acting">
-                        <option value="novolog">NovoLog / Fiasp (U-100) - 3mL Pen</option>
-                        <option value="humalog">Humalog / Lyumjev (U-100) - 3mL Pen</option>
-                    </optgroup>
-                    <optgroup label="Long-Acting Basal">
-                        <option value="lantus">Lantus / Semglee / Rezvoglar (U-100) - 3mL Pen</option>
-                        <option value="basaglar">Basaglar (U-100) - 3mL KwikPen</option>
-                        <option value="tresiba100">Tresiba (U-100) - 3mL Flextouch</option>
-                        <option value="tresiba200">Tresiba (U-200) - 3mL Flextouch</option>
-                        <option value="toujeo">Toujeo SoloStar (U-300) - 1.5mL Pen</option>
-                        <option value="toujeoMax">Toujeo Max SoloStar (U-300) - 3mL Pen</option>
-                    </optgroup>
-                    <optgroup label="Premixed Insulins (70/30, Mixes)">
-                        <option value="humulin7030">Humulin 70/30 (U-100) - 3mL KwikPen</option>
-                        <option value="novolin7030">Novolin 70/30 (U-100) - 3mL FlexPen</option>
-                        <option value="novologmix7030">NovoLog Mix 70/30 (U-100) - 3mL FlexPen</option>
-                        <option value="humalogmix7525">Humalog Mix 75/25 (U-100) - 3mL KwikPen</option>
-                        <option value="humalogmix5050">Humalog Mix 50/50 (U-100) - 3mL KwikPen</option>
-                    </optgroup>
-                    <optgroup label="High-Concentration & Custom">
-                        <option value="humulinU500">Humulin R (U-500) - 3mL KwikPen</option>
-                        <option value="custom">Custom Insulin Spec</option>
-                    </optgroup>
+                    <!-- Dynamic Options Populated via JS -->
                 </select>
             </div>
             <div>
@@ -93,8 +79,8 @@
                     <input type="number" id="customUnitsPerMl" value="100" min="1" step="1" class="w-full p-2 border rounded bg-white focus:ring-orange-500" oninput="syncCustomUnits(); calculateDispense();">
                 </div>
                 <div>
-                    <label class="block text-xs font-semibold text-gray-700 mb-1">Volume per Pen (mL)</label>
-                    <input type="number" id="customMlPerPen" value="3" min="0.1" step="0.1" class="w-full p-2 border rounded bg-white focus:ring-orange-500" oninput="syncCustomUnits(); calculateDispense();">
+                    <label id="containerVolLabel" class="block text-xs font-semibold text-gray-700 mb-1">Volume per Pen (mL)</label>
+                    <input type="number" id="customMlPerContainer" value="3" min="0.1" step="0.1" class="w-full p-2 border rounded bg-white focus:ring-orange-500" oninput="syncCustomUnits(); calculateDispense();">
                 </div>
             </div>
         </div>
@@ -106,10 +92,10 @@
                 <input type="number" id="tdd" value="30" min="1" step="1" class="w-full p-2 border rounded focus:ring-orange-500 focus:border-orange-500" oninput="calculateDispense()">
             </div>
             <div>
-                <label class="block text-xs font-semibold text-gray-600 mb-1">Calculated Units per Pen</label>
-                <input type="number" id="unitsPerPen" value="300" min="10" step="10" class="w-full p-2 border rounded bg-gray-100" readonly oninput="calculateDispense()">
+                <label id="unitsPerContainerLabel" class="block text-xs font-semibold text-gray-600 mb-1">Units per Pen</label>
+                <input type="number" id="unitsPerContainer" value="300" min="10" step="10" class="w-full p-2 border rounded bg-gray-100" readonly oninput="calculateDispense()">
             </div>
-            <div>
+            <div id="boxFieldGroup">
                 <label class="block text-xs font-semibold text-gray-600 mb-1">Pens per Box</label>
                 <input type="number" id="pensPerBox" value="5" min="1" step="1" class="w-full p-2 border rounded" oninput="calculateDispense()">
             </div>
@@ -133,7 +119,7 @@
         <div id="dispenseNotes" class="mt-6 text-sm text-gray-800 border-t pt-4 text-center font-medium"></div>
 
         <div class="mt-4 text-xs text-gray-500 border-t pt-4 italic">
-            <strong>Pharmacy Note:</strong> Calculations round up to the nearest whole pen and unbroken box package where full unbroken boxes are required by regional dispensing guidelines. Priming waste defaults to 2 units per day.
+            <strong>Pharmacy Note:</strong> Calculations round up to the nearest whole pen/vial and unbroken box package where full unbroken boxes are required by regional dispensing guidelines. Priming waste defaults to 2 units per day.
         </div>
     </div>
 
@@ -146,60 +132,142 @@
 </div>
 
 <script>
-const presets = {
-    novolog: { name: "NovoLog FlexPen (U-100)", unitsPerMl: 100, mlPerPen: 3, unitsPerPen: 300, pensPerBox: 5 },
-    humalog: { name: "Humalog KwikPen (U-100)", unitsPerMl: 100, mlPerPen: 3, unitsPerPen: 300, pensPerBox: 5 },
-    lantus: { name: "Lantus SoloStar (U-100)", unitsPerMl: 100, mlPerPen: 3, unitsPerPen: 300, pensPerBox: 5 },
-    basaglar: { name: "Basaglar KwikPen (U-100)", unitsPerMl: 100, mlPerPen: 3, unitsPerPen: 300, pensPerBox: 5 },
-    tresiba100: { name: "Tresiba FlexTouch (U-100)", unitsPerMl: 100, mlPerPen: 3, unitsPerPen: 300, pensPerBox: 5 },
-    tresiba200: { name: "Tresiba FlexTouch (U-200)", unitsPerMl: 200, mlPerPen: 3, unitsPerPen: 600, pensPerBox: 3 },
-    toujeo: { name: "Toujeo SoloStar (U-300)", unitsPerMl: 300, mlPerPen: 1.5, unitsPerPen: 450, pensPerBox: 3 },
-    toujeoMax: { name: "Toujeo Max SoloStar (U-300)", unitsPerMl: 300, mlPerPen: 3, unitsPerPen: 900, pensPerBox: 3 },
-    humulin7030: { name: "Humulin 70/30 KwikPen (U-100)", unitsPerMl: 100, mlPerPen: 3, unitsPerPen: 300, pensPerBox: 5 },
-    novolin7030: { name: "Novolin 70/30 FlexPen (U-100)", unitsPerMl: 100, mlPerPen: 3, unitsPerPen: 300, pensPerBox: 5 },
-    novologmix7030: { name: "NovoLog Mix 70/30 FlexPen (U-100)", unitsPerMl: 100, mlPerPen: 3, unitsPerPen: 300, pensPerBox: 5 },
-    humalogmix7525: { name: "Humalog Mix 75/25 KwikPen (U-100)", unitsPerMl: 100, mlPerPen: 3, unitsPerPen: 300, pensPerBox: 5 },
-    humalogmix5050: { name: "Humalog Mix 50/50 KwikPen (U-100)", unitsPerMl: 100, mlPerPen: 3, unitsPerPen: 300, pensPerBox: 5 },
-    humulinU500: { name: "Humulin R KwikPen (U-500)", unitsPerMl: 500, mlPerPen: 3, unitsPerPen: 1500, pensPerBox: 2 },
-    custom: { name: "Custom Insulin Pen", unitsPerMl: 100, mlPerPen: 3, unitsPerPen: 300, pensPerBox: 5 }
+const penPresets = {
+    novolog: { name: "NovoLog FlexPen (U-100)", unitsPerMl: 100, mlPerContainer: 3, unitsPerContainer: 300, pensPerBox: 5 },
+    humalog: { name: "Humalog KwikPen (U-100)", unitsPerMl: 100, mlPerContainer: 3, unitsPerContainer: 300, pensPerBox: 5 },
+    lantus: { name: "Lantus SoloStar (U-100)", unitsPerMl: 100, mlPerContainer: 3, unitsPerContainer: 300, pensPerBox: 5 },
+    basaglar: { name: "Basaglar KwikPen (U-100)", unitsPerMl: 100, mlPerContainer: 3, unitsPerContainer: 300, pensPerBox: 5 },
+    tresiba100: { name: "Tresiba FlexTouch (U-100)", unitsPerMl: 100, mlPerContainer: 3, unitsPerContainer: 300, pensPerBox: 5 },
+    tresiba200: { name: "Tresiba FlexTouch (U-200)", unitsPerMl: 200, mlPerContainer: 3, unitsPerContainer: 600, pensPerBox: 3 },
+    toujeo: { name: "Toujeo SoloStar (U-300)", unitsPerMl: 300, mlPerContainer: 1.5, unitsPerContainer: 450, pensPerBox: 3 },
+    toujeoMax: { name: "Toujeo Max SoloStar (U-300)", unitsPerMl: 300, mlPerContainer: 3, unitsPerContainer: 900, pensPerBox: 3 },
+    humulin7030: { name: "Humulin 70/30 KwikPen (U-100)", unitsPerMl: 100, mlPerContainer: 3, unitsPerContainer: 300, pensPerBox: 5 },
+    novolin7030: { name: "Novolin 70/30 FlexPen (U-100)", unitsPerMl: 100, mlPerContainer: 3, unitsPerContainer: 300, pensPerBox: 5 },
+    novologmix7030: { name: "NovoLog Mix 70/30 FlexPen (U-100)", unitsPerMl: 100, mlPerContainer: 3, unitsPerContainer: 300, pensPerBox: 5 },
+    humalogmix7525: { name: "Humalog Mix 75/25 KwikPen (U-100)", unitsPerMl: 100, mlPerContainer: 3, unitsPerContainer: 300, pensPerBox: 5 },
+    humalogmix5050: { name: "Humalog Mix 50/50 KwikPen (U-100)", unitsPerMl: 100, mlPerContainer: 3, unitsPerContainer: 300, pensPerBox: 5 },
+    humulinU500: { name: "Humulin R KwikPen (U-500)", unitsPerMl: 500, mlPerContainer: 3, unitsPerContainer: 1500, pensPerBox: 2 },
+    custom: { name: "Custom Insulin Pen", unitsPerMl: 100, mlPerContainer: 3, unitsPerContainer: 300, pensPerBox: 5 }
 };
 
-function updateInsulinPreset() {
-    const key = document.getElementById('insulinSelect').value;
-    const preset = presets[key];
-    const customSection = document.getElementById('customSpecFields');
-    const unitsPerPenInput = document.getElementById('unitsPerPen');
+const vialPresets = {
+    novologVial: { name: "NovoLog Vial (U-100 10mL)", unitsPerMl: 100, mlPerContainer: 10, unitsPerContainer: 1000 },
+    humalogVial: { name: "Humalog Vial (U-100 10mL)", unitsPerMl: 100, mlPerContainer: 10, unitsPerContainer: 1000 },
+    lantusVial: { name: "Lantus Vial (U-100 10mL)", unitsPerMl: 100, mlPerContainer: 10, unitsPerContainer: 1000 },
+    levemirVial: { name: "Levemir Vial (U-100 10mL)", unitsPerMl: 100, mlPerContainer: 10, unitsPerContainer: 1000 },
+    humulinNVial: { name: "Humulin N Vial (U-100 10mL)", unitsPerMl: 100, mlPerContainer: 10, unitsPerContainer: 1000 },
+    novolinNVial: { name: "Novolin N Vial (U-100 10mL)", unitsPerMl: 100, mlPerContainer: 10, unitsPerContainer: 1000 },
+    humulinRVial: { name: "Humulin R Vial (U-100 10mL)", unitsPerMl: 100, mlPerContainer: 10, unitsPerContainer: 1000 },
+    novolinRVial: { name: "Novolin R Vial (U-100 10mL)", unitsPerMl: 100, mlPerContainer: 10, unitsPerContainer: 1000 },
+    humulin7030Vial: { name: "Humulin 70/30 Vial (U-100 10mL)", unitsPerMl: 100, mlPerContainer: 10, unitsPerContainer: 1000 },
+    novolin7030Vial: { name: "Novolin 70/30 Vial (U-100 10mL)", unitsPerMl: 100, mlPerContainer: 10, unitsPerContainer: 1000 },
+    humulinU500Vial: { name: "Humulin R U-500 Vial (U-500 20mL)", unitsPerMl: 500, mlPerContainer: 20, unitsPerContainer: 10000 },
+    customVial: { name: "Custom Insulin Vial", unitsPerMl: 100, mlPerContainer: 10, unitsPerContainer: 1000 }
+};
 
-    if (key === 'custom') {
+function populateInsulinOptions() {
+    const format = document.getElementById('formatSelect').value;
+    const select = document.getElementById('insulinSelect');
+    select.innerHTML = '';
+
+    if (format === 'pen') {
+        select.innerHTML = `
+            <optgroup label="Rapid & Fast-Acting">
+                <option value="novolog">NovoLog / Fiasp (U-100) - 3mL Pen</option>
+                <option value="humalog">Humalog / Lyumjev (U-100) - 3mL Pen</option>
+            </optgroup>
+            <optgroup label="Long-Acting Basal">
+                <option value="lantus">Lantus / Semglee / Rezvoglar (U-100) - 3mL Pen</option>
+                <option value="basaglar">Basaglar (U-100) - 3mL KwikPen</option>
+                <option value="tresiba100">Tresiba (U-100) - 3mL Flextouch</option>
+                <option value="tresiba200">Tresiba (U-200) - 3mL Flextouch</option>
+                <option value="toujeo">Toujeo SoloStar (U-300) - 1.5mL Pen</option>
+                <option value="toujeoMax">Toujeo Max SoloStar (U-300) - 3mL Pen</option>
+            </optgroup>
+            <optgroup label="Premixed Insulins (70/30, Mixes)">
+                <option value="humulin7030">Humulin 70/30 (U-100) - 3mL KwikPen</option>
+                <option value="novolin7030">Novolin 70/30 (U-100) - 3mL FlexPen</option>
+                <option value="novologmix7030">NovoLog Mix 70/30 (U-100) - 3mL FlexPen</option>
+                <option value="humalogmix7525">Humalog Mix 75/25 (U-100) - 3mL KwikPen</option>
+                <option value="humalogmix5050">Humalog Mix 50/50 (U-100) - 3mL KwikPen</option>
+            </optgroup>
+            <optgroup label="High-Concentration & Custom">
+                <option value="humulinU500">Humulin R (U-500) - 3mL KwikPen</option>
+                <option value="custom">Custom Insulin Spec</option>
+            </optgroup>`;
+    } else {
+        select.innerHTML = `
+            <optgroup label="Standard 10mL Vials (U-100)">
+                <option value="novologVial">NovoLog Vial (1000 Units/10mL)</option>
+                <option value="humalogVial">Humalog Vial (1000 Units/10mL)</option>
+                <option value="lantusVial">Lantus Vial (1000 Units/10mL)</option>
+                <option value="levemirVial">Levemir Vial (1000 Units/10mL)</option>
+                <option value="humulinNVial">Humulin N Vial (1000 Units/10mL)</option>
+                <option value="novolinNVial">Novolin N Vial (1000 Units/10mL)</option>
+                <option value="humulinRVial">Humulin R Vial (1000 Units/10mL)</option>
+                <option value="novolinRVial">Novolin R Vial (1000 Units/10mL)</option>
+                <option value="humulin7030Vial">Humulin 70/30 Vial (1000 Units/10mL)</option>
+                <option value="novolin7030Vial">Novolin 70/30 Vial (1000 Units/10mL)</option>
+            </optgroup>
+            <optgroup label="High-Concentration & Custom">
+                <option value="humulinU500Vial">Humulin R U-500 Vial (10,000 Units/20mL)</option>
+                <option value="customVial">Custom Insulin Vial</option>
+            </optgroup>`;
+    }
+}
+
+function updateInsulinPreset() {
+    const format = document.getElementById('formatSelect').value;
+    const key = document.getElementById('insulinSelect').value;
+    const presets = format === 'pen' ? penPresets : vialPresets;
+    const preset = presets[key];
+
+    const customSection = document.getElementById('customSpecFields');
+    const unitsPerContainerInput = document.getElementById('unitsPerContainer');
+    const boxGroup = document.getElementById('boxFieldGroup');
+
+    // Labels update dynamically based on pen vs vial
+    document.getElementById('unitsPerContainerLabel').textContent = format === 'pen' ? 'Calculated Units per Pen' : 'Calculated Units per Vial';
+    document.getElementById('containerVolLabel').textContent = format === 'pen' ? 'Volume per Pen (mL)' : 'Volume per Vial (mL)';
+
+    if (format === 'vial') {
+        boxGroup.classList.add('hidden');
+    } else {
+        boxGroup.classList.remove('hidden');
+    }
+
+    if (key === 'custom' || key === 'customVial') {
         customSection.classList.remove('hidden');
-        unitsPerPenInput.removeAttribute('readonly');
-        unitsPerPenInput.classList.remove('bg-gray-100');
+        unitsPerContainerInput.removeAttribute('readonly');
+        unitsPerContainerInput.classList.remove('bg-gray-100');
         syncCustomUnits();
     } else {
         customSection.classList.add('hidden');
-        unitsPerPenInput.setAttribute('readonly', true);
-        unitsPerPenInput.classList.add('bg-gray-100');
+        unitsPerContainerInput.setAttribute('readonly', true);
+        unitsPerContainerInput.classList.add('bg-gray-100');
         if (preset) {
             document.getElementById('customName').value = preset.name;
-            document.getElementById('unitsPerPen').value = preset.unitsPerPen;
-            document.getElementById('pensPerBox').value = preset.pensPerBox;
+            document.getElementById('unitsPerContainer').value = preset.unitsPerContainer;
+            if (format === 'pen') {
+                document.getElementById('pensPerBox').value = preset.pensPerBox;
+            }
             document.getElementById('customUnitsPerMl').value = preset.unitsPerMl;
-            document.getElementById('customMlPerPen').value = preset.mlPerPen;
+            document.getElementById('customMlPerContainer').value = preset.mlPerContainer;
         }
     }
 }
 
 function syncCustomUnits() {
     const unitsPerMl = parseFloat(document.getElementById('customUnitsPerMl').value) || 0;
-    const mlPerPen = parseFloat(document.getElementById('customMlPerPen').value) || 0;
-    const calculatedUnits = unitsPerMl * mlPerPen;
-    document.getElementById('unitsPerPen').value = calculatedUnits;
+    const mlPerContainer = parseFloat(document.getElementById('customMlPerContainer').value) || 0;
+    document.getElementById('unitsPerContainer').value = unitsPerMl * mlPerContainer;
 }
 
 function calculateDispense() {
+    const format = document.getElementById('formatSelect').value;
     const name = document.getElementById('customName').value || 'Insulin';
     const tdd = parseFloat(document.getElementById('tdd').value) || 0;
-    const unitsPerPen = parseFloat(document.getElementById('unitsPerPen').value) || 300;
+    const unitsPerContainer = parseFloat(document.getElementById('unitsPerContainer').value) || 300;
     const pensPerBox = parseFloat(document.getElementById('pensPerBox').value) || 5;
     const primeWaste = parseFloat(document.getElementById('primeWaste').value) || 0;
     const unitsPerMl = parseFloat(document.getElementById('customUnitsPerMl').value) || 100;
@@ -220,28 +288,28 @@ function calculateDispense() {
             <tr>
                 <th class="border border-gray-300 p-2">Supply Period</th>
                 <th class="border border-gray-300 p-2">Total Units Needed</th>
-                <th class="border border-gray-300 p-2">Exact Pens Needed</th>
-                <th class="border border-gray-300 p-2">Pens to Dispense</th>
-                <th class="border border-gray-300 p-2">Full Boxes (Unbroken)</th>
+                <th class="border border-gray-300 p-2">${format === 'pen' ? 'Exact Pens Needed' : 'Exact Vials Needed'}</th>
+                <th class="border border-gray-300 p-2">${format === 'pen' ? 'Pens to Dispense' : 'Vials to Dispense'}</th>
+                ${format === 'pen' ? '<th class="border border-gray-300 p-2">Full Boxes (Unbroken)</th>' : ''}
                 <th class="border border-gray-300 p-2">Total Volume (mL)</th>
             </tr>
         </thead><tbody>`;
 
     periods.forEach((period, index) => {
         const totalUnits = totalDailyUnits * period.days;
-        const exactPens = unitsPerPen > 0 ? (totalUnits / unitsPerPen) : 0;
-        const pensToDispense = Math.ceil(exactPens);
-        const boxesToDispense = Math.ceil(pensToDispense / pensPerBox);
-        const totalVolumeMl = unitsPerMl > 0 ? (pensToDispense * unitsPerPen) / unitsPerMl : 0;
+        const exactContainers = unitsPerContainer > 0 ? (totalUnits / unitsPerContainer) : 0;
+        const containersToDispense = Math.ceil(exactContainers);
+        const boxesToDispense = format === 'pen' ? Math.ceil(containersToDispense / pensPerBox) : 0;
+        const totalVolumeMl = unitsPerMl > 0 ? (containersToDispense * unitsPerContainer) / unitsPerMl : 0;
 
         const bgClass = index % 2 === 0 ? 'bg-white' : 'bg-orange-50';
 
         html += `<tr class="${bgClass}">
             <td class="border border-gray-300 p-2 font-bold text-gray-800">${period.name}</td>
             <td class="border border-gray-300 p-2 text-center">${totalUnits.toLocaleString()} U</td>
-            <td class="border border-gray-300 p-2 text-center text-gray-600">${exactPens.toFixed(2)}</td>
-            <td class="border border-gray-300 p-2 text-center font-bold text-orange-800">${pensToDispense} Pen${pensToDispense > 1 ? 's' : ''}</td>
-            <td class="border border-gray-300 p-2 text-center font-bold text-orange-900">${boxesToDispense} Box${boxesToDispense > 1 ? 'es' : ''}</td>
+            <td class="border border-gray-300 p-2 text-center text-gray-600">${exactContainers.toFixed(2)}</td>
+            <td class="border border-gray-300 p-2 text-center font-bold text-orange-800">${containersToDispense} ${format === 'pen' ? (containersToDispense > 1 ? 'Pens' : 'Pen') : (containersToDispense > 1 ? 'Vials' : 'Vial')}</td>
+            ${format === 'pen' ? `<td class="border border-gray-300 p-2 text-center font-bold text-orange-900">${boxesToDispense} Box${boxesToDispense > 1 ? 'es' : ''}</td>` : ''}
             <td class="border border-gray-300 p-2 text-center">${totalVolumeMl.toFixed(1)} mL</td>
         </tr>`;
     });
@@ -249,12 +317,19 @@ function calculateDispense() {
     html += `</tbody></table>`;
     document.getElementById('scaleTableContainer').innerHTML = html;
 
-    const currentMlPerPen = unitsPerMl > 0 ? (unitsPerPen / unitsPerMl) : 0;
-    document.getElementById('dispenseNotes').innerHTML = 
-        `${name} (U-${unitsPerMl}): Each pen contains ${currentMlPerPen.toFixed(1)} mL (${unitsPerPen} units/pen). Each box of ${pensPerBox} pens contains ${unitsPerPen * pensPerBox} total units.`;
+    const currentMlPerContainer = unitsPerMl > 0 ? (unitsPerContainer / unitsPerMl) : 0;
+    
+    if (format === 'pen') {
+        document.getElementById('dispenseNotes').innerHTML = 
+            `${name} (U-${unitsPerMl}): Each pen contains ${currentMlPerContainer.toFixed(1)} mL (${unitsPerContainer} units/pen). Each box of ${pensPerBox} pens contains ${unitsPerContainer * pensPerBox} total units.`;
+    } else {
+        document.getElementById('dispenseNotes').innerHTML = 
+            `${name} (U-${unitsPerMl}): Each vial contains ${currentMlPerContainer.toFixed(1)} mL (${unitsPerContainer.toLocaleString()} units/vial).`;
+    }
 }
 
 window.onload = () => {
+    populateInsulinOptions();
     updateInsulinPreset();
     calculateDispense();
 };
