@@ -49,7 +49,7 @@
 
     <div class="no-print bg-white p-6 rounded-xl shadow-lg mb-8 border border-orange-200">
         <h3 class="text-lg font-medium text-gray-800 mb-3 border-b pb-1">1. Select Insulin & Package Profile</h3>
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
             <div>
                 <label class="block text-sm font-medium text-gray-700">Insulin Brand / Type</label>
                 <select id="insulinSelect" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border focus:ring-orange-500 focus:border-orange-500" onchange="updateInsulinPreset(); calculateDispense();">
@@ -65,8 +65,23 @@
                 </select>
             </div>
             <div>
-                <label class="block text-sm font-medium text-gray-700">Custom Insulin Name Display</label>
+                <label class="block text-sm font-medium text-gray-700">Insulin Name Display</label>
                 <input type="text" id="customName" value="NovoLog FlexPen" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border" oninput="calculateDispense()">
+            </div>
+        </div>
+
+        <!-- Custom Concentration Fields (Revealed only when Custom is chosen) -->
+        <div id="customSpecFields" class="hidden bg-orange-50 p-4 rounded-lg border border-orange-200 mb-6">
+            <h4 class="text-sm font-semibold text-orange-900 mb-2">Custom Dosing Parameters</h4>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-xs font-semibold text-gray-700 mb-1">Concentration (Units/mL)</label>
+                    <input type="number" id="customUnitsPerMl" value="100" min="1" step="1" class="w-full p-2 border rounded bg-white focus:ring-orange-500" oninput="syncCustomUnits(); calculateDispense();">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-gray-700 mb-1">Volume per Pen (mL)</label>
+                    <input type="number" id="customMlPerPen" value="3" min="0.1" step="0.1" class="w-full p-2 border rounded bg-white focus:ring-orange-500" oninput="syncCustomUnits(); calculateDispense();">
+                </div>
             </div>
         </div>
 
@@ -77,8 +92,8 @@
                 <input type="number" id="tdd" value="30" min="1" step="1" class="w-full p-2 border rounded focus:ring-orange-500 focus:border-orange-500" oninput="calculateDispense()">
             </div>
             <div>
-                <label class="block text-xs font-semibold text-gray-600 mb-1">Units per Pen</label>
-                <input type="number" id="unitsPerPen" value="300" min="10" step="10" class="w-full p-2 border rounded" oninput="calculateDispense()">
+                <label class="block text-xs font-semibold text-gray-600 mb-1">Calculated Units per Pen</label>
+                <input type="number" id="unitsPerPen" value="300" min="10" step="10" class="w-full p-2 border rounded bg-gray-100" readonly oninput="calculateDispense()">
             </div>
             <div>
                 <label class="block text-xs font-semibold text-gray-600 mb-1">Pens per Box</label>
@@ -104,7 +119,7 @@
         <div id="dispenseNotes" class="mt-6 text-sm text-gray-800 border-t pt-4 text-center font-medium"></div>
 
         <div class="mt-4 text-xs text-gray-500 border-t pt-4 italic">
-            <strong>Pharmacy Note:</strong> Calculations round up to the nearest whole pen and unbroken box package where full unbroken boxes are required by regional dispensing guidelines. Priming waste defaults to 2 units per dose.
+            <strong>Pharmacy Note:</strong> Calculations round up to the nearest whole pen and unbroken box package where full unbroken boxes are required by regional dispensing guidelines. Priming waste defaults to 2 units per day.
         </div>
     </div>
 
@@ -118,33 +133,57 @@
 
 <script>
 const presets = {
-    novolog: { name: "NovoLog FlexPen (U-100)", unitsPerPen: 300, pensPerBox: 5 },
-    humalog: { name: "Humalog KwikPen (U-100)", unitsPerPen: 300, pensPerBox: 5 },
-    lantus: { name: "Lantus SoloStar (U-100)", unitsPerPen: 300, pensPerBox: 5 },
-    basaglar: { name: "Basaglar KwikPen (U-100)", unitsPerPen: 300, pensPerBox: 5 },
-    tresiba100: { name: "Tresiba FlexTouch (U-100)", unitsPerPen: 300, pensPerBox: 5 },
-    tresiba200: { name: "Tresiba FlexTouch (U-200)", unitsPerPen: 600, pensPerBox: 3 },
-    toujeo: { name: "Toujeo SoloStar (U-300)", unitsPerPen: 450, pensPerBox: 3 },
-    toujeoMax: { name: "Toujeo Max SoloStar (U-300)", unitsPerPen: 900, pensPerBox: 3 },
-    custom: { name: "Custom Insulin Pen", unitsPerPen: 300, pensPerBox: 5 }
+    novolog: { name: "NovoLog FlexPen (U-100)", unitsPerMl: 100, mlPerPen: 3, unitsPerPen: 300, pensPerBox: 5 },
+    humalog: { name: "Humalog KwikPen (U-100)", unitsPerMl: 100, mlPerPen: 3, unitsPerPen: 300, pensPerBox: 5 },
+    lantus: { name: "Lantus SoloStar (U-100)", unitsPerMl: 100, mlPerPen: 3, unitsPerPen: 300, pensPerBox: 5 },
+    basaglar: { name: "Basaglar KwikPen (U-100)", unitsPerMl: 100, mlPerPen: 3, unitsPerPen: 300, pensPerBox: 5 },
+    tresiba100: { name: "Tresiba FlexTouch (U-100)", unitsPerMl: 100, mlPerPen: 3, unitsPerPen: 300, pensPerBox: 5 },
+    tresiba200: { name: "Tresiba FlexTouch (U-200)", unitsPerMl: 200, mlPerPen: 3, unitsPerPen: 600, pensPerBox: 3 },
+    toujeo: { name: "Toujeo SoloStar (U-300)", unitsPerMl: 300, mlPerPen: 1.5, unitsPerPen: 450, pensPerBox: 3 },
+    toujeoMax: { name: "Toujeo Max SoloStar (U-300)", unitsPerMl: 300, mlPerPen: 3, unitsPerPen: 900, pensPerBox: 3 },
+    custom: { name: "Custom Insulin Pen", unitsPerMl: 100, mlPerPen: 3, unitsPerPen: 300, pensPerBox: 5 }
 };
 
 function updateInsulinPreset() {
     const key = document.getElementById('insulinSelect').value;
     const preset = presets[key];
-    if (preset) {
-        document.getElementById('customName').value = preset.name;
-        document.getElementById('unitsPerPen').value = preset.unitsPerPen;
-        document.getElementById('pensPerBox').value = preset.pensPerBox;
+    const customSection = document.getElementById('customSpecFields');
+    const unitsPerPenInput = document.getElementById('unitsPerPen');
+
+    if (key === 'custom') {
+        customSection.classList.remove('hidden');
+        unitsPerPenInput.removeAttribute('readonly');
+        unitsPerPenInput.classList.remove('bg-gray-100');
+        syncCustomUnits();
+    } else {
+        customSection.classList.add('hidden');
+        unitsPerPenInput.setAttribute('readonly', true);
+        unitsPerPenInput.classList.add('bg-gray-100');
+        if (preset) {
+            document.getElementById('customName').value = preset.name;
+            document.getElementById('unitsPerPen').value = preset.unitsPerPen;
+            document.getElementById('pensPerBox').value = preset.pensPerBox;
+            document.getElementById('customUnitsPerMl').value = preset.unitsPerMl;
+            document.getElementById('customMlPerPen').value = preset.mlPerPen;
+        }
     }
 }
 
+function syncCustomUnits() {
+    const unitsPerMl = parseFloat(document.getElementById('customUnitsPerMl').value) || 0;
+    const mlPerPen = parseFloat(document.getElementById('customMlPerPen').value) || 0;
+    const calculatedUnits = unitsPerMl * mlPerPen;
+    document.getElementById('unitsPerPen').value = calculatedUnits;
+}
+
 function calculateDispense() {
+    const key = document.getElementById('insulinSelect').value;
     const name = document.getElementById('customName').value || 'Insulin';
     const tdd = parseFloat(document.getElementById('tdd').value) || 0;
     const unitsPerPen = parseFloat(document.getElementById('unitsPerPen').value) || 300;
     const pensPerBox = parseFloat(document.getElementById('pensPerBox').value) || 5;
     const primeWaste = parseFloat(document.getElementById('primeWaste').value) || 0;
+    const unitsPerMl = parseFloat(document.getElementById('customUnitsPerMl').value) || 100;
 
     const totalDailyUnits = tdd + primeWaste;
     
@@ -171,13 +210,10 @@ function calculateDispense() {
 
     periods.forEach((period, index) => {
         const totalUnits = totalDailyUnits * period.days;
-        const exactPens = totalUnits / unitsPerPen;
+        const exactPens = unitsPerPen > 0 ? (totalUnits / unitsPerPen) : 0;
         const pensToDispense = Math.ceil(exactPens);
         const boxesToDispense = Math.ceil(pensToDispense / pensPerBox);
-        
-        // standard U-100 conversion estimation for total volume in mL
-        // unitsPerPen / 100 gives concentration ratio relative to standard 100U/mL
-        const totalVolumeMl = (pensToDispense * unitsPerPen) / (unitsPerPen / (unitsPerPen === 450 || unitsPerPen === 900 ? 300 : 100));
+        const totalVolumeMl = unitsPerMl > 0 ? (pensToDispense * unitsPerPen) / unitsPerMl : 0;
 
         const bgClass = index % 2 === 0 ? 'bg-white' : 'bg-orange-50';
 
@@ -187,15 +223,16 @@ function calculateDispense() {
             <td class="border border-gray-300 p-2 text-center text-gray-600">${exactPens.toFixed(2)}</td>
             <td class="border border-gray-300 p-2 text-center font-bold text-orange-800">${pensToDispense} Pen${pensToDispense > 1 ? 's' : ''}</td>
             <td class="border border-gray-300 p-2 text-center font-bold text-orange-900">${boxesToDispense} Box${boxesToDispense > 1 ? 'es' : ''}</td>
-            <td class="border border-gray-300 p-2 text-center">${((pensToDispense * unitsPerPen) / (unitsPerPen > 300 ? (unitsPerPen === 600 ? 200 : 300) : 100)).toFixed(1)} mL</td>
+            <td class="border border-gray-300 p-2 text-center">${totalVolumeMl.toFixed(1)} mL</td>
         </tr>`;
     });
 
     html += `</tbody></table>`;
     document.getElementById('dispenseTableContainer').innerHTML = html;
 
+    const currentMlPerPen = unitsPerMl > 0 ? (unitsPerPen / unitsPerMl) : 0;
     document.getElementById('dispenseNotes').innerHTML = 
-        `${name}: Each box contains ${pensPerBox} pens (${unitsPerPen} units/pen = ${unitsPerPen * pensPerBox} total units/box).`;
+        `${name} (U-${unitsPerMl}): Each pen contains ${currentMlPerPen.toFixed(1)} mL (${unitsPerPen} units/pen). Each box of ${pensPerBox} pens contains ${unitsPerPen * pensPerBox} total units.`;
 }
 
 window.onload = () => {
