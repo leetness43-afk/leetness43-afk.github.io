@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Insulin Pen Dispensing Calculator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @media print {
+            .no-print { display: none !important; }
+            body { margin: 0; padding: 0; background: white; color: black; }
+            .print-area {
+                width: 100%;
+                max-width: 100%;
+                margin: 0;
+                padding: 0.5cm;
+                box-shadow: none !important;
+                border: none !important;
+            }
+            table { page-break-inside: auto; border-collapse: collapse !important; }
+            tr { page-break-inside: avoid; page-break-after: auto; }
+            th, td { border: 1px solid #000 !important; color: #000 !important; }
+        }
+        body { font-family: 'Inter', sans-serif; }
+    </style>
+</head>
+<body class="bg-amber-50 min-h-screen p-4 sm:p-8">
+
+<div id="app" class="max-w-4xl mx-auto">
+    <header class="text-center mb-6 no-print">
+        <h1 class="text-3xl font-extrabold text-orange-800">Insulin Pen Dispensing Calculator</h1>
+        <p class="text-gray-600 mt-2">Calculate required pens and boxes for 30-day and 90-day supplies.</p>
+    </header>
+
+    <nav class="no-print mb-8 flex flex-wrap justify-center gap-4 border-b border-orange-200 pb-4">
+        <a href="index.html" class="text-gray-600 hover:text-orange-700 hover:bg-orange-100 px-4 py-2 rounded-md text-sm font-medium transition border border-transparent">
+            Basal and Mealtime Dosing Chart
+        </a>
+        <a href="pen-calculator.html" class="bg-orange-600 text-white px-4 py-2 rounded-md text-sm font-medium shadow-sm transition">
+            Insulin Pen Quantity Calculator
+        </a>
+        <a href="70-30-scale.html" class="text-gray-600 hover:text-purple-700 hover:bg-purple-50 px-4 py-2 rounded-md text-sm font-medium transition border border-transparent hover:border-purple-200">
+            Insulin 70/30 Dosing Chart
+        </a>
+        <a href="fructosamine-calculator.html" class="text-gray-600 hover:text-blue-700 hover:bg-blue-50 px-4 py-2 rounded-md text-sm font-medium transition border border-transparent hover:border-blue-200">
+            Fructosamine to A1c Calculator
+        </a>
+    </nav>
+
+    <div class="no-print bg-white p-6 rounded-xl shadow-lg mb-8 border border-orange-200">
+        <h3 class="text-lg font-medium text-gray-800 mb-3 border-b pb-1">1. Select Insulin & Package Profile</h3>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+            <div>
+                <label class="block text-sm font-medium text-gray-700">Insulin Brand / Type</label>
+                <select id="insulinSelect" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border focus:ring-orange-500 focus:border-orange-500" onchange="updateInsulinPreset(); calculateDispense();">
+                    <option value="novolog">NovoLog / Fiasp (U-100) - 3mL Pen</option>
+                    <option value="humalog">Humalog / Lyumjev (U-100) - 3mL Pen</option>
+                    <option value="lantus">Lantus / Semglee / Rezvoglar (U-100) - 3mL Pen</option>
+                    <option value="basaglar">Basaglar (U-100) - 3mL KwikPen</option>
+                    <option value="tresiba100">Tresiba (U-100) - 3mL Flextouch</option>
+                    <option value="tresiba200">Tresiba (U-200) - 3mL Flextouch</option>
+                    <option value="toujeo">Toujeo SoloStar (U-300) - 1.5mL Pen</option>
+                    <option value="toujeoMax">Toujeo Max SoloStar (U-300) - 3mL Pen</option>
+                    <option value="custom">Custom Insulin Spec</option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700">Custom Insulin Name Display</label>
+                <input type="text" id="customName" value="NovoLog FlexPen" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border" oninput="calculateDispense()">
+            </div>
+        </div>
+
+        <h3 class="text-lg font-medium text-gray-800 mb-3 border-b pb-1">2. Dosing & Package Specifications</h3>
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-2">
+            <div>
+                <label class="block text-xs font-semibold text-gray-600 mb-1">Total Daily Dose (Units/Day)</label>
+                <input type="number" id="tdd" value="30" min="1" step="1" class="w-full p-2 border rounded focus:ring-orange-500 focus:border-orange-500" oninput="calculateDispense()">
+            </div>
+            <div>
+                <label class="block text-xs font-semibold text-gray-600 mb-1">Units per Pen</label>
+                <input type="number" id="unitsPerPen" value="300" min="10" step="10" class="w-full p-2 border rounded" oninput="calculateDispense()">
+            </div>
+            <div>
+                <label class="block text-xs font-semibold text-gray-600 mb-1">Pens per Box</label>
+                <input type="number" id="pensPerBox" value="5" min="1" step="1" class="w-full p-2 border rounded" oninput="calculateDispense()">
+            </div>
+            <div>
+                <label class="block text-xs font-semibold text-gray-600 mb-1">Priming Waste (Units/Day)</label>
+                <input type="number" id="primeWaste" value="2" min="0" step="1" class="w-full p-2 border rounded" oninput="calculateDispense()">
+            </div>
+        </div>
+    </div>
+
+    <div class="print-area bg-white p-6 rounded-xl shadow-2xl border border-gray-300">
+        <div class="flex justify-between items-center mb-6 border-b pb-4">
+            <div>
+                <h1 class="text-2xl font-bold text-gray-800">Insulin Dispensing Summary</h1>
+                <p id="dispenseSummaryHeader" class="text-sm text-gray-500 mt-1"></p>
+            </div>
+        </div>
+
+        <div id="dispenseTableContainer" class="overflow-x-auto"></div>
+
+        <div id="dispenseNotes" class="mt-6 text-sm text-gray-800 border-t pt-4 text-center font-medium"></div>
+
+        <div class="mt-4 text-xs text-gray-500 border-t pt-4 italic">
+            <strong>Pharmacy Note:</strong> Calculations round up to the nearest whole pen and unbroken box package where full unbroken boxes are required by regional dispensing guidelines. Priming waste defaults to 2 units per dose.
+        </div>
+    </div>
+
+    <div class="text-center mt-8 no-print pb-12">
+        <button onclick="window.focus(); window.print();"
+            class="bg-orange-600 hover:bg-orange-700 text-white font-bold py-4 px-10 rounded-full shadow-xl transition transform hover:scale-105">
+            🖨️ Print or Save as PDF
+        </button>
+    </div>
+</div>
+
+<script>
+const presets = {
+    novolog: { name: "NovoLog FlexPen (U-100)", unitsPerPen: 300, pensPerBox: 5 },
+    humalog: { name: "Humalog KwikPen (U-100)", unitsPerPen: 300, pensPerBox: 5 },
+    lantus: { name: "Lantus SoloStar (U-100)", unitsPerPen: 300, pensPerBox: 5 },
+    basaglar: { name: "Basaglar KwikPen (U-100)", unitsPerPen: 300, pensPerBox: 5 },
+    tresiba100: { name: "Tresiba FlexTouch (U-100)", unitsPerPen: 300, pensPerBox: 5 },
+    tresiba200: { name: "Tresiba FlexTouch (U-200)", unitsPerPen: 600, pensPerBox: 3 },
+    toujeo: { name: "Toujeo SoloStar (U-300)", unitsPerPen: 450, pensPerBox: 3 },
+    toujeoMax: { name: "Toujeo Max SoloStar (U-300)", unitsPerPen: 900, pensPerBox: 3 },
+    custom: { name: "Custom Insulin Pen", unitsPerPen: 300, pensPerBox: 5 }
+};
+
+function updateInsulinPreset() {
+    const key = document.getElementById('insulinSelect').value;
+    const preset = presets[key];
+    if (preset) {
+        document.getElementById('customName').value = preset.name;
+        document.getElementById('unitsPerPen').value = preset.unitsPerPen;
+        document.getElementById('pensPerBox').value = preset.pensPerBox;
+    }
+}
+
+function calculateDispense() {
+    const name = document.getElementById('customName').value || 'Insulin';
+    const tdd = parseFloat(document.getElementById('tdd').value) || 0;
+    const unitsPerPen = parseFloat(document.getElementById('unitsPerPen').value) || 300;
+    const pensPerBox = parseFloat(document.getElementById('pensPerBox').value) || 5;
+    const primeWaste = parseFloat(document.getElementById('primeWaste').value) || 0;
+
+    const totalDailyUnits = tdd + primeWaste;
+    
+    document.getElementById('dispenseSummaryHeader').textContent = 
+        `Dosing Profile: ${tdd} units/day + ${primeWaste} units/day priming safety margin (${totalDailyUnits} units total/day)`;
+
+    const periods = [
+        { name: "30-Day Supply", days: 30 },
+        { name: "60-Day Supply", days: 60 },
+        { name: "90-Day Supply", days: 90 }
+    ];
+
+    let html = `<table class="min-w-full border-collapse border border-gray-300 text-sm">
+        <thead class="bg-orange-600 text-white">
+            <tr>
+                <th class="border border-gray-300 p-2">Supply Period</th>
+                <th class="border border-gray-300 p-2">Total Units Needed</th>
+                <th class="border border-gray-300 p-2">Exact Pens Needed</th>
+                <th class="border border-gray-300 p-2">Pens to Dispense</th>
+                <th class="border border-gray-300 p-2">Full Boxes (Unbroken)</th>
+                <th class="border border-gray-300 p-2">Total Volume (mL)</th>
+            </tr>
+        </thead><tbody>`;
+
+    periods.forEach((period, index) => {
+        const totalUnits = totalDailyUnits * period.days;
+        const exactPens = totalUnits / unitsPerPen;
+        const pensToDispense = Math.ceil(exactPens);
+        const boxesToDispense = Math.ceil(pensToDispense / pensPerBox);
+        
+        // standard U-100 conversion estimation for total volume in mL
+        // unitsPerPen / 100 gives concentration ratio relative to standard 100U/mL
+        const totalVolumeMl = (pensToDispense * unitsPerPen) / (unitsPerPen / (unitsPerPen === 450 || unitsPerPen === 900 ? 300 : 100));
+
+        const bgClass = index % 2 === 0 ? 'bg-white' : 'bg-orange-50';
+
+        html += `<tr class="${bgClass}">
+            <td class="border border-gray-300 p-2 font-bold text-gray-800">${period.name}</td>
+            <td class="border border-gray-300 p-2 text-center">${totalUnits.toLocaleString()} U</td>
+            <td class="border border-gray-300 p-2 text-center text-gray-600">${exactPens.toFixed(2)}</td>
+            <td class="border border-gray-300 p-2 text-center font-bold text-orange-800">${pensToDispense} Pen${pensToDispense > 1 ? 's' : ''}</td>
+            <td class="border border-gray-300 p-2 text-center font-bold text-orange-900">${boxesToDispense} Box${boxesToDispense > 1 ? 'es' : ''}</td>
+            <td class="border border-gray-300 p-2 text-center">${((pensToDispense * unitsPerPen) / (unitsPerPen > 300 ? (unitsPerPen === 600 ? 200 : 300) : 100)).toFixed(1)} mL</td>
+        </tr>`;
+    });
+
+    html += `</tbody></table>`;
+    document.getElementById('dispenseTableContainer').innerHTML = html;
+
+    document.getElementById('dispenseNotes').innerHTML = 
+        `${name}: Each box contains ${pensPerBox} pens (${unitsPerPen} units/pen = ${unitsPerPen * pensPerBox} total units/box).`;
+}
+
+window.onload = () => {
+    updateInsulinPreset();
+    calculateDispense();
+};
+</script>
+</body>
+</html>
