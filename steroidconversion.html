@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Corticosteroid Conversion Calculator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @media print {
+            @page {
+                size: portrait;
+                margin: 0;
+            }
+
+            .no-print { display: none !important; }
+            
+            html, body {
+                margin: 0 !important;
+                padding: 0 !important;
+                background: white !important;
+                color: black !important;
+                width: 100vw;
+                height: 100vh;
+                overflow: hidden;
+            }
+
+            .print-area {
+                width: 100% !important;
+                max-width: 100% !important;
+                margin: 0 auto !important;
+                padding: 1.2cm !important;
+                box-shadow: none !important;
+                border: none !important;
+                background: white !important;
+                color: black !important;
+                transform: scale(0.92);
+                transform-origin: top center;
+            }
+
+            table { page-break-inside: avoid !important; border-collapse: collapse !important; }
+            tr { page-break-inside: avoid !important; page-break-after: auto; }
+            th, td { border: 1px solid #000 !important; color: #000 !important; padding: 6px 8px !important; background: white !important; }
+            .print-text-dark { color: #000 !important; }
+            .print-bg-light { background-color: #f8fafc !important; }
+        }
+        body { font-family: 'Inter', sans-serif; }
+    </style>
+</head>
+<body class="bg-black text-slate-100 min-h-screen p-4 sm:p-8">
+
+<header class="no-print sticky top-0 z-50 bg-zinc-950/95 backdrop-blur-md border-b border-zinc-800 shadow-md -mx-4 -mt-4 sm:-mx-8 sm:-mt-8 mb-8 px-4 py-3">
+    <nav class="max-w-7xl mx-auto flex flex-wrap items-center justify-center gap-2 text-xs sm:text-sm font-medium">
+        <a href="index.html" class="text-zinc-400 hover:text-indigo-400 hover:bg-zinc-900 px-3.5 py-1.5 rounded-lg transition border border-transparent">
+            Basal and Mealtime Dosing Chart
+        </a>
+        <a href="calcium-correction.html" class="text-zinc-400 hover:text-indigo-400 hover:bg-zinc-900 px-3.5 py-1.5 rounded-lg transition border border-transparent">
+            Corrected Calcium
+        </a>
+        <a href="fructosamine-calculator.html" class="text-zinc-400 hover:text-indigo-400 hover:bg-zinc-900 px-3.5 py-1.5 rounded-lg transition border border-transparent">
+            Fructosamine to A1c Calculator
+        </a>
+        <a href="steroid-calculator.html" class="bg-indigo-600 text-white px-3.5 py-1.5 rounded-lg shadow-sm font-semibold transition flex items-center gap-1.5">
+            Steroid Conversion Calculator
+            <span class="bg-indigo-950 text-indigo-300 text-[10px] font-semibold px-1.5 py-0.5 rounded uppercase tracking-wider border border-indigo-800">beta</span>
+        </a>
+        <a href="http://www.endocrineinfo.org/levothyroxinedose.html" class="text-zinc-400 hover:text-indigo-400 hover:bg-zinc-900 px-3.5 py-1.5 rounded-lg transition border border-transparent flex items-center gap-1.5">
+            Levothyroxine Average Dose Calculator
+            <span class="bg-amber-950 text-amber-300 text-[10px] font-semibold px-1.5 py-0.5 rounded uppercase tracking-wider border border-amber-800">beta</span>
+        </a>
+    </nav>
+</header>
+
+<div id="app" class="max-w-4xl mx-auto">
+    <header class="text-center mb-6 no-print">
+        <h1 class="text-3xl font-extrabold text-indigo-400 tracking-tight">Corticosteroid Conversion Calculator</h1>
+        <p class="text-zinc-400 mt-2">Convert oral (PO) and intravenous (IV) systemic corticosteroids to equivalent dosages.</p>
+    </header>
+
+    <div class="no-print bg-zinc-900 p-6 rounded-xl shadow-xl mb-8 border border-zinc-800">
+        <h3 class="text-lg font-medium text-zinc-200 mb-3 border-b border-zinc-800 pb-1">1. Select Current Regimen</h3>
+        
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            <div>
+                <label class="block text-sm font-medium text-zinc-300 mb-1">Corticosteroid Agent</label>
+                <select id="steroidSelect" class="block w-full rounded-md border-zinc-700 bg-zinc-950 shadow-sm p-2 border focus:ring-indigo-500 focus:border-indigo-500 font-semibold text-indigo-400" onchange="calculateConversion()">
+                    <option value="cortisone">Cortisone</option>
+                    <option value="hydrocortisone">Hydrocortisone</option>
+                    <option value="prednisone" selected>Prednisone</option>
+                    <option value="prednisolone">Prednisolone</option>
+                    <option value="methylprednisolone">Methylprednisolone</option>
+                    <option value="triamcinolone">Triamcinolone</option>
+                    <option value="dexamethasone">Dexamethasone</option>
+                    <option value="betamethasone">Betamethasone</option>
+                </select>
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium text-zinc-300 mb-1">Route</label>
+                <select id="routeSelect" class="block w-full rounded-md border-zinc-700 bg-zinc-950 shadow-sm p-2 border focus:ring-indigo-500 focus:border-indigo-500 font-semibold text-zinc-200" onchange="calculateConversion()">
+                    <option value="PO">Oral (PO)</option>
+                    <option value="IV">Intravenous / Intramuscular (IV/IM)</option>
+                </select>
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium text-zinc-300 mb-1">Current Dose (mg)</label>
+                <input type="number" id="doseInput" value="20" min="0" step="any" class="block w-full rounded-md border-zinc-700 bg-zinc-950 shadow-sm p-2 border focus:ring-indigo-500 focus:border-indigo-500 font-semibold text-zinc-200" oninput="calculateConversion()" />
+            </div>
+        </div>
+
+        <div class="bg-indigo-950/40 p-3 rounded-lg border border-indigo-900/60 text-xs text-indigo-200">
+            <strong>Clinical Note:</strong> Conversions are based on relative anti-inflammatory (glucocorticoid) potencies. Always titrate according to clinical response, duration of therapy, and mineralocorticoid requirements.
+        </div>
+    </div>
+
+    <div class="print-area bg-zinc-900 p-6 rounded-xl shadow-2xl border border-zinc-800">
+        <div class="flex justify-between items-center mb-6 border-b border-zinc-800 pb-4">
+            <div>
+                <h1 class="text-2xl font-bold text-zinc-100 print-text-dark">Equivalence & Conversion Table</h1>
+                <p id="calcHeader" class="text-sm text-zinc-400 mt-1 print-text-dark">Based on entry</p>
+            </div>
+            <button onclick="window.print()" class="no-print bg-zinc-800 hover:bg-zinc-700 text-zinc-200 font-medium px-3.5 py-2 rounded-lg text-xs shadow border border-zinc-700 transition">
+                🖨️ Print / Save PDF
+            </button>
+        </div>
+
+        <div class="mb-6 p-6 bg-zinc-950 border border-indigo-900/80 rounded-xl text-center print-bg-light">
+            <div class="text-sm font-semibold text-indigo-400 uppercase tracking-wide print-text-dark">Hydrocortisone Equivalent Base Dose</div>
+            <div id="hydrocortisoneEquivalentOutput" class="text-4xl font-black text-indigo-300 my-2 print-text-dark">--</div>
+            <div id="baselineContext" class="text-xs text-zinc-400 print-text-dark">Standard reference ratio anchor</div>
+        </div>
+
+        <div id="conversionTableContainer" class="overflow-x-auto mb-6"></div>
+
+        <div class="mt-6 text-xs text-zinc-500 border-t border-zinc-800 pt-4 italic print-text-dark">
+            <strong>Pharmacology Note:</strong> Relative potencies are benchmarked against Hydrocortisone = 1 (Glucocorticoid) and Hydrocortisone = 1 (Mineralocorticoid). PO to IV conversion for Hydrocortisone, Prednisolone, Methylprednisolone, and Dexamethasone is generally considered 1:1 due to high oral bioavailability. Cortisone and Prednisone require hepatic activation and are oral only.
+        </div>
+    </div>
+</div>
+
+<script>
+// Steroid database with Glucocorticoid (Anti-inflammatory) Potency and Mineralocorticoid Potency relative to Hydrocortisone = 1
+const STEROIDS = {
+    cortisone: { name: "Cortisone", equivPoDose: 25, ivAvailable: false, gluco: "0.8", mineralo: "0.8" },
+    hydrocortisone: { name: "Hydrocortisone", equivPoDose: 20, ivAvailable: true, gluco: "1", mineralo: "1" },
+    prednisone: { name: "Prednisone", equivPoDose: 5, ivAvailable: false, gluco: "4", mineralo: "0.8" },
+    prednisolone: { name: "Prednisolone", equivPoDose: 5, ivAvailable: true, gluco: "4", mineralo: "0.8" },
+    methylprednisolone: { name: "Methylprednisolone", equivPoDose: 4, ivAvailable: true, gluco: "5", mineralo: "0.5" },
+    triamcinolone: { name: "Triamcinolone", equivPoDose: 4, ivAvailable: true, gluco: "5", mineralo: "0" },
+    dexamethasone: { name: "Dexamethasone", equivPoDose: 0.75, ivAvailable: true, gluco: "25–30", mineralo: "0" },
+    betamethasone: { name: "Betamethasone", equivPoDose: 0.6, ivAvailable: true, gluco: "25–30", mineralo: "0" }
+};
+
+function calculateConversion() {
+    const selectedKey = document.getElementById('steroidSelect').value;
+    const route = document.getElementById('routeSelect').value;
+    const currentDose = parseFloat(document.getElementById('doseInput').value) || 0;
+
+    const sourceSteroid = STEROIDS[selectedKey];
+    
+    // Bioavailability Factor Adjustments (general systemic steroids are ~1:1 PO to IV)
+    const bioFactor = 1.0; 
+    const effectivePoDose = currentDose * bioFactor;
+
+    // Calculate equivalent Hydrocortisone units
+    const hydrocortisoneEquiv = (effectivePoDose / sourceSteroid.equivPoDose) * STEROIDS.hydrocortisone.equivPoDose;
+
+    // Update Header
+    document.getElementById('calcHeader').textContent = `Entered: ${currentDose} mg ${sourceSteroid.name} (${route})`;
+    document.getElementById('hydrocortisoneEquivalentOutput').textContent = `${hydrocortisoneEquiv.toFixed(1)} mg Hydrocortisone PO`;
+
+    renderTable(selectedKey, hydrocortisoneEquiv);
+}
+
+function renderTable(selectedKey, hydrocortisoneEquiv) {
+    let html = `<table class="min-w-full border-collapse border border-zinc-800 text-sm">
+        <thead class="bg-indigo-950 text-indigo-200 border-b border-zinc-800">
+            <tr>
+                <th class="border border-zinc-800 p-2 text-left">Steroid Agent</th>
+                <th class="border border-zinc-800 p-2 text-center">Equivalent Oral (PO) Dose</th>
+                <th class="border border-zinc-800 p-2 text-center">Equivalent IV/IM Dose</th>
+                <th class="border border-zinc-800 p-2 text-center">Relative Glucocorticoid Potency</th>
+                <th class="border border-zinc-800 p-2 text-center">Relative Mineralocorticoid Potency</th>
+            </tr>
+        </thead>
+        <tbody>`;
+
+    Object.keys(STEROIDS).forEach(key => {
+        const item = STEROIDS[key];
+        const isSelected = key === selectedKey;
+        const rowClass = isSelected ? "bg-indigo-950/60 font-bold border-indigo-700" : "bg-zinc-900/80 hover:bg-zinc-800/80";
+
+        const poEquiv = (hydrocortisoneEquiv / STEROIDS.hydrocortisone.equivPoDose) * item.equivPoDose;
+        const ivText = item.ivAvailable ? `${poEquiv.toFixed(2)} mg` : "N/A (Oral Only)";
+
+        html += `
+            <tr class="${rowClass}">
+                <td class="border border-zinc-800 p-2 text-zinc-100">${item.name} ${isSelected ? '📍' : ''}</td>
+                <td class="border border-zinc-800 p-2 text-center text-indigo-300 font-semibold">${poEquiv.toFixed(2)} mg</td>
+                <td class="border border-zinc-800 p-2 text-center text-zinc-300">${ivText}</td>
+                <td class="border border-zinc-800 p-2 text-center text-xs text-zinc-300">${item.gluco}</td>
+                <td class="border border-zinc-800 p-2 text-center text-xs text-zinc-300">${item.mineralo}</td>
+            </tr>
+        `;
+    });
+
+    html += `</tbody></table>`;
+    document.getElementById('conversionTableContainer').innerHTML = html;
+}
+
+window.onload = () => {
+    calculateConversion();
+};
+</script>
+</body>
+</html>
