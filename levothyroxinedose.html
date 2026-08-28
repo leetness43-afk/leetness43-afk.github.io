@@ -1,33 +1,298 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Levothyroxine Dosing Calculator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @media print {
+            @page {
+                size: portrait;
+                margin: 0;
+            }
+
+            .no-print { display: none !important; }
+            
+            html, body {
+                margin: 0 !important;
+                padding: 0 !important;
+                background: white !important;
+                width: 100vw;
+                height: 100vh;
+                overflow: hidden;
+            }
+
+            .print-area {
+                width: 100% !important;
+                max-width: 100% !important;
+                margin: 0 auto !important;
+                padding: 1.2cm !important;
+                box-shadow: none !important;
+                border: none !important;
+                transform: scale(0.92);
+                transform-origin: top center;
+            }
+
+            table { page-break-inside: avoid !important; border-collapse: collapse !important; }
+            tr { page-break-inside: avoid !important; page-break-after: auto; }
+            th, td { border: 1px solid #000 !important; color: #000 !important; padding: 4px 6px !important; }
+        }
+        body { font-family: 'Inter', sans-serif; }
+    </style>
+</head>
+<body class="bg-pink-50 min-h-screen p-4 sm:p-8">
+
 <!-- Sticky Top Navigation Bar -->
-<header class="no-print sticky top-0 z-50 bg-zinc-950/95 backdrop-blur-md border-b border-zinc-800 shadow-md -mx-4 -mt-4 sm:-mx-8 sm:-mt-8 mb-8 px-4 py-3">
+<header class="no-print sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b border-pink-200 shadow-sm -mx-4 -mt-4 sm:-mx-8 sm:-mt-8 mb-8 px-4 py-3">
     <nav class="max-w-7xl mx-auto flex flex-wrap items-center justify-center gap-2 text-xs sm:text-sm font-medium">
-        <a href="index.html" class="text-zinc-400 hover:text-indigo-400 hover:bg-zinc-900 px-3.5 py-1.5 rounded-lg transition border border-transparent">
+        <a href="index.html" class="text-gray-600 hover:text-pink-800 hover:bg-pink-50 px-3.5 py-1.5 rounded-lg transition border border-transparent">
             Basal and Mealtime Dosing Chart
         </a>
-        <a href="calcium-correction.html" class="text-zinc-400 hover:text-indigo-400 hover:bg-zinc-900 px-3.5 py-1.5 rounded-lg transition border border-transparent">
+        <a href="calcium-correction.html" class="text-gray-600 hover:text-pink-800 hover:bg-pink-50 px-3.5 py-1.5 rounded-lg transition border border-transparent">
             Corrected Calcium
         </a>
-        <a href="fructosamine-calculator.html" class="text-zinc-400 hover:text-indigo-400 hover:bg-zinc-900 px-3.5 py-1.5 rounded-lg transition border border-transparent">
+        <a href="fructosamine-calculator.html" class="text-gray-600 hover:text-pink-800 hover:bg-pink-50 px-3.5 py-1.5 rounded-lg transition border border-transparent">
             Fructosamine to A1c Calculator
         </a>
-        <a href="70-30-scale.html" class="text-zinc-400 hover:text-indigo-400 hover:bg-zinc-900 px-3.5 py-1.5 rounded-lg transition border border-transparent">
+        <a href="70-30-scale.html" class="text-gray-600 hover:text-pink-800 hover:bg-pink-50 px-3.5 py-1.5 rounded-lg transition border border-transparent">
             Insulin 70/30 Dosing Chart
         </a>
-        <a href="http://www.endocrineinfo.org/insulinpen.html" class="text-zinc-400 hover:text-indigo-400 hover:bg-zinc-900 px-3.5 py-1.5 rounded-lg transition border border-transparent flex items-center gap-1.5">
+        <a href="http://www.endocrineinfo.org/insulinpen.html" class="text-gray-600 hover:text-pink-800 hover:bg-pink-50 px-3.5 py-1.5 rounded-lg transition border border-transparent flex items-center gap-1.5">
             Insulin Dispensing Guide
-            <span class="bg-amber-950 text-amber-300 text-[10px] font-semibold px-1.5 py-0.5 rounded uppercase tracking-wider border border-amber-800">beta</span>
+            <span class="bg-amber-100 text-amber-800 text-[10px] font-semibold px-1.5 py-0.5 rounded uppercase tracking-wider">beta</span>
         </a>
-        <a href="http://www.endocrineinfo.org/levothyroxinedose.html" class="text-zinc-400 hover:text-indigo-400 hover:bg-zinc-900 px-3.5 py-1.5 rounded-lg transition border border-transparent flex items-center gap-1.5">
+        <a href="http://www.endocrineinfo.org/levothyroxinedose.html" class="bg-pink-700 text-white px-3.5 py-1.5 rounded-lg shadow-sm font-semibold transition flex items-center gap-1.5">
             Levothyroxine Average Dose Calculator
-            <span class="bg-amber-950 text-amber-300 text-[10px] font-semibold px-1.5 py-0.5 rounded uppercase tracking-wider border border-amber-800">beta</span>
+            <span class="bg-pink-100 text-pink-900 text-[10px] font-semibold px-1.5 py-0.5 rounded uppercase tracking-wider">beta</span>
         </a>
-        <a href="steroid-calculator.html" class="bg-indigo-600 text-white px-3.5 py-1.5 rounded-lg shadow-sm font-semibold transition flex items-center gap-1.5">
-            Steroid Conversion Calculator
-            <span class="bg-indigo-950 text-indigo-300 text-[10px] font-semibold px-1.5 py-0.5 rounded uppercase tracking-wider border border-indigo-800">beta</span>
-        </a>
-        <a href="http://www.endocrineinfo.org/testosterone.html" class="text-zinc-400 hover:text-indigo-400 hover:bg-zinc-900 px-3.5 py-1.5 rounded-lg transition border border-transparent flex items-center gap-1.5">
+        <a href="http://www.endocrineinfo.org/testosterone.html" class="text-gray-600 hover:text-pink-800 hover:bg-pink-50 px-3.5 py-1.5 rounded-lg transition border border-transparent flex items-center gap-1.5">
             Testosterone Dose Guide
-            <span class="bg-amber-950 text-amber-300 text-[10px] font-semibold px-1.5 py-0.5 rounded uppercase tracking-wider border border-amber-800">beta</span>
+            <span class="bg-amber-100 text-amber-800 text-[10px] font-semibold px-1.5 py-0.5 rounded uppercase tracking-wider">beta</span>
         </a>
     </nav>
 </header>
+
+<div id="app" class="max-w-4xl mx-auto">
+    <header class="text-center mb-6 no-print">
+        <h1 class="text-3xl font-extrabold text-pink-800">Levothyroxine Weekly Dosing Calculator</h1>
+        <p class="text-gray-600 mt-2">Calculate cumulative weekly dose, average daily intake, and generate patient directions.</p>
+    </header>
+
+    <div class="no-print bg-white p-6 rounded-xl shadow-lg mb-8 border border-pink-200">
+        <h3 class="text-lg font-medium text-gray-800 mb-3 border-b pb-1">1. Select Tablet Strength</h3>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Levothyroxine Tablet Strength</label>
+                <select id="strengthSelect" class="block w-full rounded-md border-gray-300 shadow-sm p-2 border focus:ring-pink-500 focus:border-pink-500 font-semibold text-pink-900" onchange="calculateDose()">
+                    <option value="25">25 mcg (Orange)</option>
+                    <option value="50">50 mcg (White)</option>
+                    <option value="75">75 mcg (Violet)</option>
+                    <option value="88">88 mcg (Olive)</option>
+                    <option value="100">100 mcg (Yellow)</option>
+                    <option value="112">112 mcg (Rose)</option>
+                    <option value="125" selected>125 mcg (Brown)</option>
+                    <option value="137">137 mcg (Turquoise)</option>
+                    <option value="150">150 mcg (Blue)</option>
+                    <option value="175">175 mcg (Lilac)</option>
+                    <option value="200">200 mcg (Pink)</option>
+                    <option value="300">300 mcg (Green)</option>
+                </select>
+            </div>
+            <div class="flex items-center text-xs text-gray-500 bg-pink-50 p-3 rounded-lg border border-pink-100">
+                <span><strong>Clinical Note:</strong> Adjusting daily pill multipliers (0, 0.5, 1, 1.5, 2) accounts for regimen fine-tuning without changing tablet strength.</span>
+            </div>
+        </div>
+
+        <!-- Single Tablet Color Reference Chart -->
+        <div class="mb-6 bg-pink-50/60 p-4 rounded-lg border border-pink-200 flex flex-col items-center">
+            <h4 class="text-xs font-bold text-pink-900 uppercase tracking-wider mb-3">Levothyroxine Color Code</h4>
+            <div class="bg-white p-3 rounded border border-pink-100 shadow-sm text-center w-full max-w-md">
+                <img src="https://www.synthroid.com/content/dam/synthroidivy/images/graphics/pills-diagram-desktop.png" alt="Levothyroxine Color Code by Dose" class="max-h-48 mx-auto object-contain" />
+            </div>
+        </div>
+
+        <h3 class="text-lg font-medium text-gray-800 mb-3 border-b pb-1">2. Weekly Dosing Schedule</h3>
+        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-7 gap-3 mb-2" id="daysContainer">
+            <!-- Dynamically generated via Javascript -->
+        </div>
+    </div>
+
+    <div class="print-area bg-white p-6 rounded-xl shadow-2xl border border-gray-300">
+        <div class="flex justify-between items-center mb-6 border-b pb-4">
+            <div>
+                <h1 class="text-2xl font-bold text-gray-800">Dosing Summary & Patient Instructions</h1>
+                <p id="calcHeader" class="text-sm text-gray-500 mt-1"></p>
+            </div>
+        </div>
+
+        <div class="mb-6 p-6 bg-pink-50 border border-pink-200 rounded-xl text-center">
+            <div class="text-sm font-semibold text-pink-700 uppercase tracking-wide">Calculated Average Daily Dose</div>
+            <div id="averageDoseOutput" class="text-4xl font-black text-pink-900 my-2">--</div>
+            <div id="weeklyTotalOutput" class="text-xs text-gray-600"></div>
+        </div>
+
+        <div id="scheduleTableContainer" class="overflow-x-auto mb-6"></div>
+
+        <div class="border-t pt-4">
+            <h4 class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Patient Directions (Sig)</h4>
+            <div class="flex items-center gap-2">
+                <div id="patientInstructions" class="flex-1 p-4 bg-gray-50 border border-gray-200 rounded-lg text-lg font-bold text-gray-800 text-center">
+                    --
+                </div>
+                <button id="copySigBtn" onclick="copyPatientSig()" class="no-print bg-pink-700 hover:bg-pink-800 text-white font-semibold px-4 py-4 rounded-lg shadow transition flex items-center gap-1.5 text-sm whitespace-nowrap">
+                    📋 Copy
+                </button>
+            </div>
+        </div>
+
+        <div class="mt-6 text-xs text-gray-500 border-t pt-4 italic">
+            <strong>Pharmacy Note:</strong> Average daily dose is calculated as (Total Weekly Dose ÷ 7 Days) and rounded to the nearest whole microgram. Ensure the patient is counseled on consistent timing (typically morning on an empty stomach with water).
+        </div>
+    </div>
+</div>
+
+<script>
+const daysOfWeek = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+
+function initDays() {
+    const container = document.getElementById('daysContainer');
+    container.innerHTML = '';
+    
+    daysOfWeek.forEach((day, index) => {
+        const defaultVal = index === 6 ? "0.5" : "1";
+        
+        const dayDiv = document.createElement('div');
+        dayDiv.className = 'bg-pink-50/50 p-2 rounded-lg border border-pink-200 text-center';
+        dayDiv.innerHTML = `
+            <label class="block text-xs font-bold text-pink-900 mb-1">${day}</label>
+            <select id="day-${index}" class="day-select w-full p-1.5 border rounded text-sm bg-white focus:ring-pink-500 focus:border-pink-500" onchange="calculateDose()">
+                <option value="0">Skip (0)</option>
+                <option value="0.5" ${defaultVal === "0.5" ? "selected" : ""}>1/2 Pill</option>
+                <option value="1" ${defaultVal === "1" ? "selected" : ""}>1 Pill</option>
+                <option value="1.5">1.5 Pills</option>
+                <option value="2">2 Pills</option>
+            </select>
+        `;
+        container.appendChild(dayDiv);
+    });
+}
+
+function calculateDose() {
+    const strength = parseFloat(document.getElementById('strengthSelect').value) || 0;
+    let totalWeeklyDose = 0;
+    const dayMultipliers = [];
+
+    daysOfWeek.forEach((_, index) => {
+        const val = parseFloat(document.getElementById(`day-${index}`).value) || 0;
+        dayMultipliers.push(val);
+        totalWeeklyDose += val * strength;
+    });
+
+    const avgDailyDose = Math.round(totalWeeklyDose / 7);
+
+    document.getElementById('calcHeader').textContent = `Base Strength: ${strength} mcg tablet schedule`;
+    document.getElementById('averageDoseOutput').textContent = `Average dose of Levothyroxine: ${avgDailyDose} mcg`;
+    document.getElementById('weeklyTotalOutput').textContent = `Total Weekly Cumulative Dose: ${totalWeeklyDose.toFixed(2)} mcg`;
+
+    renderTable(strength, dayMultipliers);
+    renderInstructions(strength, dayMultipliers);
+}
+
+function renderTable(strength, multipliers) {
+    let html = `<table class="min-w-full border-collapse border border-gray-300 text-sm">
+        <thead class="bg-pink-700 text-white">
+            <tr>
+                ${daysOfWeek.map(d => `<th class="border border-gray-300 p-2 text-center">${d}</th>`).join('')}
+            </tr>
+        </thead>
+        <tbody>
+            <tr class="bg-white">
+                ${multipliers.map(m => {
+                    let label = `${m} pill`;
+                    if (m === 0.5) label = "1/2 pill";
+                    if (m === 0) label = "Skip";
+                    return `<td class="border border-gray-300 p-2 text-center font-bold text-gray-800">${label}</td>`;
+                }).join('')}
+            </tr>
+            <tr class="bg-pink-50">
+                ${multipliers.map(m => `<td class="border border-gray-300 p-2 text-center text-xs text-gray-600">${(m * strength).toFixed(1)} mcg</td>`).join('')}
+            </tr>
+        </tbody>
+    </table>`;
+    
+    document.getElementById('scheduleTableContainer').innerHTML = html;
+}
+
+function renderInstructions(strength, multipliers) {
+    const groups = { 1: [], 0.5: [], 0: [], 1.5: [], 2: [] };
+
+    multipliers.forEach((m, idx) => {
+        if (groups[m] !== undefined) {
+            groups[m].push(daysOfWeek[idx]);
+        }
+    });
+
+    if (groups[1].length === 7) {
+        document.getElementById('patientInstructions').textContent = `Take Levothyroxine ${strength} mcg every day.`;
+        return;
+    }
+
+    if (groups[1].length > 0 && groups[1].length < 7) {
+        const exceptionTypes = Object.keys(groups).filter(k => k !== "1" && groups[k].length > 0);
+        
+        if (exceptionTypes.length === 1) {
+            const excKey = exceptionTypes[0];
+            const excDays = groups[excKey];
+            const daysText = excDays.join(', ');
+            
+            let excAction = "";
+            if (excKey === "0.5") excAction = "take half a pill";
+            else if (excKey === "0") excAction = "skip your dose";
+            else if (excKey === "1.5") excAction = "take 1.5 pills";
+            else if (excKey === "2") excAction = "take 2 pills";
+
+            document.getElementById('patientInstructions').textContent = 
+                `Take Levothyroxine ${strength} mcg everyday except ${daysText} where you ${excAction}.`;
+            return;
+        }
+    }
+
+    const descriptions = [];
+    if (groups[1].length) descriptions.push(`1 pill (${strength} mcg) on ${groups[1].join(', ')}`);
+    if (groups[0.5].length) descriptions.push(`half a pill (${strength / 2} mcg) on ${groups[0.5].join(', ')}`);
+    if (groups[1.5].length) descriptions.push(`1.5 pills (${strength * 1.5} mcg) on ${groups[1.5].join(', ')}`);
+    if (groups[2].length) descriptions.push(`2 pills (${strength * 2} mcg) on ${groups[2].join(', ')}`);
+    if (groups[0].length) descriptions.push(`skip dose on ${groups[0].join(', ')}`);
+
+    document.getElementById('patientInstructions').textContent = 
+        `Take Levothyroxine ${strength} mcg: ` + descriptions.join('; ') + '.';
+}
+
+function copyPatientSig() {
+    const textToCopy = document.getElementById('patientInstructions').textContent.trim();
+    if (!textToCopy || textToCopy === '--') return;
+
+    navigator.clipboard.writeText(textToCopy).then(() => {
+        const btn = document.getElementById('copySigBtn');
+        const originalText = btn.innerHTML;
+        btn.innerHTML = '✅ Copied!';
+        btn.classList.remove('bg-pink-700', 'hover:bg-pink-800');
+        btn.classList.add('bg-green-600', 'hover:bg-green-700');
+
+        setTimeout(() => {
+            btn.innerHTML = originalText;
+            btn.classList.remove('bg-green-600', 'hover:bg-green-700');
+            btn.classList.add('bg-pink-700', 'hover:bg-pink-800');
+        }, 2000);
+    });
+}
+
+window.onload = () => {
+    initDays();
+    calculateDose();
+};
+</script>
+</body>
+</html>
