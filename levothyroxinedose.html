@@ -87,7 +87,7 @@
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Levothyroxine Tablet Strength</label>
-                <select id="strengthSelect" class="block w-full rounded-md border-gray-300 shadow-sm p-2 border focus:ring-pink-500 focus:border-pink-500 font-semibold text-pink-900" onchange="calculateDose()">
+                <select id="strengthSelect" class="block w-full rounded-md border-gray-300 shadow-sm p-2 border focus:ring-pink-500 focus:border-pink-500 font-semibold text-pink-900" onchange="handleStrengthChange()">
                     <option value="25">25 mcg (Orange)</option>
                     <option value="50">50 mcg (White)</option>
                     <option value="75">75 mcg (Violet)</option>
@@ -100,10 +100,11 @@
                     <option value="175">175 mcg (Lilac)</option>
                     <option value="200">200 mcg (Pink)</option>
                     <option value="300">300 mcg (Green)</option>
+                    <option value="custom" class="font-bold text-pink-700">⚙️ Custom Dosing (Variable Strengths)</option>
                 </select>
             </div>
             <div class="flex items-center text-xs text-gray-500 bg-pink-50 p-3 rounded-lg border border-pink-100">
-                <span><strong>Clinical Note:</strong> Adjusting daily pill multipliers (0, 0.5, 1, 1.5, 2) accounts for regimen fine-tuning without changing tablet strength.</span>
+                <span><strong>Clinical Note:</strong> Adjusting daily pill multipliers or choosing "Custom Dosing" allows fine-tuning patient regimens across different daily strengths without altering primary scripts.</span>
             </div>
         </div>
 
@@ -116,7 +117,7 @@
 
         <h3 class="text-lg font-medium text-gray-800 mb-3 border-b pb-1">2. Weekly Dosing Schedule</h3>
         <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-7 gap-3 mb-2" id="daysContainer">
-            </div>
+        </div>
     </div>
 
     <div class="print-area bg-white p-6 rounded-xl shadow-2xl border border-gray-300">
@@ -155,18 +156,52 @@
 
 <script>
 const daysOfWeek = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+const standardStrengths = [
+    { val: "25", label: "25 mcg" },
+    { val: "50", label: "50 mcg" },
+    { val: "75", label: "75 mcg" },
+    { val: "88", label: "88 mcg" },
+    { val: "100", label: "100 mcg" },
+    { val: "112", label: "112 mcg" },
+    { val: "125", label: "125 mcg" },
+    { val: "137", label: "137 mcg" },
+    { val: "150", label: "150 mcg" },
+    { val: "175", label: "175 mcg" },
+    { val: "200", label: "200 mcg" },
+    { val: "300", label: "300 mcg" }
+];
+
+function handleStrengthChange() {
+    initDays();
+    calculateDose();
+}
 
 function initDays() {
     const container = document.getElementById('daysContainer');
+    const globalStrength = document.getElementById('strengthSelect').value;
+    const isCustom = globalStrength === 'custom';
+    
     container.innerHTML = '';
     
     daysOfWeek.forEach((day, index) => {
         const defaultVal = index === 6 ? "0.5" : "1";
+        const defaultStrength = isCustom ? "125" : globalStrength;
         
         const dayDiv = document.createElement('div');
-        dayDiv.className = 'bg-pink-50/50 p-2 rounded-lg border border-pink-200 text-center';
+        dayDiv.className = 'bg-pink-50/50 p-2 rounded-lg border border-pink-200 text-center flex flex-col gap-1.5';
+        
+        let strengthSelectorHTML = '';
+        if (isCustom) {
+            strengthSelectorHTML = `
+                <select id="day-strength-${index}" class="w-full p-1 border rounded text-xs bg-white text-gray-700 focus:ring-pink-500 focus:border-pink-500" onchange="calculateDose()">
+                    ${standardStrengths.map(s => `<option value="${s.val}" ${s.val === defaultStrength ? 'selected' : ''}>${s.label}</option>`).join('')}
+                </select>
+            `;
+        }
+
         dayDiv.innerHTML = `
-            <label class="block text-xs font-bold text-pink-900 mb-1">${day}</label>
+            <label class="block text-xs font-bold text-pink-900">${day}</label>
+            ${strengthSelectorHTML}
             <select id="day-${index}" class="day-select w-full p-1.5 border rounded text-sm bg-white focus:ring-pink-500 focus:border-pink-500" onchange="calculateDose()">
                 <option value="0">Skip (0)</option>
                 <option value="0.5" ${defaultVal === "0.5" ? "selected" : ""}>1/2 Pill</option>
@@ -180,27 +215,48 @@ function initDays() {
 }
 
 function calculateDose() {
-    const strength = parseFloat(document.getElementById('strengthSelect').value) || 0;
+    const globalStrength = document.getElementById('strengthSelect').value;
+    const isCustom = globalStrength === 'custom';
+    
     let totalWeeklyDose = 0;
-    const dayMultipliers = [];
+    const dayData = [];
 
     daysOfWeek.forEach((_, index) => {
-        const val = parseFloat(document.getElementById(`day-${index}`).value) || 0;
-        dayMultipliers.push(val);
-        totalWeeklyDose += val * strength;
+        const multiplier = parseFloat(document.getElementById(`day-${index}`).value) || 0;
+        let dayStrength = 0;
+        
+        if (isCustom) {
+            dayStrength = parseFloat(document.getElementById(`day-strength-${index}`).value) || 0;
+        } else {
+            dayStrength = parseFloat(globalStrength) || 0;
+        }
+
+        const dayDose = multiplier * dayStrength;
+        dayData.push({
+            multiplier,
+            strength: dayStrength,
+            dose: dayDose
+        });
+        
+        totalWeeklyDose += dayDose;
     });
 
     const avgDailyDose = Math.round(totalWeeklyDose / 7);
 
-    document.getElementById('calcHeader').textContent = `Base Strength: ${strength} mcg tablet schedule`;
+    if (isCustom) {
+        document.getElementById('calcHeader').textContent = `Custom Dosing Schedule (Variable Strengths)`;
+    } else {
+        document.getElementById('calcHeader').textContent = `Base Strength: ${globalStrength} mcg tablet schedule`;
+    }
+
     document.getElementById('averageDoseOutput').textContent = `Average dose of Levothyroxine: ${avgDailyDose} mcg`;
     document.getElementById('weeklyTotalOutput').textContent = `Total Weekly Cumulative Dose: ${totalWeeklyDose.toFixed(2)} mcg`;
 
-    renderTable(strength, dayMultipliers);
-    renderInstructions(strength, dayMultipliers);
+    renderTable(dayData, isCustom);
+    renderInstructions(dayData, isCustom);
 }
 
-function renderTable(strength, multipliers) {
+function renderTable(dayData, isCustom) {
     let html = `<table class="min-w-full border-collapse border border-gray-300 text-sm">
         <thead class="bg-pink-700 text-white">
             <tr>
@@ -209,15 +265,17 @@ function renderTable(strength, multipliers) {
         </thead>
         <tbody>
             <tr class="bg-white">
-                ${multipliers.map(m => {
-                    let label = `${m} pill`;
-                    if (m === 0.5) label = "1/2 pill";
-                    if (m === 0) label = "Skip";
-                    return `<td class="border border-gray-300 p-2 text-center font-bold text-gray-800">${label}</td>`;
+                ${dayData.map(d => {
+                    let label = `${d.multiplier} pill`;
+                    if (d.multiplier === 0.5) label = "1/2 pill";
+                    if (d.multiplier === 0) label = "Skip";
+                    
+                    const strLabel = isCustom && d.multiplier > 0 ? `<br><span class="text-xs font-normal text-pink-700">(${d.strength} mcg)</span>` : '';
+                    return `<td class="border border-gray-300 p-2 text-center font-bold text-gray-800">${label}${strLabel}</td>`;
                 }).join('')}
             </tr>
             <tr class="bg-pink-50">
-                ${multipliers.map(m => `<td class="border border-gray-300 p-2 text-center text-xs text-gray-600">${(m * strength).toFixed(1)} mcg</td>`).join('')}
+                ${dayData.map(d => `<td class="border border-gray-300 p-2 text-center text-xs text-gray-600">${d.dose.toFixed(1)} mcg</td>`).join('')}
             </tr>
         </tbody>
     </table>`;
@@ -225,49 +283,69 @@ function renderTable(strength, multipliers) {
     document.getElementById('scheduleTableContainer').innerHTML = html;
 }
 
-function renderInstructions(strength, multipliers) {
-    const groups = { 1: [], 0.5: [], 0: [], 1.5: [], 2: [] };
+function renderInstructions(dayData, isCustom) {
+    if (!isCustom) {
+        const strength = dayData[0].strength;
+        const groups = { 1: [], 0.5: [], 0: [], 1.5: [], 2: [] };
 
-    multipliers.forEach((m, idx) => {
-        if (groups[m] !== undefined) {
-            groups[m].push(daysOfWeek[idx]);
-        }
-    });
+        dayData.forEach((d, idx) => {
+            if (groups[d.multiplier] !== undefined) {
+                groups[d.multiplier].push(daysOfWeek[idx]);
+            }
+        });
 
-    if (groups[1].length === 7) {
-        document.getElementById('patientInstructions').textContent = `Take Levothyroxine ${strength} mcg every day.`;
-        return;
-    }
-
-    if (groups[1].length > 0 && groups[1].length < 7) {
-        const exceptionTypes = Object.keys(groups).filter(k => k !== "1" && groups[k].length > 0);
-        
-        if (exceptionTypes.length === 1) {
-            const excKey = exceptionTypes[0];
-            const excDays = groups[excKey];
-            const daysText = excDays.join(', ');
-            
-            let excAction = "";
-            if (excKey === "0.5") excAction = "take half a pill";
-            else if (excKey === "0") excAction = "skip your dose";
-            else if (excKey === "1.5") excAction = "take 1.5 pills";
-            else if (excKey === "2") excAction = "take 2 pills";
-
-            document.getElementById('patientInstructions').textContent = 
-                `Take Levothyroxine ${strength} mcg everyday except ${daysText} where you ${excAction}.`;
+        if (groups[1].length === 7) {
+            document.getElementById('patientInstructions').textContent = `Take Levothyroxine ${strength} mcg every day.`;
             return;
         }
+
+        if (groups[1].length > 0 && groups[1].length < 7) {
+            const exceptionTypes = Object.keys(groups).filter(k => k !== "1" && groups[k].length > 0);
+            
+            if (exceptionTypes.length === 1) {
+                const excKey = exceptionTypes[0];
+                const excDays = groups[excKey];
+                const daysText = excDays.join(', ');
+                
+                let excAction = "";
+                if (excKey === "0.5") excAction = "take half a pill";
+                else if (excKey === "0") excAction = "skip your dose";
+                else if (excKey === "1.5") excAction = "take 1.5 pills";
+                else if (excKey === "2") excAction = "take 2 pills";
+
+                document.getElementById('patientInstructions').textContent = 
+                    `Take Levothyroxine ${strength} mcg everyday except ${daysText} where you ${excAction}.`;
+                return;
+            }
+        }
+
+        const descriptions = [];
+        if (groups[1].length) descriptions.push(`1 pill (${strength} mcg) on ${groups[1].join(', ')}`);
+        if (groups[0.5].length) descriptions.push(`half a pill (${strength / 2} mcg) on ${groups[0.5].join(', ')}`);
+        if (groups[1.5].length) descriptions.push(`1.5 pills (${strength * 1.5} mcg) on ${groups[1.5].join(', ')}`);
+        if (groups[2].length) descriptions.push(`2 pills (${strength * 2} mcg) on ${groups[2].join(', ')}`);
+        if (groups[0].length) descriptions.push(`skip dose on ${groups[0].join(', ')}`);
+
+        document.getElementById('patientInstructions').textContent = 
+            `Take Levothyroxine ${strength} mcg: ` + descriptions.join('; ') + '.';
+    } else {
+        // Custom dosing sig builder
+        const dayDescriptions = [];
+        
+        dayData.forEach((d, idx) => {
+            const dayName = daysOfWeek[idx];
+            if (d.multiplier === 0) {
+                dayDescriptions.push(`Skip on ${dayName}`);
+            } else {
+                let pillText = `${d.multiplier} pill`;
+                if (d.multiplier === 0.5) pillText = `half a pill`;
+                dayDescriptions.push(`${pillText} of ${d.strength} mcg (${d.dose} mcg) on ${dayName}`);
+            }
+        });
+
+        document.getElementById('patientInstructions').textContent = 
+            `Take Levothyroxine as follows: ` + dayDescriptions.join('; ') + '.';
     }
-
-    const descriptions = [];
-    if (groups[1].length) descriptions.push(`1 pill (${strength} mcg) on ${groups[1].join(', ')}`);
-    if (groups[0.5].length) descriptions.push(`half a pill (${strength / 2} mcg) on ${groups[0.5].join(', ')}`);
-    if (groups[1.5].length) descriptions.push(`1.5 pills (${strength * 1.5} mcg) on ${groups[1.5].join(', ')}`);
-    if (groups[2].length) descriptions.push(`2 pills (${strength * 2} mcg) on ${groups[2].join(', ')}`);
-    if (groups[0].length) descriptions.push(`skip dose on ${groups[0].join(', ')}`);
-
-    document.getElementById('patientInstructions').textContent = 
-        `Take Levothyroxine ${strength} mcg: ` + descriptions.join('; ') + '.';
 }
 
 function copyPatientSig() {
