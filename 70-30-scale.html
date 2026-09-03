@@ -73,6 +73,274 @@ body {
 </head>
 <body class="bg-gray-50 min-h-screen p-4 sm:p-8">
 
+<header id="site-header" class="no-print sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b border-pink-200 shadow-sm -mx-4 -mt-4 sm:-mx-8 sm:-mt-8 mb-8 px-4 py-3"></header>
+
+<script>
+    fetch('nav.html')
+        .then(res => res.text())
+        .then(data => {
+            document.getElementById('site-header').innerHTML = data;
+        });
+</script>
+
+<div id="app" class="max-w-5xl mx-auto">
+    <header class="text-center mb-6 no-print">
+        <h1 class="text-3xl font-extrabold text-purple-800">Twice-Daily Premixed Insulin Scale</h1>
+        <p class="text-gray-600 mt-2">Configure dosing for U-500 or 70/30 Insulin based on BG levels.</p>
+    </header>
+
+    <div class="no-print bg-white p-6 rounded-xl shadow-lg mb-8 border border-purple-200">
+        <h2 class="text-xl font-semibold mb-4 text-purple-700">Twice-Daily Dosing Configuration</h2>
+
+        <p class="text-sm text-gray-500 mb-4">Set your fixed doses and the correction factor for high blood glucose.</p>
+
+        <div class="grid grid-cols-2 gap-4 mb-6">
+            <div>
+                <label for="insulinType" class="block text-sm font-medium text-gray-700">Insulin Type</label>
+                <select id="insulinType"
+                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 p-2 border"
+                        onchange="generateScale()">
+                    <option value="U500">U-500</option>
+                    <option value="70/30" selected>70/30 (e.g., Humulin/Novolin)</option>
+                </select>
+            </div>
+            <div>
+                <label for="correctionIncrement" class="block text-sm font-medium text-gray-700">Correction Increment (Units)</label>
+                <input type="number" id="correctionIncrement" list="7030IncrementOptions" value="2" step="0.5" min="0"
+                       class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 p-2 border"
+                       oninput="generateScale()">
+                <datalist id="7030IncrementOptions">
+                    <option value="1">
+                    <option value="2">
+                    <option value="3">
+                    <option value="4">
+                    <option value="5">
+                </datalist>
+            </div>
+        </div>
+
+        <h3 class="text-lg font-medium text-gray-800 mb-3 border-b pb-1">Base Dose</h3>
+        <p class="text-xs text-gray-500 mb-4">These are the base units to be given in the morning and evening.</p>
+        <div class="grid grid-cols-2 gap-4 mb-6">
+            <div>
+                <label for="baseMorning" class="block text-sm font-medium text-gray-700">Morning Base Dose (Units)</label>
+                <input type="number" id="baseMorning" value="10" min="0" step="1"
+                       class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 p-2 border"
+                       oninput="generateScale()">
+            </div>
+            <div>
+                <label for="baseEvening" class="block text-sm font-medium text-gray-700">Evening Base Dose (Units)</label>
+                <input type="number" id="baseEvening" value="8" min="0" step="1"
+                       class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 p-2 border"
+                       oninput="generateScale()">
+            </div>
+        </div>
+    </div>
+
+    <div class="print-area bg-white p-6 rounded-xl shadow-2xl border border-gray-300">
+        <div class="flex justify-between items-center mb-4 border-b pb-3">
+            <div>
+                <h1 class="text-2xl font-bold text-gray-800">Total Dose Sliding Scale</h1>
+                <p id="insulinTypeDisplay" class="text-sm text-gray-500 mt-0.5">For use with 70/30 Insulin</p>
+            </div>
+        </div>
+
+        <div id="scaleTableContainer" class="table-container overflow-x-auto"></div>
+
+        <div class="mt-6 text-sm text-gray-800 border-t pt-3 font-semibold text-center">
+            <p>Morning dose should be taken at least 15 minutes before <span class="text-purple-700">breakfast</span>. Evening dose should be taken at least 15 minutes before <span class="text-purple-700">dinner</span>.</p>
+        </div>
+
+        <div class="mt-3 text-xs text-gray-500 border-t pt-3"></div>
+    </div>
+
+    <div class="text-center mt-8 no-print pb-12">
+        <button onclick="window.focus(); window.print();"
+                class="bg-purple-600 hover:bg-purple-700 text-white font-bold py-4 px-10 rounded-full shadow-xl transition transform hover:scale-105">
+            🖨️ Print / Save as PDF
+        </button>
+    </div>
+
+</div>
+
+<script>
+const bgRanges = [
+    { label: "< 70", min: 0, max: 69, special: 'low', text: "Treat low BG, wait 15 min, recheck, THEN consult scale for next meal dose." },
+    { label: "70 - 90", min: 70, max: 90, special: '60percent' },
+    { label: "91 - 130 (Base Dose)", min: 91, max: 130, special: 'base' },
+    { label: "131 - 150", min: 131, max: 150 },
+    { label: "151 - 200", min: 151, max: 200 },
+    { label: "201 - 250", min: 201, max: 250 },
+    { label: "251 - 300", min: 251, max: 300, critical: true },
+    { label: "301 - 350", min: 301, max: 350, critical: true },
+    { label: "351 - 400", min: 351, max: 400, critical: true },
+    { label: "401 - 450", min: 401, max: 450, critical: true },
+    { label: "451 and above (Max Correction)", min: 451, max: 999, critical: true },
+];
+
+function generateScale() {
+    const insulinType = document.getElementById('insulinType').value.trim() || 'Premixed';
+    const baseMorning = parseFloat(document.getElementById('baseMorning').value) || 0;
+    const baseEvening = parseFloat(document.getElementById('baseEvening').value) || 0;
+    const correctionIncrement = parseFloat(document.getElementById('correctionIncrement').value);
+
+    const formatter = (dose) => {
+        return Math.max(0, Math.round(dose)).toString();
+    };
+
+    document.getElementById('insulinTypeDisplay').textContent = `For use with ${insulinType} Insulin`;
+    document.querySelector('.no-print h3').textContent = `Base Dose`;
+
+    let tableHTML = `
+    <table class="min-w-full divide-y divide-gray-300 rounded-lg overflow-hidden shadow-md">
+        <thead class="bg-purple-600 text-white">
+            <tr>
+                <th class="px-3 py-2 text-left text-sm font-semibold tracking-wider w-2/5">Blood Glucose (mg/dL)</th>
+                <th class="px-3 py-2 text-center text-sm font-semibold tracking-wider w-3/10">Total ${insulinType} (Morning)</th>
+                <th class="px-3 py-2 text-center text-sm font-semibold tracking-wider w-3/10">Total ${insulinType} (Evening)</th>
+            </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-200">
+    `;
+    const baseDoseIndex = 2;
+    bgRanges.forEach((range, index) => {
+        let cellClass = (index % 2 === 0) ? 'bg-white' : 'bg-gray-50';
+        const isCritical = range.critical || range.special === 'low';
+        const criticalClass = isCritical ? 'bg-red-100 text-red-800 font-semibold' : '';
+
+        let totalMorning = 0;
+        let totalEvening = 0;
+        let displayMorning, displayEvening;
+
+        if (range.special === 'low') {
+            tableHTML += `
+            <tr class="${cellClass} hover:bg-purple-50 ${criticalClass}">
+                <td class="px-3 py-1.5 whitespace-nowrap font-medium text-gray-900 align-top">${range.label}</td>
+                <td class="px-3 py-1.5 text-left text-sm align-top" colspan="2">${range.text}</td>
+            </tr>
+            `;
+            return;
+        }
+
+        if (range.special === "60percent") {
+            const reducedDoseMorning = baseMorning * 0.60;
+            const reducedDoseEvening = baseEvening * 0.60;
+            totalMorning = Math.round(reducedDoseMorning);
+            totalEvening = Math.round(reducedDoseEvening);
+        } else {
+            let correctionDose = 0;
+            if (index > baseDoseIndex) {
+                const correctionStep = index - baseDoseIndex;
+                correctionDose = (isNaN(correctionIncrement) ? 0 : correctionIncrement) * correctionStep;
+            }
+            totalMorning = baseMorning + correctionDose;
+            totalEvening = baseEvening + correctionDose;
+        }
+        displayMorning = formatter(totalMorning);
+        displayEvening = formatter(totalEvening);
+
+        tableHTML += `
+        <tr class="${cellClass} hover:bg-purple-50 ${criticalClass}">
+            <td class="px-3 py-1.5 whitespace-nowrap font-medium text-gray-900 align-top">${range.label}</td>
+            <td class="px-3 py-1.5 whitespace-nowrap text-center align-top">${displayMorning} units</td>
+            <td class="px-3 py-1.5 whitespace-nowrap text-center align-top">${displayEvening} units</td>
+        </tr>
+        `;
+    });
+
+    tableHTML += `
+        </tbody>
+    </table>
+    `;
+
+    document.getElementById('scaleTableContainer').innerHTML = tableHTML;
+}
+
+window.onload = function() {
+    generateScale();
+};
+
+document.getElementById('insulinType').addEventListener('change', generateScale);
+document.getElementById('correctionIncrement').addEventListener('input', generateScale);
+document.getElementById('baseMorning').addEventListener('input', generateScale);
+document.getElementById('baseEvening').addEventListener('input', generateScale);
+</script>
+</body>
+</html><!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Twice-Daily Premixed Insulin Scale</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+@media print {
+    /* Removes default browser header/footer (date, time, URL, title) */
+    @page {
+        size: portrait;
+        margin: 0;
+    }
+
+    .no-print {
+        display: none !important;
+    }
+    
+    html, body {
+        margin: 0 !important;
+        padding: 0 !important;
+        background: white !important;
+        width: 100vw;
+        height: 100vh;
+        overflow: hidden;
+    }
+
+    /* Container scaling to ensure single-page fit */
+    .print-area {
+        width: 100% !important;
+        max-width: 100% !important;
+        margin: 0 auto !important;
+        padding: 1.2cm !important; /* Safe inner margin replacing @page margin */
+        box-shadow: none !important;
+        border: none !important;
+        
+        /* Auto scale content to strictly fit within one page height */
+        transform: scale(0.90);
+        transform-origin: top center;
+    }
+
+    .table-container {
+        page-break-inside: avoid !important;
+    }
+
+    /* Optimize cell padding during print to conserve vertical space */
+    th, td {
+        padding: 3px 6px !important;
+    }
+}
+
+body {
+    font-family: 'Inter', sans-serif;
+}
+
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 4px;
+}
+::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
+}
+</style>
+</head>
+<body class="bg-gray-50 min-h-screen p-4 sm:p-8">
+
 <header class="no-print sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b border-pink-200 shadow-sm -mx-4 -mt-4 sm:-mx-8 sm:-mt-8 mb-8 px-4 py-3">
     <nav class="max-w-7xl mx-auto flex flex-wrap items-center justify-center gap-2 text-xs sm:text-sm font-medium">
         <a href="index.html" class="text-gray-600 hover:text-pink-800 hover:bg-pink-50 px-3.5 py-1.5 rounded-lg transition border border-transparent">
