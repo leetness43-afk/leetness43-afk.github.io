@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TSQ-36 Thyroid Symptom Questionnaire Calculator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @media print {
+            @page {
+                size: portrait;
+                margin: 0;
+            }
+
+            .no-print { display: none !important; }
+            
+            html, body {
+                margin: 0 !important;
+                padding: 0 !important;
+                background: white !important;
+                width: 100vw;
+                height: 100vh;
+                overflow: hidden;
+            }
+
+            .print-area {
+                width: 100% !important;
+                max-width: 100% !important;
+                margin: 0 auto !important;
+                padding: 1.2cm !important;
+                box-shadow: none !important;
+                border: none !important;
+                transform: scale(0.92);
+                transform-origin: top center;
+            }
+
+            table { page-break-inside: avoid !important; border-collapse: collapse !important; }
+            tr { page-break-inside: avoid !important; page-break-after: auto; }
+            th, td { border: 1px solid #000 !important; color: #000 !important; padding: 4px 6px !important; }
+        }
+        body { font-family: 'Inter', sans-serif; }
+    </style>
+</head>
+<body class="bg-pink-50 min-h-screen p-4 sm:p-8">
+
+<header class="no-print sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b border-pink-200 shadow-sm -mx-4 -mt-4 sm:-mx-8 sm:-mt-8 mb-8 px-4 py-3">
+    <nav class="max-w-7xl mx-auto flex flex-wrap items-center justify-center gap-2 text-xs sm:text-sm font-medium">
+        <a href="index.html" class="text-gray-600 hover:text-pink-800 hover:bg-pink-50 px-3.5 py-1.5 rounded-lg transition border border-transparent">
+            Basal and Mealtime Dosing Chart
+        </a>
+        <a href="calcium-correction.html" class="text-gray-600 hover:text-pink-800 hover:bg-pink-50 px-3.5 py-1.5 rounded-lg transition border border-transparent">
+            Corrected Calcium
+        </a>
+        <a href="fructosamine-calculator.html" class="text-gray-600 hover:text-pink-800 hover:bg-pink-50 px-3.5 py-1.5 rounded-lg transition border border-transparent">
+            Fructosamine to A1c Calculator
+        </a>
+        <a href="70-30-scale.html" class="text-gray-600 hover:text-pink-800 hover:bg-pink-50 px-3.5 py-1.5 rounded-lg transition border border-transparent">
+            Insulin 70/30 Dosing Chart
+        </a>
+        <a href="http://www.endocrineinfo.org/levothyroxinedose.html" class="text-gray-600 hover:text-pink-800 hover:bg-pink-50 px-3.5 py-1.5 rounded-lg transition border border-transparent">
+            Levothyroxine Average Dose Calculator
+        </a>
+        <a href="tsq36-calculator.html" class="bg-pink-700 text-white px-3.5 py-1.5 rounded-lg shadow-sm font-semibold transition flex items-center gap-1.5">
+            TSQ-36 Questionnaire
+            <span class="bg-amber-100 text-amber-800 text-[10px] font-semibold px-1.5 py-0.5 rounded uppercase tracking-wider">new</span>
+        </a>
+        <a href="steroid-calculator.html" class="text-gray-600 hover:text-pink-800 hover:bg-pink-50 px-3.5 py-1.5 rounded-lg transition border border-transparent flex items-center gap-1.5">
+            Steroid Conversion Calculator
+            <span class="bg-amber-100 text-amber-800 text-[10px] font-semibold px-1.5 py-0.5 rounded uppercase tracking-wider">beta</span>
+        </a>
+        <a href="http://www.endocrineinfo.org/testosterone.html" class="text-gray-600 hover:text-pink-800 hover:bg-pink-50 px-3.5 py-1.5 rounded-lg transition border border-transparent flex items-center gap-1.5">
+            Testosterone Dose Guide
+            <span class="bg-amber-100 text-amber-800 text-[10px] font-semibold px-1.5 py-0.5 rounded uppercase tracking-wider">beta</span>
+        </a>
+    </nav>
+</header>
+
+<div id="app" class="max-w-4xl mx-auto">
+    <header class="text-center mb-6 no-print">
+        <h1 class="text-3xl font-extrabold text-pink-800">TSQ-36 Thyroid Symptom Questionnaire</h1>
+        <p class="text-gray-600 mt-2">Evaluate thyroid-specific physical, neurocognitive, and well-being symptoms (DOI: 10.1016/j.eprac.2025.09.007).</p>
+    </header>
+
+    <div class="no-print bg-white p-6 rounded-xl shadow-lg mb-8 border border-pink-200">
+        <div class="flex justify-between items-center border-b pb-3 mb-4">
+            <h3 class="text-
