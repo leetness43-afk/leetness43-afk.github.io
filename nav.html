@@ -1,100 +1,81 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <script src="https://cdn.tailwindcss.com"></script>
-</head>
-<body class="bg-slate-50 p-8">
-
-  <header class="max-w-7xl mx-auto bg-white rounded-xl shadow-sm border border-slate-200/80 p-4">
-    <div class="flex items-center justify-between border-b border-slate-100 pb-4 mb-3 px-2">
-      <span class="font-bold text-slate-800 text-lg tracking-tight">EndoTools<span class="text-blue-900">.</span></span>
-      <span class="text-xs font-medium text-slate-400">Clinical Calculators</span>
+<nav class="max-w-7xl mx-auto flex flex-wrap items-center justify-center gap-6 text-sm font-medium">
+  
+  <!-- Diabetes -->
+  <div class="relative group">
+    <button class="flex items-center gap-1.5 text-slate-700 group-hover:text-blue-900 py-1.5 transition focus:outline-none">
+      <span>Diabetes</span>
+      <svg class="w-4 h-4 text-slate-400 group-hover:text-blue-900 transition-transform group-hover:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+    </button>
+    <div class="absolute left-1/2 -translate-x-1/2 top-full pt-1.5 hidden group-hover:block w-60 z-50">
+      <div class="bg-white/95 backdrop-blur-md shadow-xl rounded-xl border border-slate-100 p-1.5 space-y-0.5">
+        <a href="index.html" class="block px-3 py-2 rounded-lg text-xs text-slate-600 hover:bg-slate-50 hover:text-blue-900 transition">Basal & Mealtime Dosing</a>
+        <a href="70-30-scale.html" class="block px-3 py-2 rounded-lg text-xs text-slate-600 hover:bg-slate-50 hover:text-blue-900 transition">70/30 Dosing Scale</a>
+        <a href="fructosamine-calculator.html" class="block px-3 py-2 rounded-lg text-xs text-slate-600 hover:bg-slate-50 hover:text-blue-900 transition">Fructosamine to A1c</a>
+        <a href="https://www.endocrineinfo.org/insulinpen.html" class="block px-3 py-2 rounded-lg text-xs text-slate-600 hover:bg-slate-50 hover:text-blue-900 transition">Insulin Dispensing</a>
+      </div>
     </div>
+  </div>
 
-    <nav class="flex flex-wrap items-center justify-center gap-6 text-sm font-medium">
-      
-      <!-- Diabetes -->
-      <div class="relative group">
-        <button class="flex items-center gap-1.5 text-slate-700 group-hover:text-blue-900 py-1.5 transition">
-          <span>Diabetes</span>
-          <svg class="w-4 h-4 text-slate-400 group-hover:text-blue-900 transition-transform group-hover:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
-        </button>
-        <div class="absolute left-1/2 -translate-x-1/2 top-full pt-2 hidden group-hover:block w-64 z-50">
-          <div class="bg-white shadow-xl rounded-xl border border-slate-100 p-1.5 space-y-0.5">
-            <a href="index.html" class="block px-3 py-2 rounded-lg text-xs text-slate-600 hover:bg-slate-50 hover:text-blue-900 transition">Basal & Mealtime Dosing</a>
-            <a href="70-30-scale.html" class="block px-3 py-2 rounded-lg text-xs text-slate-600 hover:bg-slate-50 hover:text-blue-900 transition">70/30 Dosing Scale</a>
-            <a href="fructosamine-calculator.html" class="block px-3 py-2 rounded-lg text-xs text-slate-600 hover:bg-slate-50 hover:text-blue-900 transition">Fructosamine to A1c</a>
-            <a href="https://www.endocrineinfo.org/insulinpen.html" class="block px-3 py-2 rounded-lg text-xs text-slate-600 hover:bg-slate-50 hover:text-blue-900 transition">Insulin Dispensing</a>
-          </div>
-        </div>
+  <!-- Thyroid -->
+  <div class="relative group">
+    <button class="flex items-center gap-1.5 text-slate-700 group-hover:text-blue-900 py-1.5 transition focus:outline-none">
+      <span>Thyroid</span>
+      <svg class="w-4 h-4 text-slate-400 group-hover:text-blue-900 transition-transform group-hover:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+    </button>
+    <div class="absolute left-1/2 -translate-x-1/2 top-full pt-1.5 hidden group-hover:block w-60 z-50">
+      <div class="bg-white/95 backdrop-blur-md shadow-xl rounded-xl border border-slate-100 p-1.5 space-y-0.5">
+        <a href="levothyroxinedose.html" class="block px-3 py-2 rounded-lg text-xs text-slate-600 hover:bg-slate-50 hover:text-blue-900 transition">Levothyroxine Average Dose</a>
+        <a href="tsq36.html" class="flex items-center justify-between px-3 py-2 rounded-lg text-xs text-slate-600 hover:bg-slate-50 hover:text-blue-900 transition">
+          <span>TSQ-36 Questionnaire</span>
+          <span class="bg-amber-100 text-amber-800 text-[9px] font-semibold px-1.5 py-0.5 rounded uppercase tracking-wider">New</span>
+        </a>
       </div>
+    </div>
+  </div>
 
-      <!-- Thyroid -->
-      <div class="relative group">
-        <button class="flex items-center gap-1.5 text-slate-700 group-hover:text-blue-900 py-1.5 transition">
-          <span>Thyroid</span>
-          <svg class="w-4 h-4 text-slate-400 group-hover:text-blue-900 transition-transform group-hover:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
-        </button>
-        <div class="absolute left-1/2 -translate-x-1/2 top-full pt-2 hidden group-hover:block w-64 z-50">
-          <div class="bg-white shadow-xl rounded-xl border border-slate-100 p-1.5 space-y-0.5">
-            <a href="levothyroxinedose.html" class="block px-3 py-2 rounded-lg text-xs text-slate-600 hover:bg-slate-50 hover:text-blue-900 transition">Levothyroxine Average Dose</a>
-            <a href="tsq36.html" class="flex items-center justify-between px-3 py-2 rounded-lg text-xs text-slate-600 hover:bg-slate-50 hover:text-blue-900 transition">
-              <span>TSQ-36 Questionnaire</span>
-              <span class="bg-amber-100 text-amber-800 text-[9px] font-semibold px-1.5 py-0.5 rounded uppercase tracking-wider">New</span>
-            </a>
-          </div>
-        </div>
+  <!-- Bone & Mineral -->
+  <div class="relative group">
+    <button class="flex items-center gap-1.5 text-slate-700 group-hover:text-blue-900 py-1.5 transition focus:outline-none">
+      <span>Bone & Mineral</span>
+      <svg class="w-4 h-4 text-slate-400 group-hover:text-blue-900 transition-transform group-hover:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+    </button>
+    <div class="absolute left-1/2 -translate-x-1/2 top-full pt-1.5 hidden group-hover:block w-60 z-50">
+      <div class="bg-white/95 backdrop-blur-md shadow-xl rounded-xl border border-slate-100 p-1.5 space-y-0.5">
+        <a href="calcium-correction.html" class="block px-3 py-2 rounded-lg text-xs text-slate-600 hover:bg-slate-50 hover:text-blue-900 transition">Corrected Calcium</a>
       </div>
+    </div>
+  </div>
 
-      <!-- Bone & Mineral -->
-      <div class="relative group">
-        <button class="flex items-center gap-1.5 text-slate-700 group-hover:text-blue-900 py-1.5 transition">
-          <span>Bone & Mineral</span>
-          <svg class="w-4 h-4 text-slate-400 group-hover:text-blue-900 transition-transform group-hover:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
-        </button>
-        <div class="absolute left-1/2 -translate-x-1/2 top-full pt-2 hidden group-hover:block w-64 z-50">
-          <div class="bg-white shadow-xl rounded-xl border border-slate-100 p-1.5 space-y-0.5">
-            <a href="calcium-correction.html" class="block px-3 py-2 rounded-lg text-xs text-slate-600 hover:bg-slate-50 hover:text-blue-900 transition">Corrected Calcium</a>
-          </div>
-        </div>
+  <!-- Adrenal -->
+  <div class="relative group">
+    <button class="flex items-center gap-1.5 text-slate-700 group-hover:text-blue-900 py-1.5 transition focus:outline-none">
+      <span>Adrenal</span>
+      <svg class="w-4 h-4 text-slate-400 group-hover:text-blue-900 transition-transform group-hover:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+    </button>
+    <div class="absolute left-1/2 -translate-x-1/2 top-full pt-1.5 hidden group-hover:block w-60 z-50">
+      <div class="bg-white/95 backdrop-blur-md shadow-xl rounded-xl border border-slate-100 p-1.5 space-y-0.5">
+        <a href="steroid-calculator.html" class="flex items-center justify-between px-3 py-2 rounded-lg text-xs text-slate-600 hover:bg-slate-50 hover:text-blue-900 transition">
+          <span>Steroid Conversion</span>
+          <span class="bg-amber-100 text-amber-800 text-[9px] font-semibold px-1.5 py-0.5 rounded uppercase tracking-wider">Beta</span>
+        </a>
       </div>
+    </div>
+  </div>
 
-      <!-- Adrenal -->
-      <div class="relative group">
-        <button class="flex items-center gap-1.5 text-slate-700 group-hover:text-blue-900 py-1.5 transition">
-          <span>Adrenal</span>
-          <svg class="w-4 h-4 text-slate-400 group-hover:text-blue-900 transition-transform group-hover:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
-        </button>
-        <div class="absolute left-1/2 -translate-x-1/2 top-full pt-2 hidden group-hover:block w-64 z-50">
-          <div class="bg-white shadow-xl rounded-xl border border-slate-100 p-1.5 space-y-0.5">
-            <a href="steroid-calculator.html" class="flex items-center justify-between px-3 py-2 rounded-lg text-xs text-slate-600 hover:bg-slate-50 hover:text-blue-900 transition">
-              <span>Steroid Conversion</span>
-              <span class="bg-amber-100 text-amber-800 text-[9px] font-semibold px-1.5 py-0.5 rounded uppercase tracking-wider">Beta</span>
-            </a>
-          </div>
-        </div>
+  <!-- Gonadal -->
+  <div class="relative group">
+    <button class="flex items-center gap-1.5 text-slate-700 group-hover:text-blue-900 py-1.5 transition focus:outline-none">
+      <span>Gonadal</span>
+      <svg class="w-4 h-4 text-slate-400 group-hover:text-blue-900 transition-transform group-hover:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+    </button>
+    <div class="absolute left-1/2 -translate-x-1/2 top-full pt-1.5 hidden group-hover:block w-60 z-50">
+      <div class="bg-white/95 backdrop-blur-md shadow-xl rounded-xl border border-slate-100 p-1.5 space-y-0.5">
+        <a href="testosterone.html" class="flex items-center justify-between px-3 py-2 rounded-lg text-xs text-slate-600 hover:bg-slate-50 hover:text-blue-900 transition">
+          <span>Testosterone Dose Guide</span>
+          <span class="bg-amber-100 text-amber-800 text-[9px] font-semibold px-1.5 py-0.5 rounded uppercase tracking-wider">Beta</span>
+        </a>
       </div>
+    </div>
+  </div>
 
-      <!-- Gonadal -->
-      <div class="relative group">
-        <button class="flex items-center gap-1.5 text-slate-700 group-hover:text-blue-900 py-1.5 transition">
-          <span>Gonadal</span>
-          <svg class="w-4 h-4 text-slate-400 group-hover:text-blue-900 transition-transform group-hover:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
-        </button>
-        <div class="absolute left-1/2 -translate-x-1/2 top-full pt-2 hidden group-hover:block w-64 z-50">
-          <div class="bg-white shadow-xl rounded-xl border border-slate-100 p-1.5 space-y-0.5">
-            <a href="testosterone.html" class="flex items-center justify-between px-3 py-2 rounded-lg text-xs text-slate-600 hover:bg-slate-50 hover:text-blue-900 transition">
-              <span>Testosterone Dose Guide</span>
-              <span class="bg-amber-100 text-amber-800 text-[9px] font-semibold px-1.5 py-0.5 rounded uppercase tracking-wider">Beta</span>
-            </a>
-          </div>
-        </div>
-      </div>
-
-    </nav>
-  </header>
-
-</body>
-</html>
+</nav>
