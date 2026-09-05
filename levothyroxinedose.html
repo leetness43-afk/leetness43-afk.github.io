@@ -42,30 +42,27 @@
     </style>
 </head>
 <body class="bg-pink-50 min-h-screen p-4 sm:p-8">
-    
-<header id="site-header" class="no-print sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b border-pink-200 shadow-sm -mx-4 -mt-4 sm:-mx-8 sm:-mt-8 mb-8 px-4 py-3"></header>
 
-<script>
-    fetch('nav.html')
-        .then(res => res.text())
-        .then(data => {
-            document.getElementById('site-header').innerHTML = data;
-        });
-</script>
+<header id="site-header" class="no-print sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b border-pink-200 shadow-sm -mx-4 -mt-4 sm:-mx-8 sm:-mt-8 mb-8 px-4 py-3">
+    <div class="max-w-4xl mx-auto flex items-center justify-between">
+        <span class="font-bold text-pink-800 text-lg">Pharmacy Tools</span>
+        <span class="text-xs text-gray-500">Levothyroxine Calculator</span>
+    </div>
+</header>
 
-<div id="app" class="max-w-4xl mx-auto">
+<main id="app" class="max-w-4xl mx-auto">
     <header class="text-center mb-6 no-print">
         <h1 class="text-3xl font-extrabold text-pink-800">Levothyroxine Weekly Dosing Calculator</h1>
-        <p class="text-gray-600 mt-2">Calculate cumulative weekly dose, average daily intake, and generate patient directions.</p>
+        <p class="text-gray-600 mt-2">Calculate cumulative weekly dose, average daily intake, and generate patient directions & dispensing totals.</p>
     </header>
 
     <div class="no-print bg-white p-6 rounded-xl shadow-lg mb-8 border border-pink-200">
-        <h3 class="text-lg font-medium text-gray-800 mb-3 border-b pb-1">1. Select Tablet Strength</h3>
+        <h2 class="text-lg font-medium text-gray-800 mb-3 border-b pb-1">1. Select Tablet Strength & Supply Duration</h2>
         
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
             <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Levothyroxine Tablet Strength</label>
-                <select id="strengthSelect" class="block w-full rounded-md border-gray-300 shadow-sm p-2 border focus:ring-pink-500 focus:border-pink-500 font-semibold text-pink-900" onchange="handleStrengthChange()">
+                <label for="strengthSelect" class="block text-sm font-medium text-gray-700 mb-1">Levothyroxine Tablet Strength</label>
+                <select id="strengthSelect" aria-label="Levothyroxine Tablet Strength" class="block w-full rounded-md border-gray-300 shadow-sm p-2 border focus:ring-pink-500 focus:border-pink-500 font-semibold text-pink-900" onchange="handleStrengthChange()">
                     <option value="25">25 mcg (Orange)</option>
                     <option value="50">50 mcg (White)</option>
                     <option value="75">75 mcg (Violet)</option>
@@ -81,19 +78,31 @@
                     <option value="custom" class="font-bold text-pink-700">⚙️ Custom Dosing (Variable Strengths)</option>
                 </select>
             </div>
-            <div class="flex items-center text-xs text-gray-500 bg-pink-50 p-3 rounded-lg border border-pink-100">
-                <span><strong>Clinical Note:</strong> Adjusting daily pill multipliers or choosing "Custom Dosing" allows fine-tuning patient regimens across different daily strengths without altering primary scripts.</span>
+            
+            <div>
+                <label for="daysSupplySelect" class="block text-sm font-medium text-gray-700 mb-1">Dispensing Supply (Days)</label>
+                <select id="daysSupplySelect" aria-label="Dispensing Supply Duration" class="block w-full rounded-md border-gray-300 shadow-sm p-2 border focus:ring-pink-500 focus:border-pink-500 font-semibold text-gray-800" onchange="toggleCustomDays()">
+                    <option value="30">30-Day Supply</option>
+                    <option value="60">60-Day Supply</option>
+                    <option value="90" selected>90-Day Supply</option>
+                    <option value="custom">Custom Days</option>
+                </select>
+            </div>
+
+            <div id="customDaysWrapper" class="hidden">
+                <label for="customDaysInput" class="block text-sm font-medium text-gray-700 mb-1">Custom Day Count</label>
+                <input type="number" id="customDaysInput" aria-label="Custom Day Count Input" value="90" min="1" max="365" class="block w-full rounded-md border-gray-300 shadow-sm p-2 border focus:ring-pink-500 focus:border-pink-500 text-gray-800" oninput="calculateDose()">
             </div>
         </div>
 
         <div class="mb-6 bg-pink-50/60 p-4 rounded-lg border border-pink-200 flex flex-col items-center">
-            <h4 class="text-xs font-bold text-pink-900 uppercase tracking-wider mb-3">Levothyroxine Color Code</h4>
+            <h3 class="text-xs font-bold text-pink-900 uppercase tracking-wider mb-3">Levothyroxine Color Code Reference</h3>
             <div class="bg-white p-3 rounded border border-pink-100 shadow-sm text-center w-full max-w-md">
-                <img src="https://www.synthroid.com/content/dam/synthroidivy/images/graphics/pills-diagram-desktop.png" alt="Levothyroxine Color Code by Dose" class="max-h-48 mx-auto object-contain" />
+                <img src="https://www.synthroid.com/content/dam/synthroidivy/images/graphics/pills-diagram-desktop.png" alt="Levothyroxine Color Code chart showing pill colors per microgram dose" class="max-h-48 mx-auto object-contain" />
             </div>
         </div>
 
-        <h3 class="text-lg font-medium text-gray-800 mb-3 border-b pb-1">2. Weekly Dosing Schedule</h3>
+        <h2 class="text-lg font-medium text-gray-800 mb-3 border-b pb-1">2. Weekly Dosing Schedule</h2>
         <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-7 gap-3 mb-2" id="daysContainer">
         </div>
     </div>
@@ -101,36 +110,44 @@
     <div class="print-area bg-white p-6 rounded-xl shadow-2xl border border-gray-300">
         <div class="flex justify-between items-center mb-6 border-b pb-4">
             <div>
-                <h1 class="text-2xl font-bold text-gray-800">Dosing Summary & Patient Instructions</h1>
+                <h2 class="text-2xl font-bold text-gray-800">Dosing Summary & Patient Instructions</h2>
                 <p id="calcHeader" class="text-sm text-gray-500 mt-1"></p>
             </div>
         </div>
 
-        <div class="mb-6 p-6 bg-pink-50 border border-pink-200 rounded-xl text-center">
-            <div class="text-sm font-semibold text-pink-700 uppercase tracking-wide">Calculated Average Daily Dose</div>
-            <div id="averageDoseOutput" class="text-4xl font-black text-pink-900 my-2">--</div>
-            <div id="weeklyTotalOutput" class="text-xs text-gray-600"></div>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+            <div class="p-6 bg-pink-50 border border-pink-200 rounded-xl text-center flex flex-col justify-center">
+                <div class="text-sm font-semibold text-pink-700 uppercase tracking-wide">Calculated Average Daily Dose</div>
+                <div id="averageDoseOutput" class="text-3xl font-black text-pink-900 my-2">--</div>
+                <div id="weeklyTotalOutput" class="text-xs text-gray-600"></div>
+            </div>
+
+            <div class="p-6 bg-amber-50 border border-amber-200 rounded-xl text-center flex flex-col justify-center">
+                <div class="text-sm font-semibold text-amber-800 uppercase tracking-wide" id="dispenseTitle">Dispensing Requirement</div>
+                <div id="dispenseOutput" class="text-2xl font-black text-amber-900 my-2">--</div>
+                <div id="dispenseSubtext" class="text-xs text-amber-700"></div>
+            </div>
         </div>
 
         <div id="scheduleTableContainer" class="overflow-x-auto mb-6"></div>
 
         <div class="border-t pt-4">
-            <h4 class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Patient Directions (Sig)</h4>
+            <h3 class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Patient Directions (Sig)</h3>
             <div class="flex items-center gap-2">
                 <div id="patientInstructions" class="flex-1 p-4 bg-gray-50 border border-gray-200 rounded-lg text-lg font-bold text-gray-800 text-center">
                     --
                 </div>
-                <button id="copySigBtn" onclick="copyPatientSig()" class="no-print bg-pink-700 hover:bg-pink-800 text-white font-semibold px-4 py-4 rounded-lg shadow transition flex items-center gap-1.5 text-sm whitespace-nowrap">
+                <button id="copySigBtn" onclick="copyPatientSig()" type="button" class="no-print bg-pink-700 hover:bg-pink-800 text-white font-semibold px-4 py-4 rounded-lg shadow transition flex items-center gap-1.5 text-sm whitespace-nowrap">
                     📋 Copy
                 </button>
             </div>
         </div>
 
         <div class="mt-6 text-xs text-gray-500 border-t pt-4 italic">
-            <strong>Pharmacy Note:</strong> Average daily dose is calculated as (Total Weekly Dose ÷ 7 Days) and rounded to the nearest whole microgram. Ensure the patient is counseled on consistent timing (typically morning on an empty stomach with water).
+            <strong>Pharmacy Note:</strong> Average daily dose is calculated as (Total Weekly Dose ÷ 7 Days) and rounded to the nearest whole microgram. Dispense quantities account for exact tablet requirements over the calculated days supply rounded up to full tablets.
         </div>
     </div>
-</div>
+</main>
 
 <script>
 const daysOfWeek = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
@@ -148,6 +165,25 @@ const standardStrengths = [
     { val: "200", label: "200 mcg" },
     { val: "300", label: "300 mcg" }
 ];
+
+function toggleCustomDays() {
+    const select = document.getElementById('daysSupplySelect');
+    const customWrapper = document.getElementById('customDaysWrapper');
+    if (select.value === 'custom') {
+        customWrapper.classList.remove('hidden');
+    } else {
+        customWrapper.classList.add('hidden');
+    }
+    calculateDose();
+}
+
+function getDaysSupply() {
+    const select = document.getElementById('daysSupplySelect');
+    if (select.value === 'custom') {
+        return Math.max(1, parseInt(document.getElementById('customDaysInput').value, 10) || 0);
+    }
+    return parseInt(select.value, 10);
+}
 
 function handleStrengthChange() {
     initDays();
@@ -171,16 +207,16 @@ function initDays() {
         let strengthSelectorHTML = '';
         if (isCustom) {
             strengthSelectorHTML = `
-                <select id="day-strength-${index}" class="w-full p-1 border rounded text-xs bg-white text-gray-700 focus:ring-pink-500 focus:border-pink-500" onchange="calculateDose()">
+                <select id="day-strength-${index}" aria-label="Tablet strength for ${day}" class="w-full p-1 border rounded text-xs bg-white text-gray-700 focus:ring-pink-500 focus:border-pink-500" onchange="calculateDose()">
                     ${standardStrengths.map(s => `<option value="${s.val}" ${s.val === defaultStrength ? 'selected' : ''}>${s.label}</option>`).join('')}
                 </select>
             `;
         }
 
         dayDiv.innerHTML = `
-            <label class="block text-xs font-bold text-pink-900">${day}</label>
+            <label for="day-${index}" class="block text-xs font-bold text-pink-900">${day}</label>
             ${strengthSelectorHTML}
-            <select id="day-${index}" class="day-select w-full p-1.5 border rounded text-sm bg-white focus:ring-pink-500 focus:border-pink-500" onchange="calculateDose()">
+            <select id="day-${index}" aria-label="Tablet quantity for ${day}" class="day-select w-full p-1.5 border rounded text-sm bg-white focus:ring-pink-500 focus:border-pink-500" onchange="calculateDose()">
                 <option value="0">Skip (0)</option>
                 <option value="0.5" ${defaultVal === "0.5" ? "selected" : ""}>1/2 Pill</option>
                 <option value="1" ${defaultVal === "1" ? "selected" : ""}>1 Pill</option>
@@ -195,8 +231,10 @@ function initDays() {
 function calculateDose() {
     const globalStrength = document.getElementById('strengthSelect').value;
     const isCustom = globalStrength === 'custom';
+    const daysSupply = getDaysSupply();
     
     let totalWeeklyDose = 0;
+    const totalWeeklyPillsByStrength = {};
     const dayData = [];
 
     daysOfWeek.forEach((_, index) => {
@@ -217,25 +255,55 @@ function calculateDose() {
         });
         
         totalWeeklyDose += dayDose;
+
+        if (multiplier > 0 && dayStrength > 0) {
+            totalWeeklyPillsByStrength[dayStrength] = (totalWeeklyPillsByStrength[dayStrength] || 0) + multiplier;
+        }
     });
 
     const avgDailyDose = Math.round(totalWeeklyDose / 7);
 
     if (isCustom) {
-        document.getElementById('calcHeader').textContent = `Custom Dosing Schedule (Variable Strengths)`;
+        document.getElementById('calcHeader').textContent = `Custom Dosing Schedule (${daysSupply}-Day Supply Calculation)`;
     } else {
-        document.getElementById('calcHeader').textContent = `Base Strength: ${globalStrength} mcg tablet schedule`;
+        document.getElementById('calcHeader').textContent = `Base Strength: ${globalStrength} mcg tablet schedule (${daysSupply}-Day Supply Calculation)`;
     }
 
-    document.getElementById('averageDoseOutput').textContent = `Average dose of Levothyroxine: ${avgDailyDose} mcg`;
-    document.getElementById('weeklyTotalOutput').textContent = `Total Weekly Cumulative Dose: ${totalWeeklyDose.toFixed(2)} mcg`;
+    document.getElementById('averageDoseOutput').textContent = `${avgDailyDose} mcg / day`;
+    document.getElementById('weeklyTotalOutput').textContent = `Total Weekly Dose: ${totalWeeklyDose.toFixed(1)} mcg`;
+
+    const weeksInSupply = daysSupply / 7;
+    document.getElementById('dispenseTitle').textContent = `Dispense Quantity (${daysSupply} Days)`;
+
+    let dispenseHTML = '';
+    let dispenseSubtextHTML = '';
+
+    const strengthKeys = Object.keys(totalWeeklyPillsByStrength);
+    if (strengthKeys.length === 0) {
+        dispenseHTML = '0 Tablets';
+        dispenseSubtextHTML = 'No active pills scheduled';
+    } else {
+        const items = [];
+        strengthKeys.forEach(str => {
+            const pillsPerWeek = totalWeeklyPillsByStrength[str];
+            const exactPillsNeeded = pillsPerWeek * weeksInSupply;
+            const roundedPills = Math.ceil(exactPillsNeeded);
+            items.push(`${roundedPills} tabs (${str} mcg)`);
+        });
+
+        dispenseHTML = items.join(' + ');
+        dispenseSubtextHTML = `Based on ${weeksInSupply.toFixed(2)} weeks (${daysSupply} days) regimen`;
+    }
+
+    document.getElementById('dispenseOutput').textContent = dispenseHTML;
+    document.getElementById('dispenseSubtext').textContent = dispenseSubtextHTML;
 
     renderTable(dayData, isCustom);
     renderInstructions(dayData, isCustom);
 }
 
 function renderTable(dayData, isCustom) {
-    let html = `<table class="min-w-full border-collapse border border-gray-300 text-sm">
+    const html = `<table class="min-w-full border-collapse border border-gray-300 text-sm">
         <thead class="bg-pink-700 text-white">
             <tr>
                 ${daysOfWeek.map(d => `<th class="border border-gray-300 p-2 text-center">${d}</th>`).join('')}
@@ -344,10 +412,10 @@ function copyPatientSig() {
     });
 }
 
-window.onload = () => {
+window.addEventListener('DOMContentLoaded', () => {
     initDays();
     calculateDose();
-};
+});
 </script>
 </body>
 </html>
