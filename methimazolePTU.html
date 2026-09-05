@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Antithyroid (Methimazole / PTU) Dosing Calculator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @media print {
+            @page {
+                size: portrait;
+                margin: 0;
+            }
+
+            .no-print { display: none !important; }
+            
+            html, body {
+                margin: 0 !important;
+                padding: 0 !important;
+                background: white !important;
+                color: black !important;
+                width: 100vw;
+                height: 100vh;
+                overflow: hidden;
+            }
+
+            .print-area {
+                width: 100% !important;
+                max-width: 100% !important;
+                margin: 0 auto !important;
+                padding: 1.2cm !important;
+                box-shadow: none !important;
+                border: none !important;
+                background: white !important;
+                color: black !important;
+                transform: scale(0.92);
+                transform-origin: top center;
+            }
+
+            table { page-break-inside: avoid !important; border-collapse: collapse !important; }
+            tr { page-break-inside: avoid !important; page-break-after: auto; }
+            th, td { border: 1px solid #000 !important; color: #000 !important; padding: 4px 6px !important; }
+        }
+        body { font-family: 'Inter', sans-serif; }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen p-4 sm:p-8">
+
+<header id="site-header" class="no-print sticky top-0 z-50 bg-emerald-950/90 backdrop-blur-md border-b border-emerald-800/50 shadow-lg -mx-4 -mt-4 sm:-mx-8 sm:-mt-8 mb-8 px-4 py-3">
+</header>
+
+<main id="app" class="max-w-4xl mx-auto">
+    <header class="text-center mb-6 no-print">
+        <h1 class="text-3xl font-extrabold text-emerald-400">Antithyroid Dosing Calculator</h1>
+        <p class="text-emerald-200/70 mt-2">Calculate daily/weekly totals, dosing schedules, and dispensing quantities for Methimazole & PTU.</p>
+    </header>
+
+    <div class="no-print bg-emerald-950/60 p-6 rounded-xl shadow-2xl mb-8 border border-emerald-800/60">
+        <h2 class="text-lg font-medium text-emerald-300 mb-3 border-b border-emerald-800/80 pb-1">1. Drug, Strength & Supply Selection</h2>
+        
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            <div>
+                <label for="drugSelect" class="block text-sm font-medium text-emerald-200 mb-1">Medication & Strength</label>
+                <select id="drugSelect" aria-label="Medication and Strength" class="block w-full rounded-md border-emerald-700 bg-slate-900 text-emerald-100 shadow-sm p-2 border focus:ring-emerald-500 focus:border-emerald-500 font-semibold" onchange="handleDrugChange()">
+                    <optgroup label="Methimazole (TAP)">
+                        <option value="tap-5" selected>Methimazole 5 mg</option>
+                        <option value="tap-10">Methimazole 10 mg</option>
+                        <option value="tap-20">Methimazole 20 mg</option>
+                    </optgroup>
+                    <optgroup label="Propylthiouracil (PTU)">
+                        <option value="ptu-50">Propylthiouracil (PTU) 50 mg</option>
+                    </optgroup>
+                    <option value="custom" class="font-bold text-emerald-400">⚙️ Custom Dosing (Variable Strengths)</option>
+                </select>
+            </div>
+            
+            <div>
+                <label for="daysSupplySelect" class="block text-sm font-medium text-emerald-200 mb-1">Dispensing Supply (Days)</label>
+                <select id="daysSupplySelect" aria-label="Dispensing Supply Duration" class="block w-full rounded-md border-emerald-700 bg-slate-900 text-emerald-100 shadow-sm p-2 border focus:ring-emerald-500 focus:border-emerald-500 font-semibold" onchange="toggleCustomDays()">
+                    <option value="30" selected>30-Day Supply</option>
+                    <option value="60">60-Day Supply</option>
+                    <option value="90">90-Day Supply</option>
+                    <option value="custom">Custom Days</option>
+                </select>
+            </div>
+
+            <div id="customDaysWrapper" class="hidden">
+                <label for="customDaysInput" class="block text-sm font-medium text-emerald-200 mb-1">Custom Day Count</label>
+                <input type="number" id="customDaysInput" aria-label="Custom Day Count Input" value="30" min="1" max="365" class="block w-full rounded-md border-emerald-700 bg-slate-900 text-emerald-100 shadow-sm p-2 border focus:ring-emerald-500 focus:border-emerald-500" oninput="calculateDose()">
+            </div>
+        </div>
+
+        <h2 class="text-lg font-medium text-emerald-300 mb-3 border-b border-emerald-800/80 pb-1">2. Weekly Dosing Schedule</h2>
+        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-7 gap-3 mb-2" id="daysContainer">
+        </div>
+    </div>
+
+    <div class="print-area bg-emerald-950/80 p-6 rounded-xl shadow-2xl border border-emerald-800/80">
+        <div class="flex justify-between items-center mb-6 border-b border-emerald-800/80 pb-4">
+            <div>
+                <h2 class="text-2xl font-bold text-emerald-300">Dosing Summary & Patient Instructions</h2>
+                <p id="calcHeader" class="text-sm text-emerald-200/60 mt-1"></p>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+            <div class="p-6 bg-slate-900/80 border border-emerald-700/60 rounded-xl text-center flex flex-col justify-center">
+                <div class="text-sm font-semibold text-emerald-400 uppercase tracking-wide">Calculated Average Daily Dose</div>
+                <div id="averageDoseOutput" class="text-3xl font-black text-emerald-300 my-2">--</div>
+                <div id="weeklyTotalOutput" class="text-xs text-emerald-200/70"></div>
+            </div>
+
+            <div class="p-6 bg-slate-900/80 border border-amber-500/50 rounded-xl text-center flex flex-col justify-center">
+                <div class="text-sm font-semibold text-amber-400 uppercase tracking-wide" id="dispenseTitle">Dispensing Requirement</div>
+                <div id="dispenseOutput" class="text-2xl font-black text-amber-300 my-2">--</div>
+                <div id="dispenseSubtext" class="text-xs text-amber-200/70"></div>
+            </div>
+        </div>
+
+        <div id="scheduleTableContainer" class="overflow-x-auto mb-6"></div>
+
+        <div class="border-t border-emerald-800/80 pt-4">
+            <h3 class="text-xs font-bold text-emerald-400 uppercase tracking-wider mb-2">Patient Directions (Sig)</h3>
+            <div class="flex items-center gap-2">
+                <div id="patientInstructions" class="flex-1 p-4 bg-slate-900 border border-emerald-700/60 rounded-lg text-lg font-bold text-emerald-200 text-center">
+                    --
+                </div>
+                <button id="copySigBtn" onclick="copyPatientSig()" type="button" class="no-print bg-emerald-600 hover:bg-emerald-500 text-slate-950 font-bold px-4 py-4 rounded-lg shadow transition flex items-center gap-1.5 text-sm whitespace-nowrap">
+                    📋 Copy
+                </button>
+            </div>
+        </div>
+
+        <div class="mt-6 text-xs text-emerald-200/50 border-t border-emerald-800/80 pt-4 italic">
+            <strong>Pharmacy Note:</strong> Average daily dose is calculated as (Total Weekly Dose ÷ 7 Days) and rounded to one decimal place. Dispense quantities account for exact tablet requirements over the calculated days supply rounded up to full tablets.
+        </div>
+    </div>
+</main>
+
+<script>
+fetch('nav.html')
+    .then(res => res.text())
+    .then(data => {
+        document.getElementById('site-header').innerHTML = data;
+    });
+
+const daysOfWeek = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+
+const drugDatabase = {
+    "tap-5": { name: "Methimazole", strength: 5, unit: "mg" },
+    "tap-10": { name: "Methimazole", strength: 10, unit: "mg" },
+    "tap-20": { name: "Methimazole", strength: 20, unit: "mg" },
+    "ptu-50": { name: "Propylthiouracil (PTU)", strength: 50, unit: "mg" }
+};
+
+const customStrengthOptions = [
+    { val: "tap-5", label: "Methimazole 5 mg" },
+    { val: "tap-10", label: "Methimazole 10 mg" },
+    { val: "tap-20", label: "Methimazole 20 mg" },
+    { val: "ptu-50", label: "PTU 50 mg" }
+];
+
+function toggleCustomDays() {
+    const select = document.getElementById('daysSupplySelect');
+    const customWrapper = document.getElementById('customDaysWrapper');
+    if (select.value === 'custom') {
+        customWrapper.classList.remove('hidden');
+    } else {
+        customWrapper.classList.add('hidden');
+    }
+    calculateDose();
+}
+
+function getDaysSupply() {
+    const select = document.getElementById('daysSupplySelect');
+    if (select.value === 'custom') {
+        return Math.max(1, parseInt(document.getElementById('customDaysInput').value, 10) || 0);
+    }
+    return parseInt(select.value, 10);
+}
+
+function handleDrugChange() {
+    initDays();
+    calculateDose();
+}
+
+function initDays() {
+    const container = document.getElementById('daysContainer');
+    const selectedKey = document.getElementById('drugSelect').value;
+    const isCustom = selectedKey === 'custom';
+    
+    container.innerHTML = '';
+    
+    daysOfWeek.forEach((day, index) => {
+        const defaultVal = "1";
+        const defaultDrugKey = isCustom ? "tap-10" : selectedKey;
+        
+        const dayDiv = document.createElement('div');
+        dayDiv.className = 'bg-slate-900/90 p-2 rounded-lg border border-emerald-800/80 text-center flex flex-col gap-1.5';
+        
+        let strengthSelectorHTML = '';
+        if (isCustom) {
+            strengthSelectorHTML = `
+                <select id="day-drug-${index}" aria-label="Drug strength for ${day}" class="w-full p-1 border rounded text-xs bg-slate-950 text-emerald-200 border-emerald-700 focus:ring-emerald-500 focus:border-emerald-500" onchange="calculateDose()">
+                    ${customStrengthOptions.map(s => `<option value="${s.val}" ${s.val === defaultDrugKey ? 'selected' : ''}>${s.label}</option>`).join('')}
+                </select>
+            `;
+        }
+
+        dayDiv.innerHTML = `
+            <label for="day-${index}" class="block text-xs font-bold text-emerald-400">${day}</label>
+            ${strengthSelectorHTML}
+            <select id="day-${index}" aria-label="Tablet quantity for ${day}" class="day-select w-full p-1.5 border border-emerald-700 rounded text-sm bg-slate-950 text-emerald-100 focus:ring-emerald-500 focus:border-emerald-500" onchange="calculateDose()">
+                <option value="0">Skip (0)</option>
+                <option value="0.5">1/2 Pill</option>
+                <option value="1" ${defaultVal === "1" ? "selected" : ""}>1 Pill</option>
+                <option value="1.5">1.5 Pills</option>
+                <option value="2">2 Pills</option>
+                <option value="3">3 Pills</option>
+                <option value="4">4 Pills</option>
+            </select>
+        `;
+        container.appendChild(dayDiv);
+    });
+}
+
+function calculateDose() {
+    const selectedKey = document.getElementById('drugSelect').value;
+    const isCustom = selectedKey === 'custom';
+    const daysSupply = getDaysSupply();
+    
+    let totalWeeklyDose = 0;
+    const totalWeeklyPillsByDrug = {};
+    const dayData = [];
+
+    daysOfWeek.forEach((_, index) => {
+        const multiplier = parseFloat(document.getElementById(`day-${index}`).value) || 0;
+        let dayDrugKey = isCustom ? document.getElementById(`day-drug-${index}`).value : selectedKey;
+        let drugMeta = drugDatabase[dayDrugKey];
+
+        const dayDose = multiplier * drugMeta.strength;
+        dayData.push({
+            multiplier,
+            drugKey: dayDrugKey,
+            drugName: drugMeta.name,
+            strength: drugMeta.strength,
+            unit: drugMeta.unit,
+            dose: dayDose
+        });
+        
+        totalWeeklyDose += dayDose;
+
+        if (multiplier > 0) {
+            totalWeeklyPillsByDrug[dayDrugKey] = (totalWeeklyPillsByDrug[dayDrugKey] || 0) + multiplier;
+        }
+    });
+
+    const avgDailyDose = (totalWeeklyDose / 7).toFixed(1);
+    const primaryUnit = isCustom ? "mg" : drugDatabase[selectedKey].unit;
+
+    if (isCustom) {
+        document.getElementById('calcHeader').textContent = `Custom Dosing Schedule (${daysSupply}-Day Supply Calculation)`;
+    } else {
+        const meta = drugDatabase[selectedKey];
+        document.getElementById('calcHeader').textContent = `${meta.name} ${meta.strength} ${meta.unit} tablet schedule (${daysSupply}-Day Supply Calculation)`;
+    }
+
+    document.getElementById('averageDoseOutput').textContent = `${avgDailyDose} ${primaryUnit} / day`;
+    document.getElementById('weeklyTotalOutput').textContent = `Total Weekly Dose: ${totalWeeklyDose.toFixed(1)} ${primaryUnit}`;
+
+    const weeksInSupply = daysSupply / 7;
+    document.getElementById('dispenseTitle').textContent = `Dispense Quantity (${daysSupply} Days)`;
+
+    let dispenseHTML = '';
+    let dispenseSubtextHTML = '';
+
+    const drugKeys = Object.keys(totalWeeklyPillsByDrug);
+    if (drugKeys.length === 0) {
+        dispenseHTML = '0 Tablets';
+        dispenseSubtextHTML = 'No active pills scheduled';
+    } else {
+        const items = [];
+        drugKeys.forEach(key => {
+            const pillsPerWeek = totalWeeklyPillsByDrug[key];
+            const exactPillsNeeded = pillsPerWeek * weeksInSupply;
+            const roundedPills = Math.ceil(exactPillsNeeded);
+            const meta = drugDatabase[key];
+            items.push(`${roundedPills} tabs (${meta.name} ${meta.strength} ${meta.unit})`);
+        });
+
+        dispenseHTML = items.join(' + ');
+        dispenseSubtextHTML = `Based on ${weeksInSupply.toFixed(2)} weeks (${daysSupply} days) regimen`;
+    }
+
+    document.getElementById('dispenseOutput').textContent = dispenseHTML;
+    document.getElementById('dispenseSubtext').textContent = dispenseSubtextHTML;
+
+    renderTable(dayData, isCustom);
+    renderInstructions(dayData, isCustom);
+}
+
+function renderTable(dayData, isCustom) {
+    const html = `<table class="min-w-full border-collapse border border-emerald-800 text-sm">
+        <thead class="bg-emerald-900 text-emerald-200">
+            <tr>
+                ${daysOfWeek.map(d => `<th class="border border-emerald-800 p-2 text-center">${d}</th>`).join('')}
+            </tr>
+        </thead>
+        <tbody>
+            <tr class="bg-slate-900">
+                ${dayData.map(d => {
+                    let label = `${d.multiplier} pill`;
+                    if (d.multiplier === 0.5) label = "1/2 pill";
+                    if (d.multiplier === 0) label = "Skip";
+                    
+                    const strLabel = isCustom && d.multiplier > 0 ? `<br><span class="text-xs font-normal text-emerald-400">(${d.drugName} ${d.strength} ${d.unit})</span>` : '';
+                    return `<td class="border border-emerald-800 p-2 text-center font-bold text-emerald-100">${label}${strLabel}</td>`;
+                }).join('')}
+            </tr>
+            <tr class="bg-emerald-950/40">
+                ${dayData.map(d => `<td class="border border-emerald-800 p-2 text-center text-xs text-emerald-200/70">${d.dose.toFixed(1)} ${d.unit}</td>`).join('')}
+            </tr>
+        </tbody>
+    </table>`;
+    
+    document.getElementById('scheduleTableContainer').innerHTML = html;
+}
+
+function renderInstructions(dayData, isCustom) {
+    if (!isCustom) {
+        const meta = drugDatabase[dayData[0].drugKey];
+        const groups = {};
+
+        dayData.forEach((d, idx) => {
+            if (!groups[d.multiplier]) groups[d.multiplier] = [];
+            groups[d.multiplier].push(daysOfWeek[idx]);
+        });
+
+        if (groups[1] && groups[1].length === 7) {
+            document.getElementById('patientInstructions').textContent = `Take ${meta.name} ${meta.strength} ${meta.unit} (1 tablet) every day.`;
+            return;
+        }
+
+        const descriptions = [];
+        Object.keys(groups).forEach(multStr => {
+            const mult = parseFloat(multStr);
+            const days = groups[multStr];
+            if (mult === 0) {
+                descriptions.push(`skip dose on ${days.join(', ')}`);
+            } else if (mult === 0.5) {
+                descriptions.push(`half a tablet (${meta.strength / 2} ${meta.unit}) on ${days.join(', ')}`);
+            } else if (mult === 1) {
+                descriptions.push(`1 tablet (${meta.strength} ${meta.unit}) on ${days.join(', ')}`);
+            } else {
+                descriptions.push(`${mult} tablets (${meta.strength * mult} ${meta.unit}) on ${days.join(', ')}`);
+            }
+        });
+
+        document.getElementById('patientInstructions').textContent = 
+            `Take ${meta.name} ${meta.strength} ${meta.unit}: ` + descriptions.join('; ') + '.';
+    } else {
+        const dayDescriptions = [];
+        
+        dayData.forEach((d, idx) => {
+            const dayName = daysOfWeek[idx];
+            if (d.multiplier === 0) {
+                dayDescriptions.push(`Skip on ${dayName}`);
+            } else {
+                let pillText = `${d.multiplier} tab`;
+                if (d.multiplier === 0.5) pillText = `half a tab`;
+                dayDescriptions.push(`${pillText} of ${d.drugName} ${d.strength} ${d.unit} (${d.dose} ${d.unit}) on ${dayName}`);
+            }
+        });
+
+        document.getElementById('patientInstructions').textContent = 
+            `Take antithyroid medication as follows: ` + dayDescriptions.join('; ') + '.';
+    }
+}
+
+function copyPatientSig() {
+    const textToCopy = document.getElementById('patientInstructions').textContent.trim();
+    if (!textToCopy || textToCopy === '--') return;
+
+    navigator.clipboard.writeText(textToCopy).then(() => {
+        const btn = document.getElementById('copySigBtn');
+        const originalText = btn.innerHTML;
+        btn.innerHTML = '✅ Copied!';
+        btn.classList.remove('bg-emerald-600', 'hover:bg-emerald-500');
+        btn.classList.add('bg-green-500', 'hover:bg-green-400');
+
+        setTimeout(() => {
+            btn.innerHTML = originalText;
+            btn.classList.remove('bg-green-500', 'hover:bg-green-400');
+            btn.classList.add('bg-emerald-600', 'hover:bg-emerald-500');
+        }, 2000);
+    });
+}
+
+window.addEventListener('DOMContentLoaded', () => {
+    initDays();
+    calculateDose();
+});
+</script>
+</body>
+</html>
