@@ -44,93 +44,93 @@
         body { font-family: 'Inter', sans-serif; }
     </style>
 </head>
-<body class="bg-slate-950 text-slate-100 min-h-screen p-4 sm:p-8">
+<body class="bg-white text-slate-800 min-h-screen p-4 sm:p-8">
 
-<header id="site-header" class="no-print sticky top-0 z-50 bg-indigo-950/90 backdrop-blur-md border-b border-indigo-800/50 shadow-lg -mx-4 -mt-4 sm:-mx-8 sm:-mt-8 mb-8 px-4 py-3">
+<header id="site-header" class="no-print sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b border-indigo-200 shadow-sm -mx-4 -mt-4 sm:-mx-8 sm:-mt-8 mb-8 px-4 py-3">
 </header>
 
 <main id="app" class="max-w-4xl mx-auto pb-12">
     <header class="text-center mb-6 no-print">
-        <h1 class="text-3xl font-extrabold text-indigo-400">Insulin Icodec Dosing Calculator</h1>
-        <p class="text-indigo-200/70 mt-2">Once-weekly basal insulin dosing guidelines & transition calculator for Type 2 Diabetes Mellitus.</p>
+        <h1 class="text-3xl font-extrabold text-indigo-900">Insulin Icodec Dosing Calculator</h1>
+        <p class="text-indigo-600 mt-2 font-medium">Once-weekly basal insulin dosing guidelines & transition calculator for Type 2 Diabetes Mellitus.</p>
     </header>
 
-    <div class="no-print bg-indigo-950/60 p-6 rounded-xl shadow-2xl mb-8 border border-indigo-800/60">
-        <h2 class="text-lg font-medium text-indigo-300 mb-4 border-b border-indigo-800/80 pb-1">1. Select Patient Insulin Status</h2>
+    <div class="no-print bg-indigo-50/50 p-6 rounded-xl shadow-md mb-8 border border-indigo-100">
+        <h2 class="text-lg font-bold text-indigo-900 mb-4 border-b border-indigo-200 pb-1">1. Select Patient Insulin Status</h2>
         
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-            <label class="flex items-start p-4 rounded-lg bg-slate-900/90 border border-indigo-700/60 cursor-pointer hover:border-indigo-500 transition">
-                <input type="radio" name="patientStatus" value="naive" checked class="mt-1 text-indigo-500 focus:ring-indigo-400 h-4 w-4" onchange="toggleStatus()">
+            <label class="flex items-start p-4 rounded-lg bg-white border border-indigo-200 shadow-sm cursor-pointer hover:border-indigo-500 transition">
+                <input type="radio" name="patientStatus" value="naive" checked class="mt-1 text-indigo-600 focus:ring-indigo-500 h-4 w-4" onchange="toggleStatus()">
                 <div class="ml-3">
-                    <span class="block font-bold text-indigo-200">Insulin-Naïve</span>
-                    <span class="block text-xs text-indigo-300/70 mt-0.5">Patient has not previously received insulin therapy.</span>
+                    <span class="block font-bold text-indigo-900">Insulin-Naïve</span>
+                    <span class="block text-xs text-indigo-700/80 mt-0.5">Patient has not previously received insulin therapy.</span>
                 </div>
             </label>
 
-            <label class="flex items-start p-4 rounded-lg bg-slate-900/90 border border-indigo-700/60 cursor-pointer hover:border-indigo-500 transition">
-                <input type="radio" name="patientStatus" value="switching" class="mt-1 text-indigo-500 focus:ring-indigo-400 h-4 w-4" onchange="toggleStatus()">
+            <label class="flex items-start p-4 rounded-lg bg-white border border-indigo-200 shadow-sm cursor-pointer hover:border-indigo-500 transition">
+                <input type="radio" name="patientStatus" value="switching" class="mt-1 text-indigo-600 focus:ring-indigo-500 h-4 w-4" onchange="toggleStatus()">
                 <div class="ml-3">
-                    <span class="block font-bold text-indigo-200">Switching from Daily Basal</span>
-                    <span class="block text-xs text-indigo-300/70 mt-0.5">Transitioning from a daily basal insulin regimen.</span>
+                    <span class="block font-bold text-indigo-900">Switching from Daily Basal</span>
+                    <span class="block text-xs text-indigo-700/80 mt-0.5">Transitioning from a daily basal insulin regimen.</span>
                 </div>
             </label>
         </div>
 
-        <div id="dailyDoseWrapper" class="hidden mb-4 bg-slate-900/80 p-4 rounded-lg border border-indigo-800">
-            <label for="dailyBasalInput" class="block text-sm font-semibold text-indigo-200 mb-1">Previous Total Daily Basal Insulin Dose (Units or mg)</label>
+        <div id="dailyDoseWrapper" class="hidden mb-4 bg-white p-4 rounded-lg border border-indigo-200 shadow-sm">
+            <label for="dailyBasalInput" class="block text-sm font-semibold text-indigo-900 mb-1">Previous Total Daily Basal Insulin Dose (Units or mg)</label>
             <div class="flex items-center gap-3">
-                <input type="number" id="dailyBasalInput" min="1" max="500" value="10" placeholder="e.g., 10" class="block w-full max-w-xs rounded-md border-indigo-700 bg-slate-950 text-indigo-100 shadow-sm p-2.5 border focus:ring-indigo-500 focus:border-indigo-500 font-bold text-lg" oninput="calculateDose()">
-                <span class="text-sm text-indigo-300/80 font-medium">units/day</span>
+                <input type="number" id="dailyBasalInput" min="1" max="500" value="10" placeholder="e.g., 10" class="block w-full max-w-xs rounded-md border-indigo-300 bg-white text-indigo-950 shadow-sm p-2.5 border focus:ring-indigo-500 focus:border-indigo-500 font-bold text-lg" oninput="calculateDose()">
+                <span class="text-sm text-indigo-700 font-medium">units/day</span>
             </div>
-            <p class="text-xs text-indigo-300/60 mt-1.5">Note: Rounding logic rounds calculated weekly doses to the nearest 10 units.</p>
+            <p class="text-xs text-indigo-600/80 mt-1.5">Note: Rounding logic rounds calculated weekly doses to the nearest 10 units.</p>
         </div>
     </div>
 
-    <div class="print-area bg-indigo-950/80 p-6 rounded-xl shadow-2xl border border-indigo-800/80">
-        <div class="flex justify-between items-center mb-6 border-b border-indigo-800/80 pb-4">
+    <div class="print-area bg-white p-6 rounded-xl shadow-xl border border-indigo-200">
+        <div class="flex justify-between items-center mb-6 border-b border-indigo-100 pb-4">
             <div>
-                <h2 class="text-2xl font-bold text-indigo-300">Weekly Dosing Summary & Schedule</h2>
-                <p id="calcHeader" class="text-sm text-indigo-200/60 mt-1">Insulin-Naïve Regimen Schedule</p>
+                <h2 class="text-2xl font-bold text-indigo-900">Weekly Dosing Summary & Schedule</h2>
+                <p id="calcHeader" class="text-sm text-indigo-600 font-medium mt-1">Insulin-Naïve Regimen Schedule</p>
             </div>
         </div>
 
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-            <div class="p-5 bg-slate-900/80 border border-indigo-700/60 rounded-xl text-center flex flex-col justify-center">
-                <div class="text-xs font-semibold text-indigo-400 uppercase tracking-wide">Week 1 Dose</div>
-                <div id="week1Output" class="text-2xl font-black text-indigo-300 my-1">70 Units</div>
-                <div id="week1Subtext" class="text-[11px] text-indigo-200/70">Initial Starting Dose</div>
+            <div class="p-5 bg-indigo-50/60 border border-indigo-200 rounded-xl text-center flex flex-col justify-center shadow-sm">
+                <div class="text-xs font-bold text-indigo-700 uppercase tracking-wide">Week 1 Dose</div>
+                <div id="week1Output" class="text-2xl font-black text-indigo-900 my-1">70 Units</div>
+                <div id="week1Subtext" class="text-[11px] text-indigo-600 font-medium">Initial Starting Dose</div>
             </div>
 
-            <div class="p-5 bg-slate-900/80 border border-indigo-700/60 rounded-xl text-center flex flex-col justify-center">
-                <div class="text-xs font-semibold text-indigo-400 uppercase tracking-wide">Week 2 Dose</div>
-                <div id="week2Output" class="text-2xl font-black text-indigo-300 my-1">70 Units</div>
-                <div id="week2Subtext" class="text-[11px] text-indigo-200/70">Maintenance Schedule</div>
+            <div class="p-5 bg-indigo-50/60 border border-indigo-200 rounded-xl text-center flex flex-col justify-center shadow-sm">
+                <div class="text-xs font-bold text-indigo-700 uppercase tracking-wide">Week 2 Dose</div>
+                <div id="week2Output" class="text-2xl font-black text-indigo-900 my-1">70 Units</div>
+                <div id="week2Subtext" class="text-[11px] text-indigo-600 font-medium">Maintenance Schedule</div>
             </div>
 
-            <div class="p-5 bg-slate-900/80 border border-amber-500/50 rounded-xl text-center flex flex-col justify-center">
-                <div class="text-xs font-semibold text-amber-400 uppercase tracking-wide">Week 3 & Thereafter</div>
-                <div id="week3Output" class="text-2xl font-black text-amber-300 my-1">Titrate</div>
-                <div id="week3Subtext" class="text-[11px] text-amber-200/70">Based on metabolic needs & SMBG</div>
+            <div class="p-5 bg-amber-50/80 border border-amber-200 rounded-xl text-center flex flex-col justify-center shadow-sm">
+                <div class="text-xs font-bold text-amber-800 uppercase tracking-wide">Week 3 & Thereafter</div>
+                <div id="week3Output" class="text-2xl font-black text-amber-900 my-1">Titrate</div>
+                <div id="week3Subtext" class="text-[11px] text-amber-700 font-medium">Based on metabolic needs & SMBG</div>
             </div>
         </div>
 
         <div id="scheduleTableContainer" class="overflow-x-auto mb-6"></div>
 
-        <div class="border-t border-indigo-800/80 pt-4">
-            <h3 class="text-xs font-bold text-indigo-400 uppercase tracking-wider mb-2">Patient Directions & Administration Instructions</h3>
+        <div class="border-t border-indigo-100 pt-4">
+            <h3 class="text-xs font-bold text-indigo-900 uppercase tracking-wider mb-2">Patient Directions & Administration Instructions</h3>
             <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
-                <div id="patientInstructions" class="flex-1 p-4 bg-slate-900 border border-indigo-700/60 rounded-lg text-sm sm:text-base font-semibold text-indigo-200 leading-relaxed">
+                <div id="patientInstructions" class="flex-1 p-4 bg-indigo-50/30 border border-indigo-200 rounded-lg text-sm sm:text-base font-bold text-indigo-950 leading-relaxed">
                     --
                 </div>
-                <button id="copySigBtn" onclick="copyPatientSig()" type="button" class="no-print bg-indigo-600 hover:bg-indigo-500 text-slate-950 font-bold px-4 py-4 rounded-lg shadow transition flex items-center justify-center gap-1.5 text-sm whitespace-nowrap">
+                <button id="copySigBtn" onclick="copyPatientSig()" type="button" class="no-print bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-4 py-4 rounded-lg shadow transition flex items-center justify-center gap-1.5 text-sm whitespace-nowrap">
                     📋 Copy Instructions
                 </button>
             </div>
         </div>
 
-        <div class="mt-6 border-t border-indigo-800/80 pt-4 text-xs text-indigo-200/70 space-y-2">
-            <p class="font-bold text-indigo-300 uppercase tracking-wider">Special Dosing Considerations & Modifications:</p>
-            <ul class="list-disc pl-5 space-y-1 italic">
+        <div class="mt-6 border-t border-indigo-100 pt-4 text-xs text-indigo-900/80 space-y-2">
+            <p class="font-bold text-indigo-900 uppercase tracking-wider">Special Dosing Considerations & Modifications:</p>
+            <ul class="list-disc pl-5 space-y-1 italic text-slate-700">
                 <li><strong>Acute Illness / Diet / Exercise:</strong> Adjustment of insulin icodec dose is not advised during acute illness or short-term changes in physical activity/diet due to its long half-life. Consider adjusting glucose intake or concomitant glucose-lowering therapy instead.</li>
                 <li><strong>Renal or Hepatic Impairment:</strong> No specific dosage adjustment is necessary. However, intensify blood glucose monitoring and adjust dosing on an individual basis as required for all insulin therapies.</li>
                 <li><strong>Concomitant Therapy:</strong> Closely monitor blood glucose. Timing and doses of concurrent short-acting/rapid-acting insulins or other antidiabetic agents may require adjustment.</li>
@@ -138,18 +138,16 @@
         </div>
     </div>
 
-    <!-- Reference Link -->
-    <div class="text-center mt-6 text-xs text-indigo-300/60 no-print">
-        Adapted from: <a href="https://reference.medscape.com/drug/awiqli-insulin-icodec-4000417" target="_blank" rel="noopener noreferrer" class="underline hover:text-indigo-200">https://reference.medscape.com/drug/awiqli-insulin-icodec-4000417</a>
+    <div class="text-center mt-6 text-xs text-slate-500 no-print">
+        Adapted from: <a href="https://reference.medscape.com/drug/awiqli-insulin-icodec-4000417" target="_blank" rel="noopener noreferrer" class="underline text-indigo-600 hover:text-indigo-800">https://reference.medscape.com/drug/awiqli-insulin-icodec-4000417</a>
     </div>
 
-    <!-- Contact & Medical Disclaimer -->
     <div class="text-center mt-4 no-print">
-        <div class="text-xs text-indigo-300/60">
-            If you have any comments, questions, or corrections, please email <a href="mailto:endocrineinfoorg@gmail.com" class="underline hover:text-indigo-200">endocrineinfoorg@gmail.com</a>.
+        <div class="text-xs text-slate-500">
+            If you have any comments, questions, or corrections, please email <a href="mailto:endocrineinfoorg@gmail.com" class="underline text-indigo-600 hover:text-indigo-800">endocrineinfoorg@gmail.com</a>.
         </div>
 
-        <p class="mt-4 text-[10px] leading-tight text-indigo-300/40 max-w-2xl mx-auto">
+        <p class="mt-4 text-[10px] leading-tight text-slate-400 max-w-2xl mx-auto">
             <strong>Medical Disclaimer:</strong> The calculators and tools provided on this website are intended for use solely by licensed healthcare professionals for informational and educational reference. They do not constitute formal medical advice, diagnosis, or clinical treatment plans. Information on this site may not be updated regularly and could become outdated as medical standards evolve. Healthcare providers must exercise their own clinical judgment, and non-professional users should always consult a qualified healthcare provider for personalized medical management.
         </p>
     </div>
@@ -220,54 +218,54 @@ function calculateDose() {
     document.getElementById('week2Output').textContent = `${week2Dose} Units`;
     document.getElementById('week2Subtext').textContent = week2Sub;
 
-    document.getElementById('week3Output').textContent = week3Text;
+    document.getElementById('week3Output').textContent = `${week3Text}`;
     document.getElementById('week3Subtext').textContent = week3Sub;
 }
 
 function renderTable(status, w1, w2, dailyDose = 0) {
-    let html = `<table class="min-w-full border-collapse border border-indigo-800 text-sm">
-        <thead class="bg-indigo-900 text-indigo-200">
+    let html = `<table class="min-w-full border-collapse border border-indigo-200 text-sm">
+        <thead class="bg-indigo-600 text-white">
             <tr>
-                <th class="border border-indigo-800 p-2 text-left">Timeframe</th>
-                <th class="border border-indigo-800 p-2 text-center">Weekly Dosage</th>
-                <th class="border border-indigo-800 p-2 text-left">Calculation & Guidance</th>
+                <th class="border border-indigo-200 p-2 text-left">Timeframe</th>
+                <th class="border border-indigo-200 p-2 text-center">Weekly Dosage</th>
+                <th class="border border-indigo-200 p-2 text-left">Calculation & Guidance</th>
             </tr>
         </thead>
         <tbody>`;
 
     if (status === 'naive') {
         html += `
-            <tr class="bg-slate-900">
-                <td class="border border-indigo-800 p-2.5 font-bold text-indigo-200">Week 1</td>
-                <td class="border border-indigo-800 p-2.5 text-center font-extrabold text-indigo-300">${w1} Units</td>
-                <td class="border border-indigo-800 p-2.5 text-xs text-indigo-200/80">Standard initial starting dose for insulin-naïve T2DM. Administer SC once weekly on the same day each week.</td>
+            <tr class="bg-white">
+                <td class="border border-indigo-200 p-2.5 font-bold text-indigo-900">Week 1</td>
+                <td class="border border-indigo-200 p-2.5 text-center font-extrabold text-indigo-900">${w1} Units</td>
+                <td class="border border-indigo-200 p-2.5 text-xs text-slate-700">Standard initial starting dose for insulin-naïve T2DM. Administer SC once weekly on the same day each week.</td>
             </tr>
-            <tr class="bg-indigo-950/40">
-                <td class="border border-indigo-800 p-2.5 font-bold text-indigo-200">Week 2</td>
-                <td class="border border-indigo-800 p-2.5 text-center font-extrabold text-indigo-300">${w2} Units</td>
-                <td class="border border-indigo-800 p-2.5 text-xs text-indigo-200/80">Continue standard weekly dose on the designated weekly administration day.</td>
+            <tr class="bg-indigo-50/40">
+                <td class="border border-indigo-200 p-2.5 font-bold text-indigo-900">Week 2</td>
+                <td class="border border-indigo-200 p-2.5 text-center font-extrabold text-indigo-900">${w2} Units</td>
+                <td class="border border-indigo-200 p-2.5 text-xs text-slate-700">Continue standard weekly dose on the designated weekly administration day.</td>
             </tr>
-            <tr class="bg-slate-900">
-                <td class="border border-indigo-800 p-2.5 font-bold text-amber-300">Week 3 & Thereafter</td>
-                <td class="border border-indigo-800 p-2.5 text-center font-bold text-amber-300">Titrate</td>
-                <td class="border border-indigo-800 p-2.5 text-xs text-indigo-200/80">Titrate from previous dosage based on metabolic needs, blood glucose monitoring results, and glycemic control goals.</td>
+            <tr class="bg-white">
+                <td class="border border-indigo-200 p-2.5 font-bold text-amber-900">Week 3 & Thereafter</td>
+                <td class="border border-indigo-200 p-2.5 text-center font-bold text-amber-800">Titrate</td>
+                <td class="border border-indigo-200 p-2.5 text-xs text-slate-700">Titrate from previous dosage based on metabolic needs, blood glucose monitoring results, and glycemic control goals.</td>
             </tr>`;
     } else {
         html += `
-            <tr class="bg-slate-900">
-                <td class="border border-indigo-800 p-2.5 font-bold text-indigo-200">Week 1 (One-Time)</td>
-                <td class="border border-indigo-800 p-2.5 text-center font-extrabold text-indigo-300">${w1} Units</td>
-                <td class="border border-indigo-800 p-2.5 text-xs text-indigo-200/80">Administer day after last daily basal dose. Formula: 1.5 × daily dose (${dailyDose} units) × 7 days = ${(dailyDose * 1.5 * 7).toFixed(1)} ➔ rounded to nearest 10 units.</td>
+            <tr class="bg-white">
+                <td class="border border-indigo-200 p-2.5 font-bold text-indigo-900">Week 1 (One-Time)</td>
+                <td class="border border-indigo-200 p-2.5 text-center font-extrabold text-indigo-900">${w1} Units</td>
+                <td class="border border-indigo-200 p-2.5 text-xs text-slate-700">Administer day after last daily basal dose. Formula: 1.5 × daily dose (${dailyDose} units) × 7 days = ${(dailyDose * 1.5 * 7).toFixed(1)} ➔ rounded to nearest 10 units.</td>
             </tr>
-            <tr class="bg-indigo-950/40">
-                <td class="border border-indigo-800 p-2.5 font-bold text-indigo-200">Week 2</td>
-                <td class="border border-indigo-800 p-2.5 text-center font-extrabold text-indigo-300">${w2} Units</td>
-                <td class="border border-indigo-800 p-2.5 text-xs text-indigo-200/80">Formula: daily basal dose (${dailyDose} units) × 7 days = ${dailyDose * 7} ➔ rounded to nearest 10 units.</td>
+            <tr class="bg-indigo-50/40">
+                <td class="border border-indigo-200 p-2.5 font-bold text-indigo-900">Week 2</td>
+                <td class="border border-indigo-200 p-2.5 text-center font-extrabold text-indigo-900">${w2} Units</td>
+                <td class="border border-indigo-200 p-2.5 text-xs text-slate-700">Formula: daily basal dose (${dailyDose} units) × 7 days = ${dailyDose * 7} ➔ rounded to nearest 10 units.</td>
             </tr>
-            <tr class="bg-slate-900">
-                <td class="border border-indigo-800 p-2.5 font-bold text-amber-300">Week 3 & Thereafter</td>
-                <td class="border border-indigo-800 p-2.5 text-center font-bold text-amber-300">Titrate</td>
-                <td class="border border-indigo-800 p-2.5 text-xs text-indigo-200/80">Titrate from previous dosage based on metabolic needs, SMBG results, and individual glycemic goals.</td>
+            <tr class="bg-white">
+                <td class="border border-indigo-200 p-2.5 font-bold text-amber-900">Week 3 & Thereafter</td>
+                <td class="border border-indigo-200 p-2.5 text-center font-bold text-amber-800">Titrate</td>
+                <td class="border border-indigo-200 p-2.5 text-xs text-slate-700">Titrate from previous dosage based on metabolic needs, SMBG results, and individual glycemic goals.</td>
             </tr>`;
     }
 
@@ -276,30 +274,37 @@ function renderTable(status, w1, w2, dailyDose = 0) {
 }
 
 function renderInstructions(status, w1, w2, dailyDose = 0) {
-    let sig = '';
+    let sigHTML = '';
     if (status === 'naive') {
-        sig = `Inject ${w1} units subcutaneously once weekly on the same day each week. Week 1: Inject ${w1} units. Week 2: Inject ${w2} units. Week 3 and thereafter: Adjust dose as directed based on blood glucose monitoring and glycemic targets.`;
+        sigHTML = `Inject subcutaneously once weekly on the same day each week:<br>
+• <strong>Week 1:</strong> Inject ${w1} units.<br>
+• <strong>Week 2:</strong> Inject ${w2} units.<br>
+• <strong>Week 3 & thereafter:</strong> Adjust dose as directed based on blood glucose monitoring and glycemic targets.`;
     } else {
-        sig = `Switching from daily basal insulin (${dailyDose} units/day): Administer first insulin icodec dose on the day after the last dose of daily basal insulin. Week 1 (one-time dose): Inject ${w1} units subcutaneously. Week 2: Inject ${w2} units subcutaneously. Week 3 and thereafter: Titrate dosage based on metabolic needs and blood glucose monitoring goals.`;
+        sigHTML = `Switching from daily basal insulin (${dailyDose} units/day). Administer first insulin icodec dose on the day after the last dose of daily basal insulin:<br>
+• <strong>Week 1 (one-time dose):</strong> Inject ${w1} units subcutaneously.<br>
+• <strong>Week 2:</strong> Inject ${w2} units subcutaneously.<br>
+• <strong>Week 3 & thereafter:</strong> Titrate dosage based on metabolic needs and blood glucose monitoring goals.`;
     }
-    document.getElementById('patientInstructions').textContent = sig;
+    document.getElementById('patientInstructions').innerHTML = sigHTML;
 }
 
 function copyPatientSig() {
-    const textToCopy = document.getElementById('patientInstructions').textContent.trim();
+    const el = document.getElementById('patientInstructions');
+    const textToCopy = (el.innerText || el.textContent).trim();
     if (!textToCopy || textToCopy === '--') return;
 
     navigator.clipboard.writeText(textToCopy).then(() => {
         const btn = document.getElementById('copySigBtn');
         const originalText = btn.innerHTML;
         btn.innerHTML = '✅ Copied!';
-        btn.classList.remove('bg-indigo-600', 'hover:bg-indigo-500');
-        btn.classList.add('bg-green-500', 'hover:bg-green-400');
+        btn.classList.remove('bg-indigo-600', 'hover:bg-indigo-700');
+        btn.classList.add('bg-green-600', 'hover:bg-green-700');
 
         setTimeout(() => {
             btn.innerHTML = originalText;
-            btn.classList.remove('bg-green-500', 'hover:bg-green-400');
-            btn.classList.add('bg-indigo-600', 'hover:bg-indigo-500');
+            btn.classList.remove('bg-green-600', 'hover:bg-green-700');
+            btn.classList.add('bg-indigo-600', 'hover:bg-indigo-700');
         }, 2000);
     });
 }
