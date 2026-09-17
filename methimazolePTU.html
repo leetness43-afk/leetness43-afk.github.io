@@ -91,16 +91,10 @@
             <input type="number" id="customDaysInput" aria-label="Custom Day Count Input" value="30" min="1" max="365" class="block w-full max-w-xs rounded-md border-emerald-700 bg-slate-900 text-emerald-100 shadow-sm p-2 border focus:ring-emerald-500 focus:border-emerald-500" oninput="calculateDose()">
         </div>
 
-        <!-- Quick Presets -->
+        <!-- Dynamic Quick Presets -->
         <div class="mb-4">
             <span class="block text-xs font-semibold text-emerald-300 uppercase tracking-wider mb-2">Quick Daily Dose Targets:</span>
             <div class="flex flex-wrap gap-2" id="presetButtons">
-                <button type="button" onclick="setPresetDose(5)" class="px-3 py-1 bg-slate-800 hover:bg-emerald-700 text-emerald-200 rounded border border-emerald-700/60 text-sm font-medium transition">5 mg</button>
-                <button type="button" onclick="setPresetDose(10)" class="px-3 py-1 bg-slate-800 hover:bg-emerald-700 text-emerald-200 rounded border border-emerald-700/60 text-sm font-medium transition">10 mg</button>
-                <button type="button" onclick="setPresetDose(15)" class="px-3 py-1 bg-slate-800 hover:bg-emerald-700 text-emerald-200 rounded border border-emerald-700/60 text-sm font-medium transition">15 mg</button>
-                <button type="button" onclick="setPresetDose(20)" class="px-3 py-1 bg-slate-800 hover:bg-emerald-700 text-emerald-200 rounded border border-emerald-700/60 text-sm font-medium transition">20 mg</button>
-                <button type="button" onclick="setPresetDose(30)" class="px-3 py-1 bg-slate-800 hover:bg-emerald-700 text-emerald-200 rounded border border-emerald-700/60 text-sm font-medium transition">30 mg</button>
-                <button type="button" onclick="setPresetDose(40)" class="px-3 py-1 bg-slate-800 hover:bg-emerald-700 text-emerald-200 rounded border border-emerald-700/60 text-sm font-medium transition">40 mg</button>
             </div>
         </div>
 
@@ -178,10 +172,10 @@
 const daysOfWeek = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 
 const drugDatabase = {
-    "tap-5": { name: "Methimazole", strength: 5, unit: "mg" },
-    "tap-10": { name: "Methimazole", strength: 10, unit: "mg" },
-    "tap-20": { name: "Methimazole", strength: 20, unit: "mg" },
-    "ptu-50": { name: "Propylthiouracil (PTU)", strength: 50, unit: "mg" }
+    "tap-5": { name: "Methimazole", strength: 5, unit: "mg", presets: [5, 10, 15, 20, 30, 40], defaultDose: 15 },
+    "tap-10": { name: "Methimazole", strength: 10, unit: "mg", presets: [5, 10, 15, 20, 30, 40], defaultDose: 15 },
+    "tap-20": { name: "Methimazole", strength: 20, unit: "mg", presets: [5, 10, 15, 20, 30, 40], defaultDose: 20 },
+    "ptu-50": { name: "Propylthiouracil (PTU)", strength: 50, unit: "mg", presets: [100, 150, 200, 300, 450, 600], defaultDose: 300 }
 };
 
 function initDays() {
@@ -202,14 +196,34 @@ function initDays() {
                 <option value="2">2 Pills</option>
                 <option value="2.5">2.5 Pills</option>
                 <option value="3">3 Pills</option>
+                <option value="3.5">3.5 Pills</option>
                 <option value="4">4 Pills</option>
+                <option value="5">5 Pills</option>
+                <option value="6">6 Pills</option>
             </select>
         `;
         container.appendChild(dayDiv);
     });
 }
 
+function updatePresetButtons() {
+    const drugKey = document.getElementById('drugSelect').value;
+    const meta = drugDatabase[drugKey];
+    const presetContainer = document.getElementById('presetButtons');
+    
+    presetContainer.innerHTML = meta.presets.map(mg => 
+        `<button type="button" onclick="setPresetDose(${mg})" class="px-3 py-1 bg-slate-800 hover:bg-emerald-700 text-emerald-200 rounded border border-emerald-700/60 text-sm font-medium transition">${mg} mg</button>`
+    ).join('');
+}
+
 function handleDrugChange() {
+    const drugKey = document.getElementById('drugSelect').value;
+    const meta = drugDatabase[drugKey];
+    
+    // Update target dose to default for selected drug
+    document.getElementById('targetDailyDose').value = meta.defaultDose;
+    
+    updatePresetButtons();
     applyTargetDose();
 }
 
@@ -252,7 +266,6 @@ function applyWeekdayWeekendPattern(weekdayPills, weekendPills) {
     daysOfWeek.forEach((_, index) => {
         const select = document.getElementById(`day-${index}`);
         if (select) {
-            // Index 0-4: Mon-Fri, 5-6: Sat-Sun
             select.value = (index < 5 ? weekdayPills : weekendPills).toString();
         }
     });
@@ -406,6 +419,7 @@ function copyPatientSig() {
 
 window.addEventListener('DOMContentLoaded', () => {
     initDays();
+    updatePresetButtons();
     applyTargetDose();
 });
 </script>
