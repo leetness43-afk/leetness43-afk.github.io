@@ -46,16 +46,16 @@
 <header id="site-header" class="no-print sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b border-pink-200 shadow-sm -mx-4 -mt-4 sm:-mx-8 sm:-mt-8 mb-8 px-4 py-3">
 </header>
 
-<main id="app" class="max-w-4xl mx-auto">
+<main id="app" class="max-w-5xl mx-auto">
     <header class="text-center mb-6 no-print">
         <h1 class="text-3xl font-extrabold text-pink-800">Levothyroxine Weekly Dosing Calculator</h1>
         <p class="text-gray-600 mt-2">Calculate cumulative weekly dose, average daily intake, and generate patient directions & dispensing totals.</p>
     </header>
 
     <div class="no-print bg-white p-6 rounded-xl shadow-lg mb-8 border border-pink-200">
-        <h2 class="text-lg font-medium text-gray-800 mb-3 border-b pb-1">1. Select Tablet Strength & Supply Duration</h2>
+        <h2 class="text-lg font-medium text-gray-800 mb-3 border-b pb-1">1. Select Tablet Strength, Supply Duration & Weight-Based Dose</h2>
         
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
             <div>
                 <label for="strengthSelect" class="block text-sm font-medium text-gray-700 mb-1">Levothyroxine Tablet Strength</label>
                 <select id="strengthSelect" aria-label="Levothyroxine Tablet Strength" class="block w-full rounded-md border-gray-300 shadow-sm p-2 border focus:ring-pink-500 focus:border-pink-500 font-semibold text-pink-900" onchange="handleStrengthChange()">
@@ -83,11 +83,31 @@
                     <option value="90" selected>90-Day Supply</option>
                     <option value="custom">Custom Days</option>
                 </select>
+                
+                <div id="customDaysWrapper" class="hidden mt-2">
+                    <input type="number" id="customDaysInput" aria-label="Custom Day Count Input" placeholder="Days" value="90" min="1" max="365" class="block w-full rounded-md border-gray-300 shadow-sm p-1.5 border focus:ring-pink-500 focus:border-pink-500 text-gray-800 text-sm" oninput="calculateDose()">
+                </div>
             </div>
 
-            <div id="customDaysWrapper" class="hidden">
-                <label for="customDaysInput" class="block text-sm font-medium text-gray-700 mb-1">Custom Day Count</label>
-                <input type="number" id="customDaysInput" aria-label="Custom Day Count Input" value="90" min="1" max="365" class="block w-full rounded-md border-gray-300 shadow-sm p-2 border focus:ring-pink-500 focus:border-pink-500 text-gray-800" oninput="calculateDose()">
+            <!-- ISOLATED WEIGHT-BASED DOSING CALCULATOR -->
+            <div class="col-span-1 lg:col-span-2 bg-pink-50/70 border border-pink-200 rounded-lg p-3">
+                <div class="flex items-center justify-between mb-1">
+                    <span class="text-xs font-bold text-pink-900 uppercase tracking-wider">Weight-Based Initial Dose (1.6 mcg/kg)</span>
+                    <div class="inline-flex rounded-md shadow-sm text-xs">
+                        <button type="button" id="unitKgBtn" onclick="setWeightUnit('kg')" class="px-2 py-0.5 bg-pink-700 text-white font-medium rounded-l">kg</button>
+                        <button type="button" id="unitLbsBtn" onclick="setWeightUnit('lbs')" class="px-2 py-0.5 bg-gray-200 text-gray-700 font-medium rounded-r">lbs</button>
+                    </div>
+                </div>
+                
+                <div class="grid grid-cols-2 gap-2 items-center">
+                    <div>
+                        <input type="number" id="patientWeightInput" placeholder="Enter Weight" class="w-full p-1.5 border border-pink-300 rounded text-sm bg-white font-semibold focus:ring-pink-500 focus:border-pink-500 text-gray-800" oninput="calculateWeightDose()">
+                    </div>
+                    <div class="text-right">
+                        <div id="weightDoseResult" class="text-sm font-extrabold text-pink-900">-- mcg/day</div>
+                        <div id="weightDoseNearest" class="text-xs text-pink-700 font-medium">Nearest: --</div>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -167,6 +187,46 @@ const standardStrengths = [
     { val: "200", label: "200 mcg" },
     { val: "300", label: "300 mcg" }
 ];
+
+let weightUnit = 'kg';
+
+function setWeightUnit(unit) {
+    weightUnit = unit;
+    const kgBtn = document.getElementById('unitKgBtn');
+    const lbsBtn = document.getElementById('unitLbsBtn');
+
+    if (unit === 'kg') {
+        kgBtn.className = "px-2 py-0.5 bg-pink-700 text-white font-medium rounded-l";
+        lbsBtn.className = "px-2 py-0.5 bg-gray-200 text-gray-700 font-medium rounded-r";
+    } else {
+        lbsBtn.className = "px-2 py-0.5 bg-pink-700 text-white font-medium rounded-r";
+        kgBtn.className = "px-2 py-0.5 bg-gray-200 text-gray-700 font-medium rounded-l";
+    }
+    calculateWeightDose();
+}
+
+function calculateWeightDose() {
+    const rawWeight = parseFloat(document.getElementById('patientWeightInput').value) || 0;
+    const resultEl = document.getElementById('weightDoseResult');
+    const nearestEl = document.getElementById('weightDoseNearest');
+
+    if (rawWeight <= 0) {
+        resultEl.textContent = '-- mcg/day';
+        nearestEl.textContent = 'Nearest: --';
+        return;
+    }
+
+    const weightInKg = weightUnit === 'lbs' ? rawWeight / 2.20462 : rawWeight;
+    const exactDose = weightInKg * 1.6;
+    
+    const availableStrengths = standardStrengths.map(s => parseInt(s.val, 10));
+    const closestStrength = availableStrengths.reduce((prev, curr) => {
+        return (Math.abs(curr - exactDose) < Math.abs(prev - exactDose) ? curr : prev);
+    });
+
+    resultEl.textContent = `${exactDose.toFixed(1)} mcg/day`;
+    nearestEl.textContent = `Nearest: ${closestStrength} mcg tab`;
+}
 
 function toggleCustomDays() {
     const select = document.getElementById('daysSupplySelect');
