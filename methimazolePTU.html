@@ -1,174 +1,12 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Antithyroid (Methimazole / PTU) Dosing Calculator</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-        @media print {
-            @page { size: portrait; margin: 0; }
-            .no-print { display: none !important; }
-            html, body {
-                margin: 0 !important;
-                padding: 0 !important;
-                background: white !important;
-                color: black !important;
-                width: 100vw;
-                height: 100vh;
-                overflow: hidden;
-            }
-            .print-area {
-                width: 100% !important;
-                max-width: 100% !important;
-                margin: 0 auto !important;
-                padding: 1.2cm !important;
-                box-shadow: none !important;
-                border: none !important;
-                background: white !important;
-                color: black !important;
-                transform: scale(0.92);
-                transform-origin: top center;
-            }
-            table { page-break-inside: avoid !important; border-collapse: collapse !important; }
-            tr { page-break-inside: avoid !important; page-break-after: auto; }
-            th, td { border: 1px solid #000 !important; color: #000 !important; padding: 4px 6px !important; }
-        }
-        body { font-family: 'Inter', sans-serif; }
-    </style>
-</head>
-<body class="bg-slate-950 text-slate-100 min-h-screen p-4 sm:p-8">
-
-<header id="site-header" class="no-print sticky top-0 z-50 bg-emerald-950/90 backdrop-blur-md border-b border-emerald-800/50 shadow-lg -mx-4 -mt-4 sm:-mx-8 sm:-mt-8 mb-8 px-4 py-3">
-</header>
-
-<main id="app" class="max-w-4xl mx-auto">
-    <header class="text-center mb-6 no-print">
-        <h1 class="text-3xl font-extrabold text-emerald-400">Antithyroid Dosing Calculator</h1>
-        <p class="text-emerald-200/70 mt-2">Calculate daily/weekly totals, dosing schedules, and dispensing quantities for Methimazole & PTU.</p>
-    </header>
-
-    <!-- STEP 1: Quick Configuration Panel -->
-    <div class="no-print bg-emerald-950/60 p-6 rounded-xl shadow-2xl mb-8 border border-emerald-800/60">
-        <h2 class="text-lg font-medium text-emerald-300 mb-3 border-b border-emerald-800/80 pb-1">1. Primary Medication & Target Dosing</h2>
-        
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-            <div>
-                <label for="drugSelect" class="block text-sm font-medium text-emerald-200 mb-1">Tablet Strength Prescribed</label>
-                <select id="drugSelect" aria-label="Medication and Strength" class="block w-full rounded-md border-emerald-700 bg-slate-900 text-emerald-100 shadow-sm p-2.5 border focus:ring-emerald-500 focus:border-emerald-500 font-semibold" onchange="handleDrugChange()">
-                    <optgroup label="Methimazole (TAP)">
-                        <option value="tap-5" selected>Methimazole 5 mg Tablet</option>
-                        <option value="tap-10">Methimazole 10 mg Tablet</option>
-                        <option value="tap-20">Methimazole 20 mg Tablet</option>
-                    </optgroup>
-                    <optgroup label="Propylthiouracil (PTU)">
-                        <option value="ptu-50">PTU 50 mg Tablet</option>
-                    </optgroup>
-                </select>
-            </div>
-
-            <div>
-                <label for="targetDailyDose" class="block text-sm font-medium text-emerald-200 mb-1">Target Daily Dose (mg)</label>
-                <div class="flex gap-2">
-                    <input type="number" id="targetDailyDose" value="15" step="2.5" min="0" class="block w-full rounded-md border-emerald-700 bg-slate-900 text-emerald-100 font-bold p-2.5 border focus:ring-emerald-500 focus:border-emerald-500 text-lg" oninput="applyTargetDose()">
-                    <span class="inline-flex items-center px-3 rounded-md bg-slate-800 text-emerald-300 font-bold border border-emerald-700/60 text-sm">mg/day</span>
-                </div>
-            </div>
-
-            <div>
-                <label for="daysSupplySelect" class="block text-sm font-medium text-emerald-200 mb-1">Dispensing Duration</label>
-                <select id="daysSupplySelect" aria-label="Dispensing Supply Duration" class="block w-full rounded-md border-emerald-700 bg-slate-900 text-emerald-100 shadow-sm p-2.5 border focus:ring-emerald-500 focus:border-emerald-500 font-semibold" onchange="toggleCustomDays()">
-                    <option value="30" selected>30-Day Supply</option>
-                    <option value="60">60-Day Supply</option>
-                    <option value="90">90-Day Supply</option>
-                    <option value="custom">Custom Days</option>
-                </select>
-            </div>
-        </div>
-
-        <div id="customDaysWrapper" class="hidden mb-4">
-            <label for="customDaysInput" class="block text-sm font-medium text-emerald-200 mb-1">Custom Day Count</label>
-            <input type="number" id="customDaysInput" aria-label="Custom Day Count Input" value="30" min="1" max="365" class="block w-full max-w-xs rounded-md border-emerald-700 bg-slate-900 text-emerald-100 shadow-sm p-2 border focus:ring-emerald-500 focus:border-emerald-500" oninput="calculateDose()">
-        </div>
-
-        <!-- Dynamic Quick Presets -->
-        <div class="mb-4">
-            <span class="block text-xs font-semibold text-emerald-300 uppercase tracking-wider mb-2">Quick Daily Dose Targets:</span>
-            <div class="flex flex-wrap gap-2" id="presetButtons">
-            </div>
-        </div>
-
-        <!-- Alternate Day / Tapering Quick Generator -->
-        <div class="pt-3 border-t border-emerald-800/60">
-            <span class="block text-xs font-semibold text-emerald-300 uppercase tracking-wider mb-2">Advanced Schedule Generators:</span>
-            <div class="flex flex-wrap items-center gap-3">
-                <button type="button" onclick="applyAlternatingPattern(1, 0.5)" class="px-3 py-1.5 bg-emerald-900/80 hover:bg-emerald-800 text-emerald-200 rounded text-xs font-semibold border border-emerald-700 transition">
-                    🔄 Alternate Full & Half Pill
-                </button>
-                <button type="button" onclick="applyAlternatingPattern(1, 0)" class="px-3 py-1.5 bg-emerald-900/80 hover:bg-emerald-800 text-emerald-200 rounded text-xs font-semibold border border-emerald-700 transition">
-                    🗓️ Alternate Day (On / Off)
-                </button>
-                <button type="button" onclick="applyWeekdayWeekendPattern(1, 0.5)" class="px-3 py-1.5 bg-emerald-900/80 hover:bg-emerald-800 text-emerald-200 rounded text-xs font-semibold border border-emerald-700 transition">
-                    📅 Weekday Full / Weekend Half
-                </button>
-            </div>
-        </div>
-    </div>
-
-    <!-- STEP 2: Fine-Tuning Grid (Auto-populated) -->
-    <div class="no-print bg-emerald-950/60 p-6 rounded-xl shadow-2xl mb-8 border border-emerald-800/60">
-        <div class="flex justify-between items-center mb-3 border-b border-emerald-800/80 pb-1">
-            <h2 class="text-lg font-medium text-emerald-300">2. Individual Day Adjustment (Optional)</h2>
-            <button type="button" onclick="applyTargetDose()" class="text-xs text-emerald-400 hover:underline">Reset to Target Dose</button>
-        </div>
-        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-7 gap-3 mb-2" id="daysContainer">
-        </div>
-    </div>
-
-    <!-- OUTPUT AREA -->
-    <div class="print-area bg-emerald-950/80 p-6 rounded-xl shadow-2xl border border-emerald-800/80">
-        <div class="flex justify-between items-center mb-6 border-b border-emerald-800/80 pb-4">
-            <div>
-                <h2 class="text-2xl font-bold text-emerald-300">Dosing Summary & Patient Instructions</h2>
-                <p id="calcHeader" class="text-sm text-emerald-200/60 mt-1"></p>
-            </div>
-        </div>
-
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-            <div class="p-6 bg-slate-900/80 border border-emerald-700/60 rounded-xl text-center flex flex-col justify-center">
-                <div class="text-sm font-semibold text-emerald-400 uppercase tracking-wide">Calculated Average Daily Dose</div>
-                <div id="averageDoseOutput" class="text-3xl font-black text-emerald-300 my-2">--</div>
-                <div id="weeklyTotalOutput" class="text-xs text-emerald-200/70"></div>
-            </div>
-
-            <div class="p-6 bg-slate-900/80 border border-amber-500/50 rounded-xl text-center flex flex-col justify-center">
-                <div class="text-sm font-semibold text-amber-400 uppercase tracking-wide" id="dispenseTitle">Dispensing Requirement</div>
-                <div id="dispenseOutput" class="text-2xl font-black text-amber-300 my-2">--</div>
-                <div id="dispenseSubtext" class="text-xs text-amber-200/70"></div>
-            </div>
-        </div>
-
-        <div id="scheduleTableContainer" class="overflow-x-auto mb-6"></div>
-
-        <div class="border-t border-emerald-800/80 pt-4">
-            <h3 class="text-xs font-bold text-emerald-400 uppercase tracking-wider mb-2">Patient Directions (Sig)</h3>
-            <div class="flex items-center gap-2">
-                <div id="patientInstructions" class="flex-1 p-4 bg-slate-900 border border-emerald-700/60 rounded-lg text-lg font-bold text-emerald-200 text-center">
-                    --
-                </div>
-                <button id="copySigBtn" onclick="copyPatientSig()" type="button" class="no-print bg-emerald-600 hover:bg-emerald-500 text-slate-950 font-bold px-4 py-4 rounded-lg shadow transition flex items-center gap-1.5 text-sm whitespace-nowrap">
-                    📋 Copy
-                </button>
-            </div>
-        </div>
-
-        <div class="mt-6 text-xs text-emerald-200/50 border-t border-emerald-800/80 pt-4 italic">
-            <strong>Pharmacy Note:</strong> Average daily dose is calculated as (Total Weekly Dose ÷ 7 Days) and rounded to one decimal place. Dispense quantities account for exact tablet requirements over the calculated days supply rounded up to full tablets.
-        </div>
-    </div>
-</main>
-
 <script>
+// 1. Fetch external navigation header
+fetch('nav.html')
+    .then(res => res.text())
+    .then(data => {
+        document.getElementById('site-header').innerHTML = data;
+    })
+    .catch(err => console.error('Error loading navigation:', err));
+
 const daysOfWeek = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 
 const drugDatabase = {
@@ -220,7 +58,6 @@ function handleDrugChange() {
     const drugKey = document.getElementById('drugSelect').value;
     const meta = drugDatabase[drugKey];
     
-    // Update target dose to default for selected drug
     document.getElementById('targetDailyDose').value = meta.defaultDose;
     
     updatePresetButtons();
@@ -238,8 +75,6 @@ function applyTargetDose() {
     const targetMg = parseFloat(document.getElementById('targetDailyDose').value) || 0;
     
     let pillCount = targetMg / strength;
-    
-    // Auto-select nearest valid step (multiples of 0.5)
     pillCount = Math.round(pillCount * 2) / 2;
 
     daysOfWeek.forEach((_, index) => {
@@ -423,5 +258,3 @@ window.addEventListener('DOMContentLoaded', () => {
     applyTargetDose();
 });
 </script>
-</body>
-</html>
