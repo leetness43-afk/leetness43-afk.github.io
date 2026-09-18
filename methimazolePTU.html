@@ -88,9 +88,9 @@
             <div>
                 <label for="daysSupplySelect" class="block text-sm font-medium text-emerald-200 mb-1">Dispensing Duration</label>
                 <select id="daysSupplySelect" aria-label="Dispensing Supply Duration" class="block w-full rounded-md border-emerald-700 bg-slate-900 text-emerald-100 shadow-sm p-2.5 border focus:ring-emerald-500 focus:border-emerald-500 font-semibold" onchange="toggleCustomDays()">
-                    <option value="30" selected>30-Day Supply</option>
+                    <option value="30">30-Day Supply</option>
                     <option value="60">60-Day Supply</option>
-                    <option value="90">90-Day Supply</option>
+                    <option value="90" selected>90-Day Supply</option>
                     <option value="custom">Custom Days</option>
                 </select>
             </div>
@@ -98,7 +98,53 @@
 
         <div id="customDaysWrapper" class="hidden mb-4">
             <label for="customDaysInput" class="block text-sm font-medium text-emerald-200 mb-1">Custom Day Count</label>
-            <input type="number" id="customDaysInput" aria-label="Custom Day Count Input" value="30" min="1" max="365" class="block w-full max-w-xs rounded-md border-emerald-700 bg-slate-900 text-emerald-100 shadow-sm p-2 border focus:ring-emerald-500 focus:border-emerald-500" oninput="calculateDose()">
+            <input type="number" id="customDaysInput" aria-label="Custom Day Count Input" value="90" min="1" max="365" class="block w-full max-w-xs rounded-md border-emerald-700 bg-slate-900 text-emerald-100 shadow-sm p-2 border focus:ring-emerald-500 focus:border-emerald-500" oninput="calculateDose()">
+        </div>
+
+        <!-- METHIMAZOLE <-> PTU CONVERSION TOOL -->
+        <div class="mb-5 p-4 bg-slate-900/90 border border-emerald-700/60 rounded-lg">
+            <div class="flex flex-wrap items-center justify-between gap-2 mb-3 pb-2 border-b border-emerald-800/60">
+                <span class="text-xs font-bold text-emerald-300 uppercase tracking-wider flex items-center gap-1.5">
+                    🔀 Dose Conversion (Methimazole ⇄ PTU)
+                </span>
+                
+                <div class="flex items-center gap-2 text-xs">
+                    <span class="text-emerald-200/70 font-medium">Equivalence Ratio:</span>
+                    <label class="inline-flex items-center gap-1 cursor-pointer">
+                        <input type="radio" name="convRatio" value="15" checked onchange="calculateConversion()" class="text-emerald-500 focus:ring-emerald-500 bg-slate-950 border-emerald-700">
+                        <span class="text-emerald-100 font-semibold">1 : 15</span>
+                    </label>
+                    <label class="inline-flex items-center gap-1 cursor-pointer ml-2">
+                        <input type="radio" name="convRatio" value="20" onchange="calculateConversion()" class="text-emerald-500 focus:ring-emerald-500 bg-slate-950 border-emerald-700">
+                        <span class="text-emerald-100 font-semibold">1 : 20</span>
+                    </label>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-12 gap-3 items-center">
+                <div class="md:col-span-4">
+                    <label for="convSourceDose" class="block text-xs font-medium text-emerald-200/80 mb-1">Source Dose</label>
+                    <div class="flex gap-1.5">
+                        <input type="number" id="convSourceDose" value="15" step="2.5" min="0" class="w-full rounded border-emerald-700 bg-slate-950 text-emerald-100 font-bold p-1.5 text-sm border focus:ring-emerald-500 focus:border-emerald-500" oninput="calculateConversion()">
+                        <select id="convDirection" class="rounded border-emerald-700 bg-slate-950 text-emerald-100 font-semibold p-1.5 text-xs border focus:ring-emerald-500 focus:border-emerald-500" onchange="calculateConversion()">
+                            <option value="tapToPtu">mg TAP → PTU</option>
+                            <option value="ptuToTap">mg PTU → TAP</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="md:col-span-5 bg-slate-950/80 p-2.5 rounded border border-emerald-800/60 text-center">
+                    <div class="text-[10px] uppercase font-bold text-emerald-400/80 tracking-wider">Equivalent Dose Result</div>
+                    <div id="convResultText" class="text-base font-extrabold text-emerald-200 my-0.5">225 mg PTU / day</div>
+                    <div id="convSubtext" class="text-[11px] text-emerald-300/70">Based on 1 mg TAP = 15 mg PTU</div>
+                </div>
+
+                <div class="md:col-span-3 flex justify-end">
+                    <button type="button" onclick="applyConversionToTarget()" class="w-full py-2 px-3 bg-emerald-700 hover:bg-emerald-600 text-slate-950 font-extrabold rounded text-xs transition shadow flex items-center justify-center gap-1">
+                        📥 Apply to Target
+                    </button>
+                </div>
+            </div>
         </div>
 
         <!-- Dynamic Quick Presets -->
@@ -187,6 +233,54 @@ const drugDatabase = {
     "tap-20": { name: "Methimazole", strength: 20, unit: "mg", presets: [5, 10, 15, 20, 30, 40], defaultDose: 20 },
     "ptu-50": { name: "Propylthiouracil (PTU)", strength: 50, unit: "mg", presets: [100, 150, 200, 300, 450, 600], defaultDose: 300 }
 };
+
+let lastCalculatedConversion = { targetDose: 0, targetDrugKey: 'ptu-50' };
+
+function calculateConversion() {
+    const val = parseFloat(document.getElementById('convSourceDose').value) || 0;
+    const direction = document.getElementById('convDirection').value;
+    const ratioRadio = document.querySelector('input[name="convRatio"]:checked');
+    const ratio = ratioRadio ? parseFloat(ratioRadio.value) : 15;
+
+    const resultEl = document.getElementById('convResultText');
+    const subtextEl = document.getElementById('convSubtext');
+
+    if (val <= 0) {
+        resultEl.textContent = '0 mg';
+        subtextEl.textContent = 'Enter a source dose';
+        lastCalculatedConversion = { targetDose: 0, targetDrugKey: direction === 'tapToPtu' ? 'ptu-50' : 'tap-5' };
+        return;
+    }
+
+    if (direction === 'tapToPtu') {
+        const ptuMg = val * ratio;
+        resultEl.textContent = `${ptuMg.toFixed(0)} mg PTU / day`;
+        subtextEl.textContent = `Based on 1 mg Methimazole = ${ratio} mg PTU`;
+        lastCalculatedConversion = { targetDose: ptuMg, targetDrugKey: 'ptu-50' };
+    } else {
+        const tapMg = val / ratio;
+        resultEl.textContent = `${tapMg.toFixed(1)} mg TAP / day`;
+        subtextEl.textContent = `Based on ${ratio} mg PTU = 1 mg Methimazole`;
+
+        let bestTapKey = 'tap-5';
+        if (tapMg >= 20) bestTapKey = 'tap-20';
+        else if (tapMg >= 10) bestTapKey = 'tap-10';
+
+        lastCalculatedConversion = { targetDose: tapMg, targetDrugKey: bestTapKey };
+    }
+}
+
+function applyConversionToTarget() {
+    if (lastCalculatedConversion.targetDose <= 0) return;
+
+    document.getElementById('drugSelect').value = lastCalculatedConversion.targetDrugKey;
+    document.getElementById('targetDailyDose').value = lastCalculatedConversion.targetDose % 1 === 0 
+        ? lastCalculatedConversion.targetDose 
+        : lastCalculatedConversion.targetDose.toFixed(1);
+
+    updatePresetButtons();
+    applyTargetDose();
+}
 
 function initDays() {
     const container = document.getElementById('daysContainer');
@@ -427,6 +521,7 @@ function copyPatientSig() {
 window.addEventListener('DOMContentLoaded', () => {
     initDays();
     updatePresetButtons();
+    calculateConversion();
     applyTargetDose();
 });
 </script>
