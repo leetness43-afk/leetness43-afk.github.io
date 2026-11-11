@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GLP-1 Pen Dispensing Calculator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @media print {
+            @page {
+                size: portrait;
+                margin: 0;
+            }
+            .no-print { display: none !important; }
+            html, body {
+                margin: 0 !important;
+                padding: 0 !important;
+                background: white !important;
+                width: 100vw;
+                height: 100vh;
+                overflow: hidden;
+            }
+            .print-area {
+                width: 100% !important;
+                max-width: 100% !important;
+                margin: 0 auto !important;
+                padding: 1.5cm !important;
+                box-shadow: none !important;
+                border: none !important;
+                transform: scale(0.95);
+                transform-origin: top center;
+            }
+        }
+        body { font-family: 'Inter', sans-serif; }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen p-4 sm:p-8 text-gray-900">
+
+<header id="site-header" class="no-print sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b border-gray-300 shadow-sm -mx-4 -mt-4 sm:-mx-8 sm:-mt-8 mb-8 px-4 py-3"></header>
+
+<div id="app" class="max-w-4xl mx-auto">
+    <header class="text-center mb-8 no-print">
+        <h1 class="text-3xl font-extrabold text-black uppercase tracking-tight">GLP-1 Pen Dispensing Calculator</h1>
+        <p class="text-gray-600 mt-2 font-medium">Calculate exact device quantities, daily/weekly dosing, and write 1-month & 3-month prescriptions.</p>
+    </header>
+
+    <div class="no-print bg-white p-6 rounded-none shadow-sm mb-8 border-2 border-black">
+        <div class="flex items-center justify-between border-b-2 border-black pb-3 mb-6">
+            <h2 class="text-xl font-bold text-black flex items-center gap-2 uppercase">
+                Clinical Titration & Dispensing Setup
+            </h2>
+            <span class="text-xs bg-black text-white font-bold px-3 py-1 uppercase tracking-wider">2026 Formulary</span>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div class="bg-gray-50 p-5 border border-gray-300 flex flex-col justify-between">
+                <div>
+                    <h3 class="text-sm font-bold text-black mb-4 border-b border-gray-300 pb-2 uppercase tracking-wide">
+                        Patient Prescription Details
+                    </h3>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-xs font-bold text-gray-700 uppercase">Medication</label>
+                            <select id="medSelect" class="mt-1 block w-full border-gray-400 p-2.5 border text-sm font-medium bg-white focus:ring-black focus:border-black transition-colors" onchange="updateDoses()">
+                                <!-- Populated by JS -->
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-gray-700 uppercase">Target Dose</label>
+                            <select id="doseSelect" class="mt-1 block w-full border-gray-400 p-2.5 border text-sm font-medium bg-white focus:ring-black focus:border-black transition-colors" onchange="updateDevices()">
+                                <!-- Populated by JS -->
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-gray-700 uppercase">Device / Packaging</label>
+                            <select id="deviceSelect" class="mt-1 block w-full border-gray-400 p-2.5 border text-sm font-medium bg-white focus:ring-black focus:border-black transition-colors" onchange="calculateGLP1()">
+                                <!-- Populated by JS -->
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-black text-white p-5 flex flex-col justify-between shadow-inner">
+                <div>
+                    <h3 class="text-sm font-bold text-gray-200 mb-4 border-b border-gray-700 pb-2 uppercase tracking-wide">
+                        Supply Requirements
+                    </h3>
+                    
+                    <div class="space-y-4 text-sm mt-4">
+                        <div class="flex justify-between items-end border-b border-gray-700 pb-2">
+                            <span class="text-gray-400 font-medium">Injection Frequency:</span>
+                            <span id="freqResult" class="font-bold text-white text-lg">Weekly</span>
+                        </div>
+                        <div class="flex justify-between items-end border-b border-gray-700 pb-2">
+                            <span class="text-gray-400 font-medium">1 Month (28/30 Days):</span>
+                            <span id="oneMonthReq" class="font-bold text-white text-lg">1 Box (4 Pens)</span>
+                        </div>
+                        <div class="flex justify-between items-end border-b border-gray-700 pb-2">
+                            <span class="text-gray-400 font-medium">3 Months (84/90 Days):</span>
+                            <span id="threeMonthReq" class="font-bold text-white text-lg">3 Boxes (12 Pens)</span>
+                        </div>
+                        <div class="pt-2">
+                            <span class="block text-gray-400 font-medium mb-1">Standard Rx Sig (1-Month Fill):</span>
+                            <span id="rxSig" class="block font-mono bg-gray-900 p-3 text-green-400 text-sm border border-gray-700">
+                                Inject 2.4 mg subcutaneously once weekly. Dispense: 1 Box (4 pens) + 2 Refills.
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Print / Output Card -->
+    <div class="print-area bg-white p-8 border-2 border-black shadow-lg">
+        <div class="text-center mb-6 border-b-4 border-black pb-6">
+            <h2 class="text-3xl font-extrabold text-black uppercase tracking-widest">Patient GLP-1 Guide</h2>
+            <p class="text-gray-600 mt-2 font-medium">Injection Protocol & Dispensing Summary</p>
+        </div>
+
+        <div class="grid grid-cols-2 gap-8 mb-8">
+            <div>
+                <p class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Medication</p>
+                <p id="printMedName" class="text-2xl font-black text-black">Wegovy (semaglutide)</p>
+            </div>
+            <div class="text-right">
+                <p class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Dose & Frequency</p>
+                <p id="printDoseFreq" class="text-2xl font-black text-black">2.4 mg Weekly</p>
+            </div>
+        </div>
+
+        <div class="bg-gray-100 p-6 border border-gray-300 mb-8">
+            <h3 class="font-bold text-black uppercase mb-3">Pharmacist Dispensing Instructions</h3>
+            <div class="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                    <span class="block text-gray-500 font-medium">Form Factor:</span>
+                    <span id="printDevice" class="font-bold text-black">Single-Dose Pens (4 per box)</span>
+                </div>
+                <div>
+                    <span class="block text-gray-500 font-medium">90-Day Supply:</span>
+                    <span id="print90Day" class="font-bold text-black">3 Boxes (12 Pens total)</span>
+                </div>
+            </div>
+        </div>
+        
+        <div class="text-center border-t border-gray-300 pt-6">
+            <p class="text-xs font-bold text-gray-400 uppercase tracking-widest">System Generated Rx Reference</p>
+        </div>
+    </div>
+
+    <div class="text-center mt-8 no-print pb-12">
+        <button onclick="window.focus(); window.print();"
+            class="bg-black hover:bg-gray-800 text-white font-bold py-4 px-10 border border-transparent shadow-xl transition-all uppercase tracking-widest text-sm">
+            🖨️ Print Rx Summary
+        </button>
+    </div>
+</div>
+
+<script>
+// 2026 Formulary Data Structure
+const glp1Data = {
+    wegovy: {
+        name: "Wegovy (semaglutide)",
+        freq: "weekly",
+        daysPerMonth: 28,
+        doses: [
+            { mg: 0.25, devices: [{ name: "Single-Dose Pens (1 Box = 4 Pens)", type: "single", pensPerBox: 4 }] },
+            { mg: 0.5, devices: [{ name: "Single-Dose Pens (1 Box = 4 Pens)", type: "single", pensPerBox: 4 }] },
+            { mg: 1.0, devices: [{ name: "Single-Dose Pens (1 Box = 4 Pens)", type: "single", pensPerBox: 4 }] },
+            { mg: 1.7, devices: [{ name: "Single-Dose Pens (1 Box = 4 Pens)", type: "single", pensPerBox: 4 }] },
+            { mg: 2.4, devices: [{ name: "Single-Dose Pens (1 Box = 4 Pens)", type: "single", pensPerBox: 4 }] },
+            { mg: 7.2, devices: [{ name: "Wegovy HD Single-Dose Pens (1 Box = 4 Pens)", type: "single", pensPerBox: 4 }] }
+        ]
+    },
+    zepbound: {
+        name: "Zepbound (tirzepatide)",
+        freq: "weekly",
+        daysPerMonth: 28,
+        doses: [2.5, 5, 7.5, 10, 12.5, 15].map(mg => ({
+            mg: mg,
+            devices: [
+                { name: "Single-Dose Pens (1 Box = 4 Pens)", type: "single", pensPerBox: 4 },
+                { name: "KwikPen Multi-Dose (1 Pen = 4 Doses)", type: "multi-4", pensPerBox: 1 }
+            ]
+        }))
+    },
+    mounjaro: {
+        name: "Mounjaro (tirzepatide)",
+        freq: "weekly",
+        daysPerMonth: 28,
+        doses: [2.5, 5, 7.5, 10, 12.5, 15].map(mg => ({
+            mg: mg,
+            devices: [
+                { name: "Single-Dose Pens (1 Box = 4 Pens)", type: "single", pensPerBox: 4 },
+                { name: "KwikPen Multi-Dose (1 Pen = 4 Doses)", type: "multi-4", pensPerBox: 1 }
+            ]
+        }))
+    },
+    ozempic: {
+        name: "Ozempic (semaglutide)",
+        freq: "weekly",
+        daysPerMonth: 28,
+        doses: [
+            { mg: 0.25, devices: [{ name: "2 mg / 3 mL Pen (Delivers 0.25 or 0.5mg)", type: "ozempic", mgPerPen: 2, pensPerBox: 1 }] },
+            { mg: 0.5, devices: [{ name: "2 mg / 3 mL Pen (Delivers 0.25 or 0.5mg)", type: "ozempic", mgPerPen: 2, pensPerBox: 1 }] },
+            { mg: 1.0, devices: [{ name: "4 mg / 3 mL Pen (Delivers 1.0mg)", type: "ozempic", mgPerPen: 4, pensPerBox: 1 }] },
+            { mg: 2.0, devices: [{ name: "8 mg / 3 mL Pen (Delivers 2.0mg)", type: "ozempic", mgPerPen: 8, pensPerBox: 1 }] }
+        ]
+    },
+    saxenda: {
+        name: "Saxenda (liraglutide)",
+        freq: "daily",
+        daysPerMonth: 30,
+        doses: [0.6, 1.2, 1.8, 2.4, 3.0].map(mg => ({
+            mg: mg,
+            devices: [{ name: "18 mg / 3 mL Pens (1 Box = 5 Pens = 90mg total)", type: "saxenda", mgPerPen: 18, pensPerBox: 5 }]
+        }))
+    },
+    trulicity: {
+        name: "Trulicity (dulaglutide)",
+        freq: "weekly",
+        daysPerMonth: 28,
+        doses: [0.75, 1.5, 3.0, 4.5].map(mg => ({
+            mg: mg,
+            devices: [{ name: "Single-Dose Pens (1 Box = 4 Pens)", type: "single", pensPerBox: 4 }]
+        }))
+    }
+};
+
+let currentMed = null;
+let currentDose = null;
+let currentDevice = null;
+
+function init() {
+    const medSelect = document.getElementById('medSelect');
+    medSelect.innerHTML = '';
+    for (const key in glp1Data) {
+        const opt = document.createElement('option');
+        opt.value = key;
+        opt.textContent = glp1Data[key].name;
+        medSelect.appendChild(opt);
+    }
+    updateDoses();
+}
+
+function updateDoses() {
+    const medKey = document.getElementById('medSelect').value;
+    currentMed = glp1Data[medKey];
+    
+    const doseSelect = document.getElementById('doseSelect');
+    doseSelect.innerHTML = '';
+    
+    currentMed.doses.forEach((dose, idx) => {
+        const opt = document.createElement('option');
+        opt.value = idx; // Store index to retrieve easily
+        opt.textContent = `${dose.mg} mg`;
+        doseSelect.appendChild(opt);
+    });
+    
+    updateDevices();
+}
+
+function updateDevices() {
+    const doseIdx = document.getElementById('doseSelect').value;
+    currentDose = currentMed.doses[doseIdx];
+    
+    const deviceSelect = document.getElementById('deviceSelect');
+    deviceSelect.innerHTML = '';
+    
+    currentDose.devices.forEach((device, idx) => {
+        const opt = document.createElement('option');
+        opt.value = idx;
+        opt.textContent = device.name;
+        deviceSelect.appendChild(opt);
+    });
+    
+    calculateGLP1();
+}
+
+function calculateGLP1() {
+    const deviceIdx = document.getElementById('deviceSelect').value;
+    currentDevice = currentDose.devices[deviceIdx];
+    
+    let oneMonthText = "";
+    let threeMonthText = "";
+    let rxText = "";
+    
+    const freqCap = currentMed.freq === 'weekly' ? 'Weekly' : 'Daily';
+    document.getElementById('freqResult').textContent = freqCap;
+
+    if (currentDevice.type === 'single') {
+        // Standard 1 Box = 4 Pens = 28 Days
+        oneMonthText = "1 Box (4 Pens)";
+        threeMonthText = "3 Boxes (12 Pens)";
+        rxText = `Inject ${currentDose.mg} mg subcutaneously once weekly. Dispense: 1 Box (4 pens) + 2 Refills.`;
+    
+    } else if (currentDevice.type === 'multi-4') {
+        // KwikPen 1 Pen = 4 Doses = 28 Days
+        oneMonthText = "1 Multi-Dose Pen";
+        threeMonthText = "3 Multi-Dose Pens";
+        rxText = `Inject ${currentDose.mg} mg subcutaneously once weekly. Dispense: 1 Multi-Dose Pen + 2 Refills.`;
+    
+    } else if (currentDevice.type === 'ozempic') {
+        // Ozempic math
+        const mgPerWeek = currentDose.mg;
+        const mgPerPen = currentDevice.mgPerPen;
+        const weeksPerPen = mgPerPen / mgPerWeek; // e.g. 2mg pen / 0.5mg wk = 4 weeks
+        
+        // 1 month (4 weeks)
+        const pensFor4Weeks = Math.ceil(4 / weeksPerPen);
+        oneMonthText = `${pensFor4Weeks} Pen(s)`;
+        
+        // 3 month (12 weeks)
+        const pensFor12Weeks = Math.ceil(12 / weeksPerPen);
+        threeMonthText = `${pensFor12Weeks} Pens`;
+        
+        rxText = `Inject ${currentDose.mg} mg subcutaneously once weekly. Dispense: ${pensFor4Weeks} Pen(s) + 2 Refills.`;
+
+    } else if (currentDevice.type === 'saxenda') {
+        // Saxenda daily math
+        const mgPerDay = currentDose.mg;
+        const mgPerBox = 90; // 5 pens * 18mg
+        
+        // 1 Month (30 days)
+        const mg30Days = mgPerDay * 30;
+        const boxes30Days = Math.ceil(mg30Days / mgPerBox);
+        oneMonthText = `${boxes30Days} Box(es) (${boxes30Days * 5} Pens)`;
+        
+        // 3 Months (90 days)
+        const mg90Days = mgPerDay * 90;
+        const boxes90Days = Math.ceil(mg90Days / mgPerBox);
+        threeMonthText = `${boxes90Days} Boxes (${boxes90Days * 5} Pens)`;
+        
+        rxText = `Inject ${currentDose.mg} mg subcutaneously once daily. Dispense: ${boxes30Days} Box(es) + 2 Refills.`;
+    }
+
+    // Update DOM
+    document.getElementById('oneMonthReq').textContent = oneMonthText;
+    document.getElementById('threeMonthReq').textContent = threeMonthText;
+    document.getElementById('rxSig').textContent = rxText;
+
+    // Update Print Guide
+    document.getElementById('printMedName').textContent = currentMed.name;
+    document.getElementById('printDoseFreq').textContent = `${currentDose.mg} mg ${freqCap}`;
+    document.getElementById('printDevice').textContent = currentDevice.name;
+    document.getElementById('print90Day').textContent = threeMonthText;
+}
+
+window.onload = init;
+</script>
+</body>
+</html>
