@@ -47,7 +47,7 @@
         }).catch(e => console.log("Nav fetch failed, ignoring for local test."));
 </script>
 
-<div id="app" class="max-w-4xl mx-auto">
+<div id="app" class="max-w-4xl mx-auto pb-12">
     <header class="text-center mb-8 no-print">
         <h1 class="text-3xl font-extrabold text-black uppercase tracking-tight">GLP-1 Pen Dispensing Calculator</h1>
         <p class="text-gray-600 mt-2 font-medium">Calculate exact device quantities, daily/weekly dosing, and write 1-month & 3-month prescriptions.</p>
@@ -121,7 +121,7 @@
         </div>
     </div>
 
-    <!-- Print / Output Card -->
+    <!-- Output Card -->
     <div class="print-area bg-white p-8 border-2 border-black shadow-lg">
         <div class="text-center mb-6 border-b-4 border-black pb-6">
             <h2 class="text-3xl font-extrabold text-black uppercase tracking-widest">Patient GLP-1 Guide</h2>
@@ -139,7 +139,7 @@
             </div>
         </div>
 
-        <div class="bg-gray-100 p-6 border border-gray-300 mb-8">
+        <div class="bg-gray-100 p-6 border border-gray-300">
             <h3 class="font-bold text-black uppercase mb-3">Pharmacist Dispensing Instructions</h3>
             <div class="grid grid-cols-2 gap-4 text-sm">
                 <div>
@@ -152,17 +152,6 @@
                 </div>
             </div>
         </div>
-        
-        <div class="text-center border-t border-gray-300 pt-6">
-            <p class="text-xs font-bold text-gray-400 uppercase tracking-widest">System Generated Rx Reference</p>
-        </div>
-    </div>
-
-    <div class="text-center mt-8 no-print pb-12">
-        <button onclick="window.focus(); window.print();"
-            class="bg-black hover:bg-gray-800 text-white font-bold py-4 px-10 border border-transparent shadow-xl transition-all uppercase tracking-widest text-sm">
-            🖨️ Print Rx Summary
-        </button>
     </div>
 </div>
 
