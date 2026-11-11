@@ -38,6 +38,15 @@
 
 <header id="site-header" class="no-print sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b border-gray-300 shadow-sm -mx-4 -mt-4 sm:-mx-8 sm:-mt-8 mb-8 px-4 py-3"></header>
 
+<!-- Persistent Nav Bar Script -->
+<script>
+    fetch('nav.html')
+        .then(res => res.text())
+        .then(data => {
+            if(data) document.getElementById('site-header').innerHTML = data;
+        }).catch(e => console.log("Nav fetch failed, ignoring for local test."));
+</script>
+
 <div id="app" class="max-w-4xl mx-auto">
     <header class="text-center mb-8 no-print">
         <h1 class="text-3xl font-extrabold text-black uppercase tracking-tight">GLP-1 Pen Dispensing Calculator</h1>
@@ -177,13 +186,17 @@ const glp1Data = {
         name: "Zepbound (tirzepatide)",
         freq: "weekly",
         daysPerMonth: 28,
-        doses: [2.5, 5, 7.5, 10, 12.5, 15].map(mg => ({
-            mg: mg,
-            devices: [
+        doses: [2.5, 5, 7.5, 10, 12.5, 15].map(mg => {
+            let devices = [
                 { name: "Single-Dose Pens (1 Box = 4 Pens)", type: "single", pensPerBox: 4 },
                 { name: "KwikPen Multi-Dose (1 Pen = 4 Doses)", type: "multi-4", pensPerBox: 1 }
-            ]
-        }))
+            ];
+            // Add official Zepbound vials released for 2.5mg and 5.0mg doses
+            if (mg === 2.5 || mg === 5) {
+                devices.push({ name: "Single-Dose Vials (1 Box = 4 Vials)", type: "vial", vialsPerBox: 4 });
+            }
+            return { mg: mg, devices: devices };
+        })
     },
     mounjaro: {
         name: "Mounjaro (tirzepatide)",
@@ -193,7 +206,9 @@ const glp1Data = {
             mg: mg,
             devices: [
                 { name: "Single-Dose Pens (1 Box = 4 Pens)", type: "single", pensPerBox: 4 },
-                { name: "KwikPen Multi-Dose (1 Pen = 4 Doses)", type: "multi-4", pensPerBox: 1 }
+                { name: "KwikPen Multi-Dose (1 Pen = 4 Doses)", type: "multi-4", pensPerBox: 1 },
+                // Mounjaro vials available across all doses in certain international markets (e.g. Canada)
+                { name: "Single-Dose Vials (1 Box = 4 Vials)", type: "vial", vialsPerBox: 4 }
             ]
         }))
     },
@@ -301,6 +316,12 @@ function calculateGLP1() {
         threeMonthText = "3 Multi-Dose Pens";
         rxText = `Inject ${currentDose.mg} mg subcutaneously once weekly. Dispense: 1 Multi-Dose Pen + 2 Refills.`;
     
+    } else if (currentDevice.type === 'vial') {
+        // Vials (1 Box = 4 Vials = 28 Days)
+        oneMonthText = "1 Box (4 Vials)";
+        threeMonthText = "3 Boxes (12 Vials)";
+        rxText = `Inject ${currentDose.mg} mg subcutaneously once weekly. Dispense: 1 Box (4 Vials) + 2 Refills.`;
+
     } else if (currentDevice.type === 'ozempic') {
         // Ozempic math
         const mgPerWeek = currentDose.mg;
