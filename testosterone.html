@@ -49,8 +49,8 @@
     fetch('nav.html')
         .then(res => res.text())
         .then(data => {
-            document.getElementById('site-header').innerHTML = data;
-        });
+            if(data) document.getElementById('site-header').innerHTML = data;
+        }).catch(e => console.log("Nav fetch failed, ignoring for local test."));
 </script>
 
 <div id="app" class="max-w-4xl mx-auto">
@@ -255,17 +255,37 @@ function calculateTestosterone() {
     const volumePerDose = doseMg / conc;
     const formattedVolume = volumePerDose.toFixed(2);
 
-    // 90-Day injectable volume & vial calculations
+    // --- UPDATED VOLUME & REFILL LOGIC ---
+    // Base volume calculations
     const dosesIn90Days = 90 / intervalDays;
     const totalVol90 = volumePerDose * dosesIn90Days;
-    const totalVialsNeeded = Math.ceil(totalVol90 / vialSize);
     
-    // 30-Day fill calculation
     const dosesIn30Days = 30 / intervalDays;
     const totalVol30 = volumePerDose * dosesIn30Days;
-    const vials30Days = Math.ceil(totalVol30 / vialSize);
+
+    let totalVialsNeeded, vials30Days;
+
+    if (vialSize === 1) {
+        // Single-Dose Vials: calculate by whole vials per injection to account for waste
+        const vialsPerDose = Math.ceil(volumePerDose / vialSize);
+        // Rounding accurately matches standard clinical dispensing
+        const wholeDoses30 = Math.round(30 / intervalDays); 
+        const wholeDoses90 = Math.round(90 / intervalDays); 
+        
+        vials30Days = wholeDoses30 * vialsPerDose;
+        totalVialsNeeded = wholeDoses90 * vialsPerDose;
+    } else {
+        // Multi-Dose Vials: pool the total volume
+        vials30Days = Math.ceil(totalVol30 / vialSize);
+        totalVialsNeeded = Math.ceil(totalVol90 / vialSize);
+    }
     
-    const injRefills = Math.max(0, Math.ceil(totalVol90 / (totalVol30 || 1)) - 1);
+    // Calculate Refills: Based on dispensing standard sets of vials, not raw volume
+    let injRefills = 0;
+    if (vials30Days > 0) {
+        injRefills = Math.max(0, Math.ceil((totalVialsNeeded - vials30Days) / vials30Days));
+    }
+    // -------------------------------------
 
     // Format frequency string for patient guide
     let freqText = `every ${intervalDays} days`;
