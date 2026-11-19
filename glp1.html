@@ -139,6 +139,12 @@
 </div>
 
 <script>
+const ozempicDevices = [
+    { name: "2 mg / 3 mL Pen (0.25 mg or 0.5 mg Pen)", type: "ozempic", mgPerPen: 2, pensPerBox: 1, mlPerPen: 3, includedNeedles: 6 },
+    { name: "4 mg / 3 mL Pen (1 mg Pen)", type: "ozempic", mgPerPen: 4, pensPerBox: 1, mlPerPen: 3, includedNeedles: 4 },
+    { name: "8 mg / 3 mL Pen (2 mg Pen)", type: "ozempic", mgPerPen: 8, pensPerBox: 1, mlPerPen: 3, includedNeedles: 4 }
+];
+
 // 2026 Formulary Data Structure
 const glp1Data = {
     wegovy: {
@@ -187,10 +193,10 @@ const glp1Data = {
         freq: "weekly",
         daysPerMonth: 28,
         doses: [
-            { mg: 0.25, devices: [{ name: "2 mg / 3 mL Pen (Delivers 0.25 or 0.5mg)", type: "ozempic", mgPerPen: 2, pensPerBox: 1, mlPerPen: 3, includedNeedles: 6 }] },
-            { mg: 0.5, devices: [{ name: "2 mg / 3 mL Pen (Delivers 0.25 or 0.5mg)", type: "ozempic", mgPerPen: 2, pensPerBox: 1, mlPerPen: 3, includedNeedles: 6 }] },
-            { mg: 1.0, devices: [{ name: "4 mg / 3 mL Pen (Delivers 1.0mg)", type: "ozempic", mgPerPen: 4, pensPerBox: 1, mlPerPen: 3, includedNeedles: 4 }] },
-            { mg: 2.0, devices: [{ name: "8 mg / 3 mL Pen (Delivers 2.0mg)", type: "ozempic", mgPerPen: 8, pensPerBox: 1, mlPerPen: 3, includedNeedles: 4 }] }
+            { mg: 0.25, defaultDeviceIdx: 0, devices: ozempicDevices },
+            { mg: 0.5, defaultDeviceIdx: 0, devices: ozempicDevices },
+            { mg: 1.0, defaultDeviceIdx: 1, devices: ozempicDevices },
+            { mg: 2.0, defaultDeviceIdx: 2, devices: ozempicDevices }
         ]
     },
     saxenda: {
@@ -259,6 +265,10 @@ function updateDevices() {
         opt.textContent = device.name;
         deviceSelect.appendChild(opt);
     });
+
+    if (typeof currentDose.defaultDeviceIdx === 'number') {
+        deviceSelect.value = currentDose.defaultDeviceIdx;
+    }
     
     calculateGLP1();
 }
@@ -341,7 +351,7 @@ function calculateGLP1() {
 
         if (extraNeedles > 0) {
             needExtraNeedles = true;
-            needleDetailText = `${pensNeeded} ${ozempicPenWord.toLowerCase()} includes ${includedTotal} needles total, which is fewer than the ${totalWeeks} weekly injections required.`;
+            needleDetailText = `${pensNeeded} ${ozempicPenWord.toLowerCase()} includes ${includedTotal} needles total (${currentDevice.includedNeedles}/pen), which is fewer than the ${totalWeeks} weekly injections required.`;
         } else {
             needExtraNeedles = false;
             needleDetailText = `Each pen includes ${currentDevice.includedNeedles} NovoFine Plus needles (${includedTotal} total), covering all ${totalWeeks} doses.`;
