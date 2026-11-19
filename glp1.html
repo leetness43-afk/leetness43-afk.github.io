@@ -40,7 +40,7 @@
 <div id="app" class="max-w-4xl mx-auto pb-12">
     <header class="text-center mb-8 no-print">
         <h1 class="text-3xl font-extrabold text-black uppercase tracking-tight">GLP-1 Pen Dispensing Calculator</h1>
-        <p class="text-gray-600 mt-2 font-medium">Calculate exact device quantities, daily/weekly dosing, and write 1-month & 3-month prescriptions.</p>
+        <p class="text-gray-600 mt-2 font-medium">Calculate exact device quantities, daily/weekly dosing, and write multi-month prescriptions.</p>
     </header>
 
     <div class="bg-white p-6 rounded-none shadow-sm mb-8 border-2 border-black">
@@ -76,6 +76,15 @@
                                 <!-- Populated by JS -->
                             </select>
                         </div>
+                        <div>
+                            <label class="block text-xs font-bold text-gray-700 uppercase">Months Supply to Prescribe</label>
+                            <select id="monthsSelect" class="mt-1 block w-full border-gray-400 p-2.5 border text-sm font-medium bg-white focus:ring-black focus:border-black transition-colors" onchange="calculateGLP1()">
+                                <option value="1" selected>1 Month (28 / 30 Days)</option>
+                                <option value="2">2 Months (56 / 60 Days)</option>
+                                <option value="3">3 Months (84 / 90 Days)</option>
+                                <option value="6">6 Months (168 / 180 Days)</option>
+                            </select>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -92,21 +101,17 @@
                             <span id="freqResult" class="font-bold text-white text-lg">Weekly</span>
                         </div>
                         <div class="flex justify-between items-end border-b border-gray-700 pb-2">
-                            <span class="text-gray-400 font-medium">1 Month (28/30 Days):</span>
-                            <span id="oneMonthReq" class="font-bold text-white text-lg">1 Box (4 Pens)</span>
-                        </div>
-                        <div class="flex justify-between items-end border-b border-gray-700 pb-2">
-                            <span class="text-gray-400 font-medium">3 Months (84/90 Days):</span>
-                            <span id="threeMonthReq" class="font-bold text-white text-lg">3 Boxes (12 Pens)</span>
+                            <span id="selectedDurationLabel" class="text-gray-400 font-medium">1-Month Supply (28 Days):</span>
+                            <span id="selectedSupplyReq" class="font-bold text-white text-lg">1 Box (4 Pens)</span>
                         </div>
                         <div class="flex justify-between items-end border-b border-gray-700 pb-2">
                             <span class="text-gray-400 font-medium">Total Volume to Prescribe:</span>
-                            <span id="mlReq" class="font-bold text-white text-lg">3 mL (9 mL / 90d)</span>
+                            <span id="mlReq" class="font-bold text-white text-lg">2 mL</span>
                         </div>
                         <div class="pt-2">
-                            <span class="block text-gray-400 font-medium mb-1">Standard Rx Sig (1-Month Fill):</span>
+                            <span id="rxSigLabel" class="block text-gray-400 font-medium mb-1">Standard Rx Sig (1-Month Fill):</span>
                             <span id="rxSig" class="block font-mono bg-gray-900 p-3 text-green-400 text-sm border border-gray-700">
-                                Inject 2.4 mg subcutaneously once weekly. Dispense: 1 Box (4 pens) + 2 Refills.
+                                Inject 0.25 mg subcutaneously once weekly. Dispense: 1 Box (4 pens / 2 mL) for 28-day supply.
                             </span>
                         </div>
                     </div>
@@ -265,52 +270,56 @@ function formatMl(val) {
 function calculateGLP1() {
     const deviceIdx = document.getElementById('deviceSelect').value;
     currentDevice = currentDose.devices[deviceIdx];
+    const months = parseInt(document.getElementById('monthsSelect').value, 10);
     
-    let oneMonthText = "";
-    let threeMonthText = "";
-    let mlText = "";
+    const totalDays = currentMed.daysPerMonth * months;
+    const totalWeeks = 4 * months;
+    const boxWord = months === 1 ? "Box" : "Boxes";
+    const penWord = months === 1 ? "Pen" : "Pens";
+    const vialWord = months === 1 ? "Vial" : "Vials";
+
+    let supplyText = "";
+    let totalMl = 0;
     let rxText = "";
 
     let needExtraNeedles = false;
-    let extraNeedles1Mo = 0;
-    let extraNeedles3Mo = 0;
+    let extraNeedles = 0;
     let needleDetailText = "";
     
     const freqCap = currentMed.freq === 'weekly' ? 'Weekly' : 'Daily';
     document.getElementById('freqResult').textContent = freqCap;
+    document.getElementById('selectedDurationLabel').textContent = `${months}-Month Supply (${totalDays} Days):`;
+    document.getElementById('rxSigLabel').textContent = `Standard Rx Sig (${months}-Month Fill):`;
 
     if (currentDevice.type === 'single') {
-        const ml1Mo = currentDevice.pensPerBox * currentDevice.mlPerPen;
-        const ml3Mo = ml1Mo * 3;
-        oneMonthText = "1 Box (4 Pens)";
-        threeMonthText = "3 Boxes (12 Pens)";
-        mlText = `${formatMl(ml1Mo)} mL / 28d (${formatMl(ml3Mo)} mL / 84d)`;
-        rxText = `Inject ${currentDose.mg} mg subcutaneously once weekly. Dispense: 1 Box (4 pens / ${formatMl(ml1Mo)} mL) + 2 Refills.`;
+        const totalBoxes = months;
+        const totalPens = totalBoxes * currentDevice.pensPerBox;
+        totalMl = totalPens * currentDevice.mlPerPen;
+
+        supplyText = `${totalBoxes} ${boxWord} (${totalPens} Pens)`;
+        rxText = `Inject ${currentDose.mg} mg subcutaneously once weekly. Dispense: ${totalBoxes} ${boxWord} (${totalPens} pens / ${formatMl(totalMl)} mL) for ${totalDays}-day supply.`;
         
         needExtraNeedles = false;
         needleDetailText = "Single-dose autoinjector pens have built-in needles.";
     
     } else if (currentDevice.type === 'multi-4') {
-        const ml1Mo = currentDevice.mlPerPen;
-        const ml3Mo = ml1Mo * 3;
-        oneMonthText = "1 Multi-Dose Pen";
-        threeMonthText = "3 Multi-Dose Pens";
-        mlText = `${formatMl(ml1Mo)} mL / 28d (${formatMl(ml3Mo)} mL / 84d)`;
-        rxText = `Inject ${currentDose.mg} mg subcutaneously once weekly. Dispense: 1 Multi-Dose Pen (${formatMl(ml1Mo)} mL) + 2 Refills.`;
+        const totalPens = months;
+        totalMl = totalPens * currentDevice.mlPerPen;
 
-        // KwikPen typically does not include pen needles in standard packaging (requires 4 needles per pen)
+        supplyText = `${totalPens} Multi-Dose ${penWord}`;
+        rxText = `Inject ${currentDose.mg} mg subcutaneously once weekly. Dispense: ${totalPens} Multi-Dose ${penWord} (${formatMl(totalMl)} mL) for ${totalDays}-day supply.`;
+
         needExtraNeedles = true;
-        extraNeedles1Mo = 4;
-        extraNeedles3Mo = 12;
-        needleDetailText = "KwikPen multi-dose devices do not include pen needles in the box (4 injections per 28 days).";
+        extraNeedles = totalWeeks;
+        needleDetailText = `KwikPen multi-dose devices do not include pen needles in the box (${totalWeeks} injections over ${totalDays} days).`;
     
     } else if (currentDevice.type === 'vial') {
-        const ml1Mo = currentDevice.vialsPerBox * currentDevice.mlPerVial;
-        const ml3Mo = ml1Mo * 3;
-        oneMonthText = "1 Box (4 Vials)";
-        threeMonthText = "3 Boxes (12 Vials)";
-        mlText = `${formatMl(ml1Mo)} mL / 28d (${formatMl(ml3Mo)} mL / 84d)`;
-        rxText = `Inject ${currentDose.mg} mg subcutaneously once weekly. Dispense: 1 Box (4 Vials / ${formatMl(ml1Mo)} mL) + 2 Refills.`;
+        const totalBoxes = months;
+        const totalVials = totalBoxes * currentDevice.vialsPerBox;
+        totalMl = totalVials * currentDevice.mlPerVial;
+
+        supplyText = `${totalBoxes} ${boxWord} (${totalVials} ${vialWord})`;
+        rxText = `Inject ${currentDose.mg} mg subcutaneously once weekly. Dispense: ${totalBoxes} ${boxWord} (${totalVials} ${vialWord} / ${formatMl(totalMl)} mL) for ${totalDays}-day supply.`;
 
         needExtraNeedles = false;
         needleDetailText = "Vials require standard insulin syringes/needles rather than pen needles.";
@@ -320,59 +329,45 @@ function calculateGLP1() {
         const mgPerPen = currentDevice.mgPerPen;
         const weeksPerPen = mgPerPen / mgPerWeek;
         
-        const pensFor4Weeks = Math.ceil(4 / weeksPerPen);
-        const pensFor12Weeks = Math.ceil(12 / weeksPerPen);
-        const ml1Mo = pensFor4Weeks * currentDevice.mlPerPen;
-        const ml3Mo = pensFor12Weeks * currentDevice.mlPerPen;
+        const pensNeeded = Math.ceil(totalWeeks / weeksPerPen);
+        const ozempicPenWord = pensNeeded === 1 ? "Pen" : "Pens";
+        totalMl = pensNeeded * currentDevice.mlPerPen;
 
-        oneMonthText = `${pensFor4Weeks} Pen(s)`;
-        threeMonthText = `${pensFor12Weeks} Pens`;
-        mlText = `${formatMl(ml1Mo)} mL / 28d (${formatMl(ml3Mo)} mL / 84d)`;
-        rxText = `Inject ${currentDose.mg} mg subcutaneously once weekly. Dispense: ${pensFor4Weeks} Pen(s) (${formatMl(ml1Mo)} mL) + 2 Refills.`;
+        supplyText = `${pensNeeded} ${ozempicPenWord}`;
+        rxText = `Inject ${currentDose.mg} mg subcutaneously once weekly. Dispense: ${pensNeeded} ${ozempicPenWord} (${formatMl(totalMl)} mL) for ${totalDays}-day supply.`;
 
-        // Compare required doses (4 for 1mo, 12 for 3mo) against included needles per pen
-        const included1Mo = pensFor4Weeks * currentDevice.includedNeedles;
-        const included3Mo = pensFor12Weeks * currentDevice.includedNeedles;
+        const includedTotal = pensNeeded * currentDevice.includedNeedles;
+        extraNeedles = Math.max(0, totalWeeks - includedTotal);
 
-        extraNeedles1Mo = Math.max(0, 4 - included1Mo);
-        extraNeedles3Mo = Math.max(0, 12 - included3Mo);
-
-        if (extraNeedles1Mo > 0 || extraNeedles3Mo > 0) {
+        if (extraNeedles > 0) {
             needExtraNeedles = true;
-            needleDetailText = `Each box includes ${currentDevice.includedNeedles} needles, which is fewer than the required weekly injections.`;
+            needleDetailText = `${pensNeeded} ${ozempicPenWord.toLowerCase()} includes ${includedTotal} needles total, which is fewer than the ${totalWeeks} weekly injections required.`;
         } else {
             needExtraNeedles = false;
-            needleDetailText = `Each pen includes ${currentDevice.includedNeedles} NovoFine Plus needles, covering all required doses.`;
+            needleDetailText = `Each pen includes ${currentDevice.includedNeedles} NovoFine Plus needles (${includedTotal} total), covering all ${totalWeeks} doses.`;
         }
 
     } else if (currentDevice.type === 'saxenda') {
         const mgPerDay = currentDose.mg;
         const mgPerBox = 90;
         
-        const mg30Days = mgPerDay * 30;
-        const boxes30Days = Math.ceil(mg30Days / mgPerBox);
-        const ml1Mo = boxes30Days * 5 * currentDevice.mlPerPen;
-        
-        const mg90Days = mgPerDay * 90;
-        const boxes90Days = Math.ceil(mg90Days / mgPerBox);
-        const ml3Mo = boxes90Days * 5 * currentDevice.mlPerPen;
+        const totalMgNeeded = mgPerDay * totalDays;
+        const boxesNeeded = Math.ceil(totalMgNeeded / mgPerBox);
+        const totalPens = boxesNeeded * 5;
+        const saxendaBoxWord = boxesNeeded === 1 ? "Box" : "Boxes";
+        totalMl = totalPens * currentDevice.mlPerPen;
 
-        oneMonthText = `${boxes30Days} Box(es) (${boxes30Days * 5} Pens)`;
-        threeMonthText = `${boxes90Days} Boxes (${boxes90Days * 5} Pens)`;
-        mlText = `${formatMl(ml1Mo)} mL / 30d (${formatMl(ml3Mo)} mL / 90d)`;
-        rxText = `Inject ${currentDose.mg} mg subcutaneously once daily. Dispense: ${boxes30Days} Box(es) (${formatMl(ml1Mo)} mL) + 2 Refills.`;
+        supplyText = `${boxesNeeded} ${saxendaBoxWord} (${totalPens} Pens)`;
+        rxText = `Inject ${currentDose.mg} mg subcutaneously once daily. Dispense: ${boxesNeeded} ${saxendaBoxWord} (${totalPens} pens / ${formatMl(totalMl)} mL) for ${totalDays}-day supply.`;
 
-        // Saxenda boxes do not include pen needles (requires 30/mo, 90/3mo)
         needExtraNeedles = true;
-        extraNeedles1Mo = 30;
-        extraNeedles3Mo = 90;
-        needleDetailText = "Saxenda cartons do not include pen needles (requires 1 needle per daily injection).";
+        extraNeedles = totalDays;
+        needleDetailText = `Saxenda cartons do not include pen needles (requires 1 needle per daily injection for ${totalDays} days).`;
     }
 
     // Update Supply Requirements DOM
-    document.getElementById('oneMonthReq').textContent = oneMonthText;
-    document.getElementById('threeMonthReq').textContent = threeMonthText;
-    document.getElementById('mlReq').textContent = mlText;
+    document.getElementById('selectedSupplyReq').textContent = supplyText;
+    document.getElementById('mlReq').textContent = `${formatMl(totalMl)} mL`;
     document.getElementById('rxSig').textContent = rxText;
 
     // Update Extra Needles DOM
@@ -385,7 +380,7 @@ function calculateGLP1() {
     if (needExtraNeedles) {
         needleAnswerEl.textContent = "YES";
         needleAnswerEl.className = "inline-block text-xl font-black uppercase px-4 py-1.5 border-2 border-black bg-black text-white";
-        extraNeedleCountEl.textContent = `Prescribe +${extraNeedles1Mo} Needles (1-Mo) / +${extraNeedles3Mo} Needles (3-Mo)`;
+        extraNeedleCountEl.textContent = `Prescribe +${extraNeedles} Extra Needles (${months}-Mo Supply)`;
     } else {
         needleAnswerEl.textContent = "NO";
         needleAnswerEl.className = "inline-block text-xl font-black uppercase px-4 py-1.5 border-2 border-black bg-white text-black";
