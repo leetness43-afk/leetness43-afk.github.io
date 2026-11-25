@@ -1,6 +1,3 @@
-Save the code below as `avs.html` in the same folder as the other pages and add a link to it in `nav.html`. "Load example" fills in the values from the attached worksheet.
-
-```html
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -85,9 +82,15 @@ Save the code below as `avs.html` in the same folder as the other pages and add 
             <span class="ml-2 text-sm text-gray-700">Accept samples that fail the cortisol selectivity index if epinephrine meets a cannulation threshold (AV epinephrine &gt;364 pg/mL or AV/IVC epinephrine ratio &gt;27.4). Off by default: epinephrine is reported but does not change the interpretation.</span>
         </label>
 
-        <h3 class="text-lg font-medium text-gray-800 mb-3 border-b pb-1">2. Sample Values</h3>
-        <div id="inputGrid" class="overflow-x-auto"></div>
-        <p class="text-xs text-gray-500 mt-2">Leave unused samples blank. Values such as &lt;55 are accepted. Aldosterone and cortisol units must be the same across all samples.</p>
+        <div class="flex flex-wrap items-center justify-between gap-2 mb-3 border-b pb-1.5">
+            <h3 class="text-lg font-medium text-gray-800">2. Sample Values</h3>
+            <div class="flex flex-wrap items-center gap-2">
+                <button type="button" id="addRightBtn" onclick="addSample('R')" class="bg-slate-100 hover:bg-slate-200 disabled:opacity-40 disabled:cursor-not-allowed text-slate-700 text-xs font-semibold py-1 px-2.5 rounded border border-slate-300">+ Right AV</button>
+                <button type="button" id="addLeftBtn" onclick="addSample('L')" class="bg-slate-100 hover:bg-slate-200 disabled:opacity-40 disabled:cursor-not-allowed text-slate-700 text-xs font-semibold py-1 px-2.5 rounded border border-slate-300">+ Left AV</button>
+            </div>
+        </div>
+        <div id="inputGrid" class="w-full"></div>
+        <p class="text-xs text-gray-500 mt-2">Leave unused samples blank. Up to 5 right and 5 left AV samples supported. Values such as &lt;55 are accepted. Aldosterone and cortisol units must be the same across all samples.</p>
 
         <div class="mt-4 flex flex-wrap gap-3">
             <button onclick="loadExample()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-semibold py-2 px-4 rounded-md border border-slate-300">Load example</button>
@@ -139,12 +142,11 @@ Save the code below as `avs.html` in the same folder as the other pages and add 
 </div>
 
 <script>
-var SAMPLES = [
-    { key: 'R1', side: 'R', label: 'Right AV (1)' },
-    { key: 'R2', side: 'R', label: 'Right AV (2)' },
-    { key: 'L1', side: 'L', label: 'Left AV (1)' },
-    { key: 'L2', side: 'L', label: 'Left AV (2)' }
-];
+var DEFAULT_COUNT = 2;
+var MAX_SAMPLES = 5;
+var rightCount = DEFAULT_COUNT;
+var leftCount = DEFAULT_COUNT;
+
 var ANALYTES = [
     { key: 'aldo', label: 'Aldosterone (ng/dL)' },
     { key: 'cort', label: 'Cortisol (\u00B5g/dL)' },
@@ -177,7 +179,9 @@ function numOr(id, fallback) {
     return (isNaN(v) || v <= 0) ? fallback : v;
 }
 function parseVal(id) {
-    var raw = document.getElementById(id).value.replace(/,/g, '').trim();
+    var el = document.getElementById(id);
+    if (!el) return null;
+    var raw = el.value.replace(/,/g, '').trim();
     if (raw === '') return null;
     var m = raw.match(/^([<>])?=?\s*(\d+\.?\d*|\.\d+)$/);
     if (!m) return { raw: raw, value: NaN, op: '' };
@@ -186,37 +190,124 @@ function parseVal(id) {
 function ok(v) { return v !== null && !isNaN(v.value); }
 
 /* ---------- input grid ---------- */
+function getSamples() {
+    var list = [];
+    var i;
+    for (i = 1; i <= rightCount; i++) {
+        list.push({ key: 'R' + i, side: 'R', index: i, label: 'Right AV (' + i + ')' });
+    }
+    for (i = 1; i <= leftCount; i++) {
+        list.push({ key: 'L' + i, side: 'L', index: i, label: 'Left AV (' + i + ')' });
+    }
+    return list;
+}
 function allColumns() {
-    return SAMPLES.map(function (s) { return { key: s.key, label: s.label }; })
-        .concat([{ key: 'IVC', label: 'IVC (infrarenal)' }]);
+    return getSamples().map(function (s) {
+        return { key: s.key, side: s.side, index: s.index, label: s.label };
+    }).concat([{ key: 'IVC', side: 'IVC', index: 0, label: 'IVC (infrarenal)' }]);
+}
+function snapshotInputs() {
+    var saved = {};
+    allColumns().forEach(function (c) {
+        ANALYTES.forEach(function (a) {
+            var id = a.key + '_' + c.key;
+            var el = document.getElementById(id);
+            if (el && el.value !== '') saved[id] = el.value;
+        });
+    });
+    return saved;
+}
+function updateColumnButtons() {
+    var addR = document.getElementById('addRightBtn');
+    var addL = document.getElementById('addLeftBtn');
+    if (addR) {
+        addR.disabled = rightCount >= MAX_SAMPLES;
+        addR.textContent = '+ Right AV (' + rightCount + '/' + MAX_SAMPLES + ')';
+    }
+    if (addL) {
+        addL.disabled = leftCount >= MAX_SAMPLES;
+        addL.textContent = '+ Left AV (' + leftCount + '/' + MAX_SAMPLES + ')';
+    }
+}
+function addSample(side) {
+    if (side === 'R' && rightCount >= MAX_SAMPLES) return;
+    if (side === 'L' && leftCount >= MAX_SAMPLES) return;
+    var saved = snapshotInputs();
+    if (side === 'R') rightCount++;
+    if (side === 'L') leftCount++;
+    buildInputs();
+    setAllInputs(saved);
+    interpret();
+}
+function removeSample(side, removeIdx) {
+    var count = side === 'R' ? rightCount : leftCount;
+    if (count <= DEFAULT_COUNT) return;
+    var saved = snapshotInputs();
+    var shifted = {};
+    Object.keys(saved).forEach(function (id) {
+        var parts = id.split('_');
+        var analyte = parts[0];
+        var col = parts[1];
+        if (col.charAt(0) === side) {
+            var idx = parseInt(col.slice(1), 10);
+            if (idx === removeIdx) return;
+            var newIdx = idx > removeIdx ? idx - 1 : idx;
+            shifted[analyte + '_' + side + newIdx] = saved[id];
+        } else {
+            shifted[id] = saved[id];
+        }
+    });
+    if (side === 'R') rightCount--;
+    if (side === 'L') leftCount--;
+    buildInputs();
+    setAllInputs(shifted);
+    interpret();
 }
 function buildInputs() {
     var cols = allColumns();
-    var html = '<table class="min-w-full text-sm"><thead><tr><th class="p-2 text-left"></th>';
+    var compact = cols.length > 7;
+    var thText = compact ? 'text-[11px] leading-tight px-1' : 'text-xs sm:text-sm px-1.5';
+    var inputPad = compact ? 'px-1 py-1.5 text-xs' : 'px-1.5 py-2 text-sm';
+
+    var html = '<table class="w-full table-fixed"><thead><tr>' +
+        '<th class="w-40 sm:w-52 p-2 text-left"></th>';
     cols.forEach(function (c) {
-        html += '<th class="p-2 text-center text-gray-700 whitespace-nowrap">' + c.label + '</th>';
+        var canRemove = (c.side === 'R' && rightCount > DEFAULT_COUNT && c.index > DEFAULT_COUNT) ||
+                        (c.side === 'L' && leftCount > DEFAULT_COUNT && c.index > DEFAULT_COUNT);
+        html += '<th class="py-2 text-center text-gray-700 align-bottom ' + thText + '">' +
+            '<div class="inline-flex items-center justify-center gap-0.5 flex-wrap">' +
+            '<span>' + esc(c.label) + '</span>' +
+            (canRemove
+                ? '<button type="button" onclick="removeSample(\'' + c.side + '\',' + c.index + ')" title="Remove ' + esc(c.label) + '" class="text-gray-400 hover:text-red-600 font-bold leading-none px-0.5">&times;</button>'
+                : '') +
+            '</div></th>';
     });
     html += '</tr></thead><tbody>';
     ANALYTES.forEach(function (a) {
-        html += '<tr><td class="p-2 font-medium text-gray-700 whitespace-nowrap">' + a.label + '</td>';
+        html += '<tr><td class="p-2 font-medium text-gray-700 text-xs sm:text-sm">' + a.label + '</td>';
         cols.forEach(function (c) {
-            html += '<td class="p-1"><input type="text" inputmode="decimal" id="' + a.key + '_' + c.key +
-                '" class="block w-full min-w-[5rem] rounded-md border-gray-300 shadow-sm p-2 border text-center" oninput="interpret()"></td>';
+            html += '<td class="p-0.5 sm:p-1"><input type="text" inputmode="decimal" id="' + a.key + '_' + c.key +
+                '" class="block w-full min-w-0 rounded-md border-gray-300 shadow-sm border text-center ' + inputPad + '" oninput="interpret()"></td>';
         });
         html += '</tr>';
     });
     html += '</tbody></table>';
     document.getElementById('inputGrid').innerHTML = html;
+    updateColumnButtons();
 }
 function setAllInputs(values) {
     allColumns().forEach(function (c) {
         ANALYTES.forEach(function (a) {
             var id = a.key + '_' + c.key;
-            document.getElementById(id).value = values && values[id] ? values[id] : '';
+            var el = document.getElementById(id);
+            if (el) el.value = values && values[id] ? values[id] : '';
         });
     });
 }
 function loadExample() {
+    rightCount = DEFAULT_COUNT;
+    leftCount = DEFAULT_COUNT;
+    buildInputs();
     document.querySelector('input[name="protocol"][value="stim"]').checked = true;
     document.getElementById('siCutoff').value = 5;
     setAllInputs(EXAMPLE);
@@ -255,7 +346,7 @@ function interpret() {
         ivc.ac = ivc.aldo.value / ivc.cort.value;
         if (ivc.aldo.op || ivc.cort.op) censored = true;
 
-        SAMPLES.forEach(function (s) {
+        getSamples().forEach(function (s) {
             var d = {
                 key: s.key, side: s.side, label: s.label,
                 aldo: parseVal('aldo_' + s.key),
@@ -605,4 +696,3 @@ window.onload = function () {
 </script>
 </body>
 </html>
-```
