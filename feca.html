@@ -156,6 +156,7 @@
             <p><strong>Cut-offs:</strong> Fractional excretion of calcium is usually below 0.01 in FHH and typically above 0.02 in PHPT, but up to 20% of patients with FHH have values above 0.01 (Walker and Shane, JAMA, 2022). A CCCR above 0.02 virtually rules out FHH; a CCCR below 0.01 has a reported sensitivity of 65–80% and specificity of 74–88% for FHH, and values from 0.01 to 0.02 do not discriminate (Asla et al., Endocrine, 2024). About 10% of individuals with PHPT also have a low ratio (Hannan et al., Nature Reviews Endocrinology, 2018). A low ratio therefore supports but does not establish FHH; confirmation is by genetic testing of CASR, GNA11, and AP2S1.</p>
             <p><strong>Confounders:</strong> The ratio can be low in PHPT with coexisting vitamin D deficiency or impaired renal function, and the collection should be made off diuretics (Walker and Silverberg, Nature Reviews Endocrinology, 2018). Thiazides lower the ratio in PHPT and increase falsely suspected FHH (Riss et al., Clinical Endocrinology, 2016). Lithium exposure and low calcium intake should also be excluded (De Sousa et al., Endocrine, 2022).</p>
             <p><strong>Spot urine:</strong> The cut-offs were derived from 24-hour collections. Agreement between spot (fasting) and 24-hour ratios has been reported only in a small study and requires cross-validation in FHH (Han et al., Reviews in Endocrine and Metabolic Disorders, 2020).</p>
+            <p><strong>Checklist definitions:</strong> Vitamin D status is deficient below 20 ng/mL, insufficient at 20–29 ng/mL, and replete at 30 ng/mL or above (Walker et al., Journal of Clinical Endocrinology and Metabolism, 2015). An eGFR below 60 mL/min/1.73 m² is the renal threshold used in PHPT surgical guidance (Walker et al., Journal of Clinical Endocrinology and Metabolism, 2014). The reference 24-hour CCCR study collected urine after a 3–6 day break in diuretics (Christensen et al., Clinical Endocrinology, 2008). Lithium shifts the calcium–PTH set-point and reduces urinary calcium (Lee et al., Current Osteoporosis Reports, 2026), and hypercalcemia may not resolve after discontinuation (lithium prescribing information, Food and Drug Administration). Young age is given as under 30 years (Marcocci and Cetani, New England Journal of Medicine, 2011) and as under 35 years in UK genetic testing criteria (Mariathasan et al., Clinical Endocrinology, 2020). PTH is normal in about 80% and slightly elevated in about 20% of FHH type 1 (Tőke et al., Endocrine, 2021). Serum magnesium is high-normal or high in FHH (Walker and Shane, JAMA, 2022). Thiazide washout, low calcium intake, and magnesium have no standardized cut-offs in this setting; the wording shown is pragmatic.</p>
             <p>Interpretation applies only to hypercalcemia with a non-suppressed PTH. This tool supports, and does not replace, clinical judgment.</p>
         </div>
     </div>
@@ -213,7 +214,7 @@ const PRESETS = {
 };
 
 const CONFOUNDERS = [
-    { id: 'cf-vitd',     text: 'Vitamin D deficiency (25-hydroxyvitamin D not replete)', short: 'vitamin D deficiency' },
+    { id: 'cf-vitd',     text: 'Vitamin D deficiency', short: 'vitamin D deficiency' },
     { id: 'cf-renal',    text: 'Impaired renal function',                                 short: 'impaired renal function' },
     { id: 'cf-thiazide', text: 'Thiazide diuretic not withdrawn before the collection',   short: 'thiazide use' },
     { id: 'cf-lithium',  text: 'Lithium therapy',                                         short: 'lithium therapy' },
@@ -286,20 +287,40 @@ function buildInputs() {
     });
 }
 
+/* Definitions shown in parentheses (smaller italic text) after each checklist option */
+const DEFINITIONS = {
+    'cf-vitd':     '25-hydroxyvitamin D below 20 ng/mL or 50 nmol/L; 20–29 ng/mL is insufficient; replete is 30 ng/mL or 75 nmol/L and above',
+    'cf-renal':    'eGFR below 60 mL/min/1.73 m²; no cut-off has been validated specifically for this ratio',
+    'cf-thiazide': 'hydrochlorothiazide, chlorthalidone, indapamide, or metolazone, including combination tablets; washout is not standardized, the reference study used a 3–6 day break and about 2 weeks is often allowed',
+    'cf-lithium':  'current or previous long-term use; lithium raises the calcium set-point and lowers urinary calcium, and the effect can persist after stopping',
+    'cf-lowca':    'no agreed cut-off; intake well below the 1,000–1,200 mg/day recommended for adults, for example dairy avoidance without supplements',
+    'sf-family':   'one or more first-degree relatives with hypercalcemia, or a relative whose hypercalcemia persisted after parathyroid surgery; inheritance is autosomal dominant',
+    'sf-young':    'no single cut-off; under 30 years is commonly used, and UK genetic testing criteria use under 35 years',
+    'sf-never':    'FHH hypercalcemia is lifelong; any earlier normal albumin-adjusted calcium points to an acquired cause',
+    'sf-pth':      'within the reference range in about 80% of FHH type 1 and slightly above it in about 20%; no agreed numeric limit for minimally elevated',
+    'sf-mg':       'in the upper part of, or above, the laboratory reference range; no agreed cut-off'
+};
+
 function buildChecklist(items, containerId) {
     const container = document.getElementById(containerId);
     items.forEach(item => {
         const label = document.createElement('label');
-        label.className = 'flex items-center gap-2 p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-xs sm:text-sm font-medium text-slate-800 cursor-pointer';
+        label.className = 'flex items-start gap-2 p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-xs sm:text-sm font-medium text-slate-800 cursor-pointer';
 
         const box = document.createElement('input');
         box.type = 'checkbox';
         box.id = item.id;
-        box.className = 'h-4 w-4';
+        box.className = 'h-4 w-4 mt-0.5 shrink-0';
         box.addEventListener('change', () => calculate(false));
 
         const span = document.createElement('span');
-        span.textContent = item.text;
+        span.appendChild(document.createTextNode(item.text));
+        if (DEFINITIONS[item.id]) {
+            const def = document.createElement('em');
+            def.className = 'ml-1 text-[11px] italic font-normal text-slate-500';
+            def.textContent = '(' + DEFINITIONS[item.id] + ')';
+            span.appendChild(def);
+        }
 
         label.appendChild(box);
         label.appendChild(span);
