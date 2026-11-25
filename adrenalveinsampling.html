@@ -1,0 +1,608 @@
+Save the code below as `avs.html` in the same folder as the other pages and add a link to it in `nav.html`. "Load example" fills in the values from the attached worksheet.
+
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Adrenal Vein Sampling Interpreter</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @media print {
+            @page { size: portrait; margin: 0; }
+            .no-print { display: none !important; }
+            html, body {
+                margin: 0 !important;
+                padding: 0 !important;
+                background: white !important;
+            }
+            .print-area {
+                width: 100% !important;
+                max-width: 100% !important;
+                margin: 0 auto !important;
+                padding: 1.2cm !important;
+                box-shadow: none !important;
+                border: none !important;
+            }
+            table { page-break-inside: avoid !important; }
+        }
+        body { font-family: 'Inter', sans-serif; }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen p-4 sm:p-8">
+
+<header id="site-header" class="no-print sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b border-slate-300 shadow-sm -mx-4 -mt-4 sm:-mx-8 sm:-mt-8 mb-8 px-4 py-3"></header>
+
+<script>
+    fetch('nav.html')
+        .then(function (res) { return res.text(); })
+        .then(function (data) {
+            document.getElementById('site-header').innerHTML = data;
+        })
+        .catch(function () { /* nav is optional */ });
+</script>
+
+<div id="app" class="max-w-5xl mx-auto">
+    <header class="text-center mb-6 no-print">
+        <h1 class="text-3xl font-extrabold text-slate-700">Adrenal Vein Sampling Interpreter</h1>
+        <p class="text-gray-600 mt-2">Check cannulation, lateralization, and contralateral suppression, then copy the table into a note.</p>
+    </header>
+
+    <div class="no-print bg-white p-6 rounded-xl shadow-lg mb-8 border border-slate-300">
+        <h3 class="text-lg font-medium text-gray-800 mb-3 border-b pb-1">1. Protocol and Cutoffs</h3>
+        <div class="flex items-center space-x-6 mb-4">
+            <label class="inline-flex items-center cursor-pointer">
+                <input type="radio" name="protocol" value="stim" checked onchange="setProtocol()" class="form-radio text-slate-600 focus:ring-slate-500 h-4 w-4">
+                <span class="ml-2 text-sm text-gray-700 font-medium">Cosyntropin-stimulated</span>
+            </label>
+            <label class="inline-flex items-center cursor-pointer">
+                <input type="radio" name="protocol" value="unstim" onchange="setProtocol()" class="form-radio text-slate-600 focus:ring-slate-500 h-4 w-4">
+                <span class="ml-2 text-sm text-gray-700 font-medium">Unstimulated</span>
+            </label>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-700">Selectivity index cutoff (&ge;)</label>
+                <input type="number" id="siCutoff" value="5" step="0.1" min="0" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border" oninput="interpret()">
+                <p class="text-xs text-gray-500 mt-1">Stimulated: 5. Unstimulated: 1.4&ndash;3 in use (default 2).</p>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700">LI cutoff, lateralizing (&ge;)</label>
+                <input type="number" id="liHigh" value="4" step="0.1" min="0" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border" oninput="interpret()">
+                <p class="text-xs text-gray-500 mt-1">LI at or above this value = unilateral.</p>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700">LI cutoff, bilateral (&lt;)</label>
+                <input type="number" id="liLow" value="3" step="0.1" min="0" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border" oninput="interpret()">
+                <p class="text-xs text-gray-500 mt-1">LI below this value = bilateral. In between = indeterminate.</p>
+            </div>
+        </div>
+
+        <label class="inline-flex items-start cursor-pointer mb-6">
+            <input type="checkbox" id="epiRescue" onchange="interpret()" class="h-4 w-4 mt-0.5">
+            <span class="ml-2 text-sm text-gray-700">Accept samples that fail the cortisol selectivity index if epinephrine meets a cannulation threshold (AV epinephrine &gt;364 pg/mL or AV/IVC epinephrine ratio &gt;27.4). Off by default: epinephrine is reported but does not change the interpretation.</span>
+        </label>
+
+        <h3 class="text-lg font-medium text-gray-800 mb-3 border-b pb-1">2. Sample Values</h3>
+        <div id="inputGrid" class="overflow-x-auto"></div>
+        <p class="text-xs text-gray-500 mt-2">Leave unused samples blank. Values such as &lt;55 are accepted. Aldosterone and cortisol units must be the same across all samples.</p>
+
+        <div class="mt-4 flex flex-wrap gap-3">
+            <button onclick="loadExample()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-semibold py-2 px-4 rounded-md border border-slate-300">Load example</button>
+            <button onclick="clearAll()" class="bg-white hover:bg-gray-50 text-gray-700 text-sm font-semibold py-2 px-4 rounded-md border border-gray-300">Clear</button>
+        </div>
+    </div>
+
+    <div class="print-area bg-white p-6 rounded-xl shadow-2xl border border-gray-300">
+        <div class="mb-4 border-b pb-3">
+            <h1 class="text-2xl font-bold text-gray-800">AVS Interpretation</h1>
+            <p class="text-sm text-gray-500 mt-0.5">SI = AV cortisol / IVC cortisol &nbsp;|&nbsp; LI = (aldo/cort dominant) / (aldo/cort nondominant) &nbsp;|&nbsp; CSI = (aldo/cort nondominant) / (aldo/cort IVC)</p>
+        </div>
+
+        <div id="summaryContainer" class="mb-4"></div>
+
+        <div id="noteContainer" class="overflow-x-auto"></div>
+
+        <div id="pairContainer" class="mt-4 overflow-x-auto"></div>
+
+        <div class="no-print mt-5 flex flex-wrap items-center gap-3">
+            <button onclick="copyRich()" class="bg-slate-600 hover:bg-slate-700 text-white text-sm font-bold py-2 px-5 rounded-full shadow">Copy table for note</button>
+            <button onclick="copyPlain()" class="bg-white hover:bg-gray-50 text-slate-700 text-sm font-bold py-2 px-5 rounded-full shadow border border-slate-300">Copy as plain text</button>
+            <span id="copyStatus" class="text-sm text-green-700 font-semibold"></span>
+        </div>
+
+        <div class="mt-4 text-xs text-gray-500 border-t pt-3 italic">
+            Indices are calculated from unrounded values, so a hand calculation from the rounded ratios can differ slightly in the last digit.
+        </div>
+    </div>
+
+    <div class="text-center mt-8 no-print pb-12">
+        <button onclick="window.focus(); window.print();"
+            class="bg-slate-600 hover:bg-slate-700 text-white font-bold py-4 px-10 rounded-full shadow-xl transition transform hover:scale-105">
+            &#128424;&#65039; Print or Save as PDF
+        </button>
+
+        <div class="mt-4 text-xs text-gray-500">
+            If you have any comments, questions, or corrections, please email <a href="mailto:endocrineinfoorg@gmail.com" class="underline hover:text-gray-700">endocrineinfoorg@gmail.com</a>.
+        </div>
+
+        <div class="mt-6 text-[10px] leading-tight text-gray-400 max-w-2xl mx-auto text-left">
+            <strong>Basis for cutoffs:</strong> Selectivity, lateralization, and contralateral suppression cutoffs follow the Endocrine Society primary aldosteronism guideline (Adler et al., 2025), with the LI 3&ndash;4 indeterminate zone as also described by Reincke et al. (<em>Lancet Diabetes &amp; Endocrinology</em>, 2021). The unstimulated default of 2 follows the Australian and New Zealand working group recommendations (Yang et al., <em>Clinical Endocrinology</em>, 2025). Epinephrine thresholds are from a single-center cosyntropin-stimulated cohort (Dream et al., <em>Endocrine Practice</em>, 2022).
+        </div>
+
+        <p class="mt-6 text-[10px] leading-tight text-gray-400 max-w-2xl mx-auto">
+            <strong>Medical Disclaimer:</strong> The calculators and tools provided on this website are intended for use solely by licensed healthcare professionals for informational and educational reference. They do not constitute formal medical advice, diagnosis, or clinical treatment plans. Information on this site may not be updated regularly and could become outdated as medical standards evolve. Healthcare providers must exercise their own clinical judgment, and non-professional users should always consult a qualified healthcare provider for personalized medical management.
+        </p>
+    </div>
+</div>
+
+<script>
+var SAMPLES = [
+    { key: 'R1', side: 'R', label: 'Right AV (1)' },
+    { key: 'R2', side: 'R', label: 'Right AV (2)' },
+    { key: 'L1', side: 'L', label: 'Left AV (1)' },
+    { key: 'L2', side: 'L', label: 'Left AV (2)' }
+];
+var ANALYTES = [
+    { key: 'aldo', label: 'Aldosterone (ng/dL)' },
+    { key: 'cort', label: 'Cortisol (\u00B5g/dL)' },
+    { key: 'epi', label: 'Epinephrine (pg/mL), optional' }
+];
+var EPI_ABS = 364;     // AV epinephrine threshold, pg/mL
+var EPI_RATIO = 27.4;  // AV/IVC epinephrine ratio threshold
+var EXAMPLE = {
+    aldo_R1: '151',  cort_R1: '150',  epi_R1: '1259',
+    aldo_R2: '98.6', cort_R2: '45.4', epi_R2: '186',
+    aldo_L1: '7110', cort_L1: '337',  epi_L1: '3588',
+    aldo_L2: '6500', cort_L2: '309',  epi_L2: '2804',
+    aldo_IVC: '72.4', cort_IVC: '21.3', epi_IVC: '<55'
+};
+var DASH = '\u2014';
+var lastPlainText = '';
+
+/* ---------- helpers ---------- */
+function esc(s) {
+    return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+function f2(x) { return isFinite(x) ? x.toFixed(2) : (isNaN(x) ? 'n/a' : '\u221E'); }
+function fmt(v) { return v.toString(); }
+function sideName(s) { return s === 'R' ? 'right' : 'left'; }
+function cap(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
+function pad(s, w) { s = String(s); while (s.length < w) { s += ' '; } return s; }
+function repeat(ch, n) { var s = ''; while (s.length < n) { s += ch; } return s; }
+function numOr(id, fallback) {
+    var v = parseFloat(document.getElementById(id).value);
+    return (isNaN(v) || v <= 0) ? fallback : v;
+}
+function parseVal(id) {
+    var raw = document.getElementById(id).value.replace(/,/g, '').trim();
+    if (raw === '') return null;
+    var m = raw.match(/^([<>])?=?\s*(\d+\.?\d*|\.\d+)$/);
+    if (!m) return { raw: raw, value: NaN, op: '' };
+    return { raw: raw, value: parseFloat(m[2]), op: m[1] || '' };
+}
+function ok(v) { return v !== null && !isNaN(v.value); }
+
+/* ---------- input grid ---------- */
+function allColumns() {
+    return SAMPLES.map(function (s) { return { key: s.key, label: s.label }; })
+        .concat([{ key: 'IVC', label: 'IVC (infrarenal)' }]);
+}
+function buildInputs() {
+    var cols = allColumns();
+    var html = '<table class="min-w-full text-sm"><thead><tr><th class="p-2 text-left"></th>';
+    cols.forEach(function (c) {
+        html += '<th class="p-2 text-center text-gray-700 whitespace-nowrap">' + c.label + '</th>';
+    });
+    html += '</tr></thead><tbody>';
+    ANALYTES.forEach(function (a) {
+        html += '<tr><td class="p-2 font-medium text-gray-700 whitespace-nowrap">' + a.label + '</td>';
+        cols.forEach(function (c) {
+            html += '<td class="p-1"><input type="text" inputmode="decimal" id="' + a.key + '_' + c.key +
+                '" class="block w-full min-w-[5rem] rounded-md border-gray-300 shadow-sm p-2 border text-center" oninput="interpret()"></td>';
+        });
+        html += '</tr>';
+    });
+    html += '</tbody></table>';
+    document.getElementById('inputGrid').innerHTML = html;
+}
+function setAllInputs(values) {
+    allColumns().forEach(function (c) {
+        ANALYTES.forEach(function (a) {
+            var id = a.key + '_' + c.key;
+            document.getElementById(id).value = values && values[id] ? values[id] : '';
+        });
+    });
+}
+function loadExample() {
+    document.querySelector('input[name="protocol"][value="stim"]').checked = true;
+    document.getElementById('siCutoff').value = 5;
+    setAllInputs(EXAMPLE);
+    interpret();
+}
+function clearAll() {
+    setAllInputs(null);
+    interpret();
+}
+function setProtocol() {
+    var stim = document.querySelector('input[name="protocol"]:checked').value === 'stim';
+    document.getElementById('siCutoff').value = stim ? 5 : 2;
+    interpret();
+}
+
+/* ---------- main ---------- */
+function interpret() {
+    var stim = document.querySelector('input[name="protocol"]:checked').value === 'stim';
+    var siCut = numOr('siCutoff', stim ? 5 : 2);
+    var liHi = numOr('liHigh', 4);
+    var liLo = numOr('liLow', 3);
+    if (liLo > liHi) liLo = liHi;
+    var epiRescue = document.getElementById('epiRescue').checked;
+
+    var summary = document.getElementById('summaryContainer');
+    var noteBox = document.getElementById('noteContainer');
+    var pairBox = document.getElementById('pairContainer');
+    document.getElementById('copyStatus').textContent = '';
+
+    var ivc = { aldo: parseVal('aldo_IVC'), cort: parseVal('cort_IVC'), epi: parseVal('epi_IVC') };
+    var ivcOk = ok(ivc.aldo) && ok(ivc.cort) && ivc.cort.value > 0;
+    var censored = false;
+
+    var data = [];
+    if (ivcOk) {
+        ivc.ac = ivc.aldo.value / ivc.cort.value;
+        if (ivc.aldo.op || ivc.cort.op) censored = true;
+
+        SAMPLES.forEach(function (s) {
+            var d = {
+                key: s.key, side: s.side, label: s.label,
+                aldo: parseVal('aldo_' + s.key),
+                cort: parseVal('cort_' + s.key),
+                epi: parseVal('epi_' + s.key)
+            };
+            if (!(ok(d.aldo) && ok(d.cort) && d.cort.value > 0)) return;
+            if (d.aldo.op || d.cort.op) censored = true;
+
+            d.ac = d.aldo.value / d.cort.value;
+            d.si = d.cort.value / ivc.cort.value;
+            d.siPass = d.si >= siCut;
+
+            d.epiPass = false;
+            d.epiRatio = null;
+            d.epiRatioPrefix = '';
+            if (ok(d.epi)) {
+                var measurable = d.epi.op !== '<';
+                var absPass = measurable && d.epi.value > EPI_ABS;
+                var ratioPass = false;
+                if (ok(ivc.epi) && ivc.epi.value > 0) {
+                    d.epiRatio = d.epi.value / ivc.epi.value;
+                    // IVC below the assay limit means the true ratio is at least this value
+                    d.epiRatioPrefix = ivc.epi.op === '<' ? '>' : d.epi.op;
+                    ratioPass = measurable && ivc.epi.op !== '>' && d.epiRatio > EPI_RATIO;
+                }
+                d.epiPass = absPass || ratioPass;
+            }
+            d.rescued = !d.siPass && epiRescue && d.epiPass;
+            d.selective = d.siPass || d.rescued;
+            data.push(d);
+        });
+    }
+
+    if (!ivcOk || data.length === 0) {
+        summary.innerHTML = '<p class="text-red-600 font-semibold">Enter IVC aldosterone and cortisol plus at least one adrenal vein sample (aldosterone and cortisol).</p>';
+        noteBox.innerHTML = '';
+        pairBox.innerHTML = '';
+        lastPlainText = '';
+        return;
+    }
+
+    function best(side) {
+        var b = null;
+        data.forEach(function (d) {
+            if (d.side === side && d.selective && (b === null || d.si > b.si)) b = d;
+        });
+        return b;
+    }
+    function entered(side) {
+        return data.filter(function (d) { return d.side === side; });
+    }
+    function acText(d) {
+        return d.label + ' [' + d.aldo.raw + '/' + d.cort.raw + ' = ' + f2(d.ac) + ']';
+    }
+    function ivcAcText() {
+        return 'IVC [' + ivc.aldo.raw + '/' + ivc.cort.raw + ' = ' + f2(ivc.ac) + ']';
+    }
+    function epiText(d) {
+        var t = 'AV epinephrine ' + d.epi.raw + ' pg/mL';
+        if (d.epiRatio !== null) t += ', AV/IVC ratio ' + d.epiRatioPrefix + d.epiRatio.toFixed(1);
+        return t;
+    }
+    function calcPair(r, l) {
+        var dom = r.ac >= l.ac ? r : l;
+        var non = dom === r ? l : r;
+        var li = non.ac > 0 ? dom.ac / non.ac : Infinity;
+        var csi = ivc.ac > 0 ? non.ac / ivc.ac : NaN;
+        var cat = li >= liHi ? 'unilateral' : (li < liLo ? 'bilateral' : 'indeterminate');
+        return { r: r, l: l, dom: dom, non: non, li: li, csi: csi, cat: cat };
+    }
+    function catLabel(p) {
+        if (p.cat === 'unilateral') return 'Lateralizes ' + sideName(p.dom.side);
+        if (p.cat === 'bilateral') return 'Does not lateralize';
+        return 'Indeterminate';
+    }
+
+    var bestR = best('R');
+    var bestL = best('L');
+
+    /* ----- interpretation lines ----- */
+    var lines = [];
+    lines.push('Protocol: ' + (stim ? 'cosyntropin-stimulated' : 'unstimulated') +
+        '. Cannulation criterion: selectivity index (AV cortisol / IVC cortisol) \u2265 ' + fmt(siCut) + '.');
+
+    data.forEach(function (d) {
+        if (d.rescued) {
+            lines.push(d.label + ': SI ' + f2(d.si) + ' is below the cutoff; accepted on epinephrine criteria (' + epiText(d) + ').');
+        } else if (!d.selective) {
+            var t = d.label + ' not interpretable: SI ' + f2(d.si) + ' is below the cutoff.';
+            if (d.epiPass) t += ' Epinephrine meets a cannulation threshold (' + epiText(d) + '), which may support catheter position despite the low SI.';
+            lines.push(t);
+        }
+    });
+
+    var result = { color: 'red', title: '', sub: '' };
+    var pairs = [];
+    var conclusion = '';
+
+    if (bestR && bestL) {
+        entered('R').forEach(function (r) {
+            if (!r.selective) return;
+            entered('L').forEach(function (l) {
+                if (l.selective) pairs.push(calcPair(r, l));
+            });
+        });
+        var p = calcPair(bestR, bestL);
+        var domName = sideName(p.dom.side);
+        var nonName = sideName(p.non.side);
+
+        lines.push('Samples used: ' + bestR.label + ' and ' + bestL.label +
+            (pairs.length > 1 ? ' (highest SI on each side).' : '.'));
+        lines.push('Lateralization index (LI) = dominant aldo/cort \u00F7 nondominant aldo/cort = ' +
+            acText(p.dom) + ' \u00F7 ' + acText(p.non) + ' = ' + f2(p.li) + '.');
+        lines.push('Contralateral suppression index (CSI) = nondominant aldo/cort \u00F7 IVC aldo/cort = ' +
+            acText(p.non) + ' \u00F7 ' + ivcAcText() + ' = ' + f2(p.csi) + '.');
+
+        var csiLine = '';
+        if (!isNaN(p.csi)) {
+            csiLine = p.csi < 1
+                ? 'CSI ' + f2(p.csi) + ' (<1): ' + nonName + '-sided suppression present.'
+                : 'CSI ' + f2(p.csi) + ' (\u22651): contralateral suppression not demonstrated.';
+        }
+
+        if (p.cat === 'unilateral') {
+            lines.push('LI ' + f2(p.li) + ' (\u2265' + fmt(liHi) + '): lateralizes to the ' + domName + ' adrenal.');
+            conclusion = 'Conclusion: ' + cap(domName) + '-sided unilateral aldosterone excess.';
+            result = { color: 'blue', title: 'Lateralizes ' + domName.toUpperCase(), sub: 'LI ' + f2(p.li) + ', CSI ' + f2(p.csi) };
+        } else if (p.cat === 'indeterminate') {
+            lines.push('LI ' + f2(p.li) + ' (between ' + fmt(liLo) + ' and ' + fmt(liHi) + '): indeterminate; aldo/cort ratio is higher on the ' + domName + '.');
+            conclusion = 'Conclusion: Indeterminate for unilateral versus bilateral disease; interpret with contralateral suppression, CT findings, and clinical context.';
+            result = { color: 'amber', title: 'Indeterminate', sub: 'LI ' + f2(p.li) + ', CSI ' + f2(p.csi) };
+        } else {
+            lines.push('LI ' + f2(p.li) + ' (<' + fmt(liLo) + '): does not lateralize.');
+            conclusion = 'Conclusion: No lateralization; suggests bilateral aldosterone hypersecretion.';
+            result = { color: 'slate', title: 'Does not lateralize', sub: 'LI ' + f2(p.li) + ', CSI ' + f2(p.csi) };
+        }
+        if (csiLine) lines.push(csiLine);
+
+        var discordant = pairs.some(function (q) {
+            if (q.cat !== p.cat) return true;
+            return p.cat !== 'bilateral' && q.dom.side !== p.dom.side;
+        });
+        if (discordant) lines.push('Note: other selective sample pairings give a different reading; review all pairings.');
+    } else if (bestR || bestL) {
+        var only = bestR || bestL;
+        var otherSide = only.side === 'R' ? 'L' : 'R';
+        var otherName = sideName(otherSide);
+        var ratio = ivc.ac > 0 ? only.ac / ivc.ac : NaN;
+        lines.push('Lateralization index cannot be calculated: only the ' + sideName(only.side) +
+            ' adrenal vein met the cannulation criterion' +
+            (entered(otherSide).length === 0 ? ' (no ' + otherName + ' sample entered).' : '.'));
+        lines.push(sideName(only.side).charAt(0).toUpperCase() + sideName(only.side).slice(1) +
+            ' AV aldo/cort \u00F7 IVC aldo/cort = ' + acText(only) + ' \u00F7 ' + ivcAcText() + ' = ' + f2(ratio) + '.');
+        if (stim && ratio < 0.5) {
+            lines.push('A ratio <0.5 on the only selective side has been reported to predict unilateral disease on the opposite (' +
+                otherName + ') side in cosyntropin-stimulated AVS; interpret cautiously with CT findings.');
+        }
+        conclusion = 'Conclusion: Lateralization not determined (unilaterally selective study).';
+        result = { color: 'red', title: 'Lateralization not determined', sub: 'Only ' + sideName(only.side) + ' side selective' };
+    } else {
+        conclusion = 'Conclusion: Non-diagnostic study; no adrenal vein sample met the cannulation criterion.';
+        result = { color: 'red', title: 'Non-diagnostic', sub: 'No selective sample' };
+    }
+
+    if (censored) lines.push('Note: one or more aldosterone/cortisol values were entered with "<" or ">"; indices using them are approximate.');
+    lines.push(conclusion);
+
+    /* ----- summary cards ----- */
+    function sideCard(side) {
+        var list = entered(side);
+        var b = side === 'R' ? bestR : bestL;
+        var title = cap(sideName(side)) + ' adrenal vein';
+        if (list.length === 0) {
+            return card('bg-gray-50 border-gray-200', 'text-gray-500', title, 'No sample', '');
+        }
+        if (b) {
+            return card('bg-green-50 border-green-200', 'text-green-800', title, 'Cannulated',
+                b.label + ', SI ' + f2(b.si) + (b.rescued ? ' (epinephrine)' : ''));
+        }
+        var top = list.reduce(function (a, c) { return c.si > a.si ? c : a; });
+        return card('bg-red-50 border-red-200', 'text-red-700', title, 'Not selective', 'Best SI ' + f2(top.si));
+    }
+    function card(box, text, label, value, sub) {
+        return '<div class="' + box + ' border rounded-lg p-3">' +
+            '<div class="text-xs text-gray-500 uppercase tracking-wide">' + esc(label) + '</div>' +
+            '<div class="text-xl font-bold ' + text + '">' + esc(value) + '</div>' +
+            '<div class="text-xs text-gray-600 mt-0.5">' + esc(sub) + '</div></div>';
+    }
+    var colors = {
+        blue: ['bg-blue-50 border-blue-200', 'text-blue-800'],
+        amber: ['bg-amber-50 border-amber-200', 'text-amber-800'],
+        slate: ['bg-slate-50 border-slate-200', 'text-slate-700'],
+        red: ['bg-red-50 border-red-200', 'text-red-700']
+    };
+    summary.innerHTML = '<div class="grid grid-cols-1 sm:grid-cols-3 gap-3 text-center">' +
+        sideCard('R') + sideCard('L') +
+        card(colors[result.color][0], colors[result.color][1], 'Lateralization', result.title, result.sub) +
+        '</div>';
+
+    /* ----- note table (inline styles so formatting survives copy/paste) ----- */
+    var showEpi = (ivc.epi !== null) || data.some(function (d) { return d.epi !== null; });
+    var header = [''].concat(data.map(function (d) { return d.label; })).concat(['IVC (infrarenal)']);
+    var rows = [];
+    rows.push(['Aldosterone (ng/dL)'].concat(data.map(function (d) { return d.aldo.raw; })).concat([ivc.aldo.raw]));
+    rows.push(['Cortisol (\u00B5g/dL)'].concat(data.map(function (d) { return d.cort.raw; })).concat([ivc.cort.raw]));
+    rows.push(['Aldo/Cort ratio'].concat(data.map(function (d) { return f2(d.ac); })).concat([f2(ivc.ac)]));
+    if (showEpi) {
+        rows.push(['Epinephrine (pg/mL)'].concat(data.map(function (d) { return d.epi ? d.epi.raw : DASH; }))
+            .concat([ivc.epi ? ivc.epi.raw : DASH]));
+        rows.push(['AV/IVC epinephrine ratio'].concat(data.map(function (d) {
+            return d.epiRatio !== null ? d.epiRatioPrefix + d.epiRatio.toFixed(1) : DASH;
+        })).concat([DASH]));
+    }
+    rows.push(['Selectivity index (cutoff \u2265' + fmt(siCut) + ')'].concat(data.map(function (d) { return f2(d.si); })).concat([DASH]));
+    var cannRow = ['Cannulation'].concat(data.map(function (d) {
+        return d.rescued ? 'Successful (epinephrine)' : (d.selective ? 'Successful' : 'Not selective');
+    })).concat([DASH]);
+    rows.push(cannRow);
+
+    var font = 'font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#111827;';
+    var tdStyle = 'border:1px solid #6b7280;padding:4px 8px;text-align:center;';
+    var thStyle = tdStyle + 'background:#e5e7eb;font-weight:bold;';
+    var firstStyle = 'border:1px solid #6b7280;padding:4px 8px;text-align:left;font-weight:bold;';
+
+    var html = '<table style="border-collapse:collapse;' + font + '"><thead><tr>';
+    header.forEach(function (h) { html += '<th style="' + thStyle + '">' + esc(h) + '</th>'; });
+    html += '</tr></thead><tbody>';
+    rows.forEach(function (row) {
+        html += '<tr>';
+        row.forEach(function (cell, i) {
+            var style = i === 0 ? firstStyle : tdStyle;
+            if (row === cannRow && i > 0 && cell !== DASH) {
+                style += 'font-weight:bold;color:' + (cell === 'Not selective' ? '#b91c1c' : '#15803d') + ';';
+            }
+            html += '<td style="' + style + '">' + esc(cell) + '</td>';
+        });
+        html += '</tr>';
+    });
+    html += '</tbody></table>';
+    html += '<p style="margin:12px 0 4px 0;font-weight:bold;' + font + '">INTERPRETATION:</p>';
+    html += '<ul style="margin:0;padding-left:20px;list-style-type:disc;' + font + '">';
+    lines.forEach(function (line, i) {
+        var bold = i === lines.length - 1 ? 'font-weight:bold;' : '';
+        html += '<li style="margin:2px 0;' + bold + '">' + esc(line) + '</li>';
+    });
+    html += '</ul>';
+    noteBox.innerHTML = html;
+
+    /* ----- plain-text version ----- */
+    var all = [header].concat(rows);
+    var widths = header.map(function (_, i) {
+        var w = 0;
+        all.forEach(function (r) { if (String(r[i]).length > w) w = String(r[i]).length; });
+        return w;
+    });
+    var textRows = all.map(function (r) {
+        return r.map(function (c, i) { return pad(c, widths[i]); }).join(' | ');
+    });
+    textRows.splice(1, 0, widths.map(function (w) { return repeat('-', w); }).join('-|-'));
+    lastPlainText = 'ADRENAL VEIN SAMPLING\n' + textRows.join('\n') +
+        '\n\nINTERPRETATION:\n' + lines.map(function (l) { return '- ' + l; }).join('\n');
+
+    /* ----- all selective pairings (shown only when more than one) ----- */
+    if (pairs.length > 1) {
+        var ph = '<h3 class="text-sm font-semibold text-gray-700 mb-1">All selective sample pairings (double-check)</h3>' +
+            '<table class="min-w-full border-collapse border border-gray-300 text-sm"><thead class="bg-slate-600 text-white"><tr>' +
+            '<th class="border border-gray-300 p-2">Right sample</th>' +
+            '<th class="border border-gray-300 p-2">Left sample</th>' +
+            '<th class="border border-gray-300 p-2">LI</th>' +
+            '<th class="border border-gray-300 p-2">Dominant side</th>' +
+            '<th class="border border-gray-300 p-2">CSI</th>' +
+            '<th class="border border-gray-300 p-2">Reading</th></tr></thead><tbody>';
+        pairs.forEach(function (q, i) {
+            ph += '<tr class="' + (i % 2 === 0 ? 'bg-white' : 'bg-gray-50') + '">' +
+                '<td class="border border-gray-300 p-2 text-center">' + esc(q.r.label) + '</td>' +
+                '<td class="border border-gray-300 p-2 text-center">' + esc(q.l.label) + '</td>' +
+                '<td class="border border-gray-300 p-2 text-center font-bold">' + f2(q.li) + '</td>' +
+                '<td class="border border-gray-300 p-2 text-center">' + cap(sideName(q.dom.side)) + '</td>' +
+                '<td class="border border-gray-300 p-2 text-center">' + f2(q.csi) + '</td>' +
+                '<td class="border border-gray-300 p-2 text-center">' + esc(catLabel(q)) + '</td></tr>';
+        });
+        ph += '</tbody></table>';
+        pairBox.innerHTML = ph;
+    } else {
+        pairBox.innerHTML = '';
+    }
+}
+
+/* ---------- copy to clipboard ---------- */
+function setStatus(msg) {
+    var el = document.getElementById('copyStatus');
+    el.textContent = msg;
+    setTimeout(function () { if (el.textContent === msg) el.textContent = ''; }, 2500);
+}
+function selectAndCopy(node) {
+    var range = document.createRange();
+    range.selectNodeContents(node);
+    var sel = window.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(range);
+    var done = false;
+    try { done = document.execCommand('copy'); } catch (e) { done = false; }
+    sel.removeAllRanges();
+    return done;
+}
+function copyRich() {
+    var node = document.getElementById('noteContainer');
+    if (!lastPlainText) { setStatus('Nothing to copy yet.'); return; }
+    function fallback() {
+        setStatus(selectAndCopy(node) ? 'Copied.' : 'Copy failed. Select the table and copy manually.');
+    }
+    if (navigator.clipboard && window.ClipboardItem) {
+        navigator.clipboard.write([new ClipboardItem({
+            'text/html': new Blob([node.innerHTML], { type: 'text/html' }),
+            'text/plain': new Blob([lastPlainText], { type: 'text/plain' })
+        })]).then(function () { setStatus('Copied.'); }, fallback);
+    } else {
+        fallback();
+    }
+}
+function copyPlain() {
+    if (!lastPlainText) { setStatus('Nothing to copy yet.'); return; }
+    function fallback() {
+        var ta = document.createElement('textarea');
+        ta.value = lastPlainText;
+        ta.style.position = 'fixed';
+        ta.style.opacity = '0';
+        document.body.appendChild(ta);
+        ta.select();
+        var done = false;
+        try { done = document.execCommand('copy'); } catch (e) { done = false; }
+        document.body.removeChild(ta);
+        setStatus(done ? 'Copied as plain text.' : 'Copy failed.');
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(lastPlainText).then(function () { setStatus('Copied as plain text.'); }, fallback);
+    } else {
+        fallback();
+    }
+}
+
+window.onload = function () {
+    buildInputs();
+    interpret();
+};
+</script>
+</body>
+</html>
+```
