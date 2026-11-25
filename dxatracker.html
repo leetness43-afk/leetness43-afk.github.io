@@ -424,7 +424,7 @@ function refreshTargetScanDropdown() {
 /* ---------- Paste & Auto-Extract Parser ---------- */
 function normalizeText(raw) {
     return String(raw || '')
-        .replace(/[\u2212\u2013\u2014]/g, '-')
+        .replace(/[\u2212\u2013\u2014]/g, '-') // Unicode minus/dashes -> ASCII hyphen
         .replace(/\u00A0/g, ' ');
 }
 
@@ -475,6 +475,9 @@ function extractModelFromText(text) {
 }
 
 function normalizeSiteName(rawLine) {
+    // Ignore table header lines that contain multiple site labels or column headers
+    if (/\b(?:region|site|location)\b.*\bbmd\b.*\bt-?score\b/i.test(rawLine)) return null;
+
     const side = detectLaterality(rawLine);
     const sideSuffix = side ? ` (${side})` : '';
 
@@ -495,6 +498,75 @@ function normalizeSiteName(rawLine) {
     return null;
 }
 
+function extractNumbersFromSegment(seg) {
+    // Strip vertebral labels (L1-L4), 1/3 fraction, percentage values (e.g., 84% or 84.2%), and units
+    const cleaned = seg
+        .replace(/\bL[1-4]\s*-\s*L[1-4]\b/gi, ' ')
+        .replace(/\b1\/3\b/g, ' ')
+        .replace(/\b33\s*%/g, ' ')
+        .replace(/[+-]?\s*\d+(?:\.\d+)?\s*%/g, ' ')
+        .replace(/\b(?:g\/cm2|g\/cm²|cm2|cm²|sd)\b/gi, ' ')
+        .replace(/([+-])\s+(\d)/g, '$1$2'); // normalize "- 1.8" -> "-1.8"
+
+    // 1. Check for explicit labels first (e.g., "BMD: 0.854" and "T-score: -1.8" or "T: -2")
+    const explicitBmd = cleaned.match(/\bbmd[:\s=]*([0-2]?\.\d{2,4})\b/i);
+    const explicitT = cleaned.match(/\bt(?:[-\s]?score)?[:\s=]*([+-]?\d+(?:\.\d+)?)\b/i);
+
+    let bmd = explicitBmd ? parseFloat(explicitBmd[1]) : null;
+    let tscore = explicitT ? parseFloat(explicitT[1]) : null;
+
+    // 2. Positional extraction supporting both decimal and integer T-scores (e.g., 0.854  -1.8  or  0.854  -2)
+    const tokenMatches = [...cleaned.matchAll(/(?<![A-Za-z0-9.])([+-]?(?:\d+\.\d+|\.\d+|\d+))(?![A-Za-z0-9.])/g)];
+    const tokens = tokenMatches.map(m => {
+        const raw = m[1];
+        const val = parseFloat(raw);
+        const decPart = raw.includes('.') ? raw.split('.')[1] : '';
+        return {
+            raw,
+            val,
+            hasDecimal: raw.includes('.'),
+            decimals: decPart.length,
+            hasSign: /^[+-]/.test(raw)
+        };
+    }).filter(t => isFinite(t.val));
+
+    if (bmd === null) {
+        // Prefer a 3-decimal BMD candidate (standard 0.xxx or 1.xxx) to avoid Hologic Area/BMC columns
+        let bmdIdx = tokens.findIndex(t => !t.hasSign && t.decimals === 3 && t.val >= 0.15 && t.val <= 2.5);
+        if (bmdIdx === -1) {
+            bmdIdx = tokens.findIndex(t => !t.hasSign && t.hasDecimal && t.val >= 0.15 && t.val <= 2.2);
+        }
+
+        if (bmdIdx !== -1) {
+            bmd = tokens[bmdIdx].val;
+
+            if (tscore === null) {
+                // T-score immediately follows BMD in virtually all DXA report tables (Hologic, Lunar, EMR)
+                for (let j = bmdIdx + 1; j < tokens.length; j++) {
+                    const cand = tokens[j];
+                    if (cand.val >= -7.5 && cand.val <= 6.0) {
+                        tscore = cand.val;
+                        break;
+                    }
+                }
+            }
+        }
+    } else if (tscore === null) {
+        // BMD was found via explicit label; find the first plausible T-score token after the BMD value
+        const bmdIdx = tokens.findIndex(t => Math.abs(t.val - bmd) < 0.0005);
+        const startIdx = bmdIdx !== -1 ? bmdIdx + 1 : 0;
+        for (let j = startIdx; j < tokens.length; j++) {
+            const cand = tokens[j];
+            if (cand.val >= -7.5 && cand.val <= 6.0) {
+                tscore = cand.val;
+                break;
+            }
+        }
+    }
+
+    return { bmd, tscore };
+}
+
 function parseDxaReportText(rawText) {
     const text = normalizeText(rawText);
     const date = extractDateFromText(text);
@@ -503,49 +575,37 @@ function parseDxaReportText(rawText) {
     const extractedRows = [];
     const seenSites = new Set();
 
-    const segments = text.split(/\r?\n|;/).map(s => s.trim()).filter(Boolean);
+    // Split by newlines or semicolons, and group trailing numeric lines with their site header
+    // (handles PDF/EMR copy-pastes where Site, BMD, and T-score wrap onto consecutive lines)
+    const rawLines = text.split(/\r?\n|;/).map(s => s.trim()).filter(Boolean);
+    const groupedSegments = [];
 
-    for (const seg of segments) {
-        const siteName = normalizeSiteName(seg);
+    for (let i = 0; i < rawLines.length; i++) {
+        const line = rawLines[i];
+        const siteName = normalizeSiteName(line);
         if (!siteName) continue;
 
-        const cleanedForNumbers = seg
-            .replace(/\bL[1-4]\s*-\s*L[1-4]\b/gi, ' ')
-            .replace(/[+-]?\d+(?:\.\d+)?\s*%/g, ' ');
+        let combined = line;
+        let check = extractNumbersFromSegment(combined);
 
-        const explicitBmd = cleanedForNumbers.match(/\bbmd[:\s=]*([0-2]?\.\d{2,4})\b/i);
-        const explicitT = cleanedForNumbers.match(/\bt[-\s]?score[:\s=]*([+-]?\d+(?:\.\d+)?)\b/i);
-
-        let bmd = explicitBmd ? parseFloat(explicitBmd[1]) : null;
-        let tscore = explicitT ? parseFloat(explicitT[1]) : null;
-
-        if (bmd === null || tscore === null) {
-            const numMatches = [...cleanedForNumbers.matchAll(/(?<![A-Za-z0-9.])([+-]?\d*\.\d+)(?![A-Za-z0-9.])/g)]
-                .map(m => parseFloat(m[1]))
-                .filter(n => isFinite(n));
-
-            for (const num of numMatches) {
-                if (bmd === null && num > 0.15 && num < 2.6) {
-                    bmd = num;
-                    continue;
-                }
-                if (bmd !== null && tscore === null && num >= -7.0 && num <= 6.0) {
-                    tscore = num;
-                    break;
-                }
-            }
+        // If BMD or T-score wasn't on the same line, look ahead up to 4 lines until the next site appears
+        let lookahead = 1;
+        while ((check.bmd === null || check.tscore === null) && lookahead <= 4 && (i + lookahead) < rawLines.length) {
+            const nextLine = rawLines[i + lookahead];
+            if (normalizeSiteName(nextLine)) break;
+            combined += ' ' + nextLine;
+            check = extractNumbersFromSegment(combined);
+            lookahead++;
         }
 
-        if (bmd !== null || tscore !== null) {
-            const key = siteName.toLowerCase();
-            if (!seenSites.has(key)) {
-                seenSites.add(key);
-                extractedRows.push({
-                    location: siteName,
-                    bmd: bmd !== null ? +bmd.toFixed(3) : '',
-                    tscore: tscore !== null ? +tscore.toFixed(1) : ''
-                });
-            }
+        const key = siteName.toLowerCase();
+        if (!seenSites.has(key) && (check.bmd !== null || check.tscore !== null)) {
+            seenSites.add(key);
+            extractedRows.push({
+                location: siteName,
+                bmd: check.bmd !== null ? +check.bmd.toFixed(3) : '',
+                tscore: check.tscore !== null ? +check.tscore.toFixed(1) : ''
+            });
         }
     }
 
@@ -571,7 +631,6 @@ function highlightCard(card) {
 
 function populateScanCard(card, parsed, scanModelOverride) {
     const dateInput = card.querySelector('.scan-date');
-    // Only overwrite the card's date if the pasted text explicitly contains a date
     if (parsed.date) {
         dateInput.value = parsed.date;
     }
@@ -604,7 +663,6 @@ function extractFromPastedReport() {
         return;
     }
 
-    // Handle scanner model
     const globalModelInput = document.getElementById('defaultModel');
     let scanModelOverride = '';
     if (parsed.model) {
@@ -629,10 +687,7 @@ function extractFromPastedReport() {
         populateScanCard(targetCard, parsed, scanModelOverride);
         targetLabel = idx === 0 ? 'Year 1 / Baseline' : `Year ${idx + 1}`;
     } else {
-        // Auto mode:
-        // 1. Match existing scan with same date if pasted text had a date
         let matchedIdx = parsed.date ? cards.findIndex(c => c.querySelector('.scan-date').value === parsed.date) : -1;
-        // 2. Otherwise find the first scan card that has no BMD/T-score numbers yet (even if user already entered a date in Year 1!)
         if (matchedIdx === -1) {
             matchedIdx = cards.findIndex(c => !cardHasMeasurements(c));
         }
@@ -650,10 +705,11 @@ function extractFromPastedReport() {
     refreshTargetScanDropdown();
 
     const effectiveDate = targetCard ? targetCard.querySelector('.scan-date').value : parsed.date;
+    const tScoreCount = parsed.rows.filter(r => r.tscore !== '' && r.tscore !== null).length;
     const parts = [`Loaded into ${targetLabel}`];
     if (effectiveDate) parts.push(`Date: ${effectiveDate}`);
     if (parsed.model) parts.push(`Model: ${parsed.model}`);
-    parts.push(`${parsed.rows.length} site(s)`);
+    parts.push(`${parsed.rows.length} site(s), ${tScoreCount} T-score(s)`);
 
     if (document.getElementById('autoUpdateToggle').checked) {
         updateReport();
@@ -1089,7 +1145,6 @@ function downloadExcel() {
     const showModel = document.getElementById('includeModelToggle').checked;
     const lscConfig = getLscConfig();
 
-    // Collect unique anatomical sites in chronological appearance order
     const siteList = [];
     const seenSites = new Set();
     scans.forEach(s => {
@@ -1144,7 +1199,6 @@ function downloadExcel() {
     compAoa.push(groupHeaderRow);
     compAoa.push(colHeaderRow);
 
-    // Populate one row per anatomical site across all years
     siteList.forEach(siteName => {
         const threshold = getThresholdForLocation(siteName, lscConfig);
         const row = [siteName, threshold !== null ? threshold : null];
@@ -1185,7 +1239,6 @@ function downloadExcel() {
         compAoa.push(row);
     });
 
-    // Scanner Model footer row aligned under each scan column
     const modelRow = ['DXA Scanner Model', ''];
     scans.forEach((s, idx) => {
         if (idx === 0) {
@@ -1197,7 +1250,6 @@ function downloadExcel() {
     compAoa.push([]);
     compAoa.push(modelRow);
 
-    // Clinical Assessment Summary row
     const sigText = document.getElementById('clinicalSummary').textContent.trim();
     compAoa.push([]);
     compAoa.push(['Clinical Assessment Summary (Sig):', sigText]);
@@ -1205,7 +1257,7 @@ function downloadExcel() {
     const wsComp = XLSX.utils.aoa_to_sheet(compAoa);
     wsComp['!cols'] = colWidths;
 
-    // Sheet 2: Normalized Raw Scan Data (for database / clean round-trip re-import)
+    // Sheet 2: Normalized Raw Scan Data
     const rawAoa = [['Scan #', 'Scan Date (YYYY-MM-DD)', 'Scanner Model', 'Location', 'BMD (g/cm2)', 'T-score']];
     scans.forEach((s, idx) => {
         s.rows.forEach(r => {
