@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FHH Calcium/Creatinine Clearance Ratio (FECa) Calculator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @media print {
+            @page {
+                size: portrait;
+                margin: 0;
+            }
+
+            .no-print { display: none !important; }
+
+            html, body {
+                margin: 0 !important;
+                padding: 0 !important;
+                background: white !important;
+            }
+
+            .print-area {
+                width: 100% !important;
+                max-width: 100% !important;
+                margin: 0 auto !important;
+                padding: 1.2cm !important;
+                box-shadow: none !important;
+                border: none !important;
+            }
+
+            table { page-break-inside: avoid !important; border-collapse: collapse !important; }
+            tr { page-break-inside: avoid !important; page-break-after: auto; }
+            th, td { border: 1px solid #000 !important; color: #000 !important; padding: 4px 6px !important; }
+        }
+        body { font-family: 'Inter', sans-serif; }
+    </style>
+</head>
+<body class="bg-slate-100 min-h-screen p-4 sm:p-8">
+
+<!-- Header container populated via fetch -->
+<header id="site-header" class="no-print sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b border-blue-200 shadow-sm -mx-4 -mt-4 sm:-mx-8 sm:-mt-8 mb-8 px-4 py-3"></header>
+
+<div id="app" class="max-w-4xl mx-auto">
+    <header class="text-center mb-6 no-print">
+        <h1 class="text-3xl font-extrabold text-blue-950">Fractional Excretion of Calcium (CCCR) Calculator</h1>
+        <p class="text-slate-600 mt-2">Calcium-to-creatinine clearance ratio for separating familial hypocalciuric hypercalcemia (FHH) from primary hyperparathyroidism (PHPT) in hypercalcemia with a non-suppressed PTH.</p>
+    </header>
+
+    <!-- DATA ENTRY -->
+    <div class="no-print bg-white p-6 rounded-xl shadow-lg mb-8 border border-blue-200">
+        <div class="flex justify-between items-center border-b pb-3 mb-4">
+            <h3 class="text-lg font-medium text-slate-800">Paired Serum and Urine Values</h3>
+            <button onclick="resetForm()" class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-600 px-2.5 py-1 rounded transition">Reset Calculator</button>
+        </div>
+
+        <div class="space-y-6">
+            <div>
+                <h4 class="text-sm font-bold text-blue-950 uppercase tracking-wider bg-slate-100 p-2 rounded border border-blue-200 mb-3">Specimen and Units</h4>
+                <div class="space-y-3">
+                    <div class="flex flex-col md:flex-row md:items-center justify-between p-2.5 bg-slate-50 border border-slate-200 rounded-lg gap-2 text-xs sm:text-sm">
+                        <label for="specimen" class="font-medium text-slate-800 md:w-1/2">Urine specimen</label>
+                        <select id="specimen" onchange="applyPreset()" class="p-1.5 border border-slate-300 rounded bg-white font-medium text-blue-950 focus:ring-blue-900 focus:border-blue-900 md:w-1/2 text-xs sm:text-sm">
+                            <option value="24h">24-hour urine collection (preferred)</option>
+                            <option value="spot">Spot / fasting urine sample</option>
+                        </select>
+                    </div>
+                    <div class="flex flex-col md:flex-row md:items-center justify-between p-2.5 bg-slate-50 border border-slate-200 rounded-lg gap-2 text-xs sm:text-sm">
+                        <label for="unitSystem" class="font-medium text-slate-800 md:w-1/2">Unit preset (each unit can still be changed below)</label>
+                        <select id="unitSystem" onchange="applyPreset()" class="p-1.5 border border-slate-300 rounded bg-white font-medium text-blue-950 focus:ring-blue-900 focus:border-blue-900 md:w-1/2 text-xs sm:text-sm">
+                            <option value="us">US conventional (mg/dL)</option>
+                            <option value="si">SI (mmol/L, µmol/L)</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div>
+                <h4 class="text-sm font-bold text-blue-950 uppercase tracking-wider bg-slate-100 p-2 rounded border border-blue-200 mb-3">Laboratory Values</h4>
+                <div id="labInputsContainer" class="space-y-3"></div>
+                <p class="text-[11px] text-slate-500 mt-2">Serum should be drawn during or close to the urine collection. Urine calcium and urine creatinine must come from the same specimen and must both be concentrations or both be 24-hour totals.</p>
+                <div id="calcMessage" class="text-xs font-semibold text-red-700 mt-2"></div>
+            </div>
+
+            <div>
+                <h4 class="text-sm font-bold text-blue-950 uppercase tracking-wider bg-slate-100 p-2 rounded border border-blue-200 mb-3">Factors That Lower Urinary Calcium Independent of FHH</h4>
+                <div id="confounderContainer" class="space-y-2"></div>
+            </div>
+
+            <div>
+                <h4 class="text-sm font-bold text-blue-950 uppercase tracking-wider bg-slate-100 p-2 rounded border border-blue-200 mb-3">Features That Raise Suspicion for FHH</h4>
+                <div id="supportiveContainer" class="space-y-2"></div>
+            </div>
+        </div>
+
+        <div class="flex flex-wrap gap-2 mt-6">
+            <button onclick="calculate(true)" class="bg-blue-900 hover:bg-blue-950 text-white font-semibold px-4 py-2 rounded-lg shadow text-sm transition">🧮 Calculate</button>
+            <button onclick="window.print()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 font-semibold px-3 py-2 rounded-lg text-sm transition">🖨️ Print Report</button>
+        </div>
+    </div>
+
+    <!-- REPORT -->
+    <div id="report" class="print-area bg-white p-6 rounded-xl shadow-2xl border border-slate-300">
+        <div class="flex justify-between items-center mb-6 border-b pb-4">
+            <div>
+                <h1 class="text-2xl font-bold text-slate-800">Calcium/Creatinine Clearance Ratio Report</h1>
+                <p class="text-sm text-slate-500 mt-1">CCCR = (urine calcium × serum creatinine) ÷ (serum calcium × urine creatinine); fractional excretion (%) = CCCR × 100</p>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+            <div class="p-4 bg-slate-100 border border-blue-200 rounded-xl text-center">
+                <div class="text-xs font-semibold text-blue-900 uppercase tracking-wide">CCCR</div>
+                <div id="cccrOutput" class="text-3xl font-black text-blue-950 my-1">--</div>
+                <div class="text-[10px] text-slate-500">Clearance Ratio</div>
+            </div>
+            <div class="p-4 bg-slate-50 border border-slate-200 rounded-xl text-center">
+                <div class="text-xs font-semibold text-slate-600 uppercase tracking-wide">FECa</div>
+                <div id="fecaOutput" class="text-2xl font-bold text-slate-800 my-1">--</div>
+                <div class="text-[10px] text-slate-500">Fractional Excretion (%)</div>
+            </div>
+            <div class="p-4 bg-slate-50 border border-slate-200 rounded-xl text-center">
+                <div class="text-xs font-semibold text-slate-600 uppercase tracking-wide">Category</div>
+                <div id="bandOutput" class="text-lg font-bold text-slate-800 my-1">--</div>
+                <div id="bandSub" class="text-[10px] text-slate-500">Enter all four values</div>
+            </div>
+            <div class="p-4 bg-slate-50 border border-slate-200 rounded-xl text-center">
+                <div class="text-xs font-semibold text-slate-600 uppercase tracking-wide">24-h Urine Calcium</div>
+                <div id="uca24Output" class="text-2xl font-bold text-slate-800 my-1">--</div>
+                <div id="uca24Sub" class="text-[10px] text-slate-500">Shown when 24-hour totals are entered</div>
+            </div>
+        </div>
+
+        <div id="warningBox" class="hidden mb-6 p-3 bg-amber-50 border border-amber-300 rounded-lg text-xs text-amber-900 space-y-1"></div>
+
+        <h4 class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Interpretation Bands</h4>
+        <div id="summaryTableContainer" class="overflow-x-auto mb-6"></div>
+
+        <h4 class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Values Used</h4>
+        <div id="inputsTableContainer" class="overflow-x-auto mb-6"></div>
+
+        <div class="border-t pt-4">
+            <h4 class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Clinical Assessment Summary (Sig)</h4>
+            <div class="flex items-center gap-2">
+                <div id="patientInstructions" class="flex-1 p-4 bg-slate-50 border border-slate-200 rounded-lg text-sm font-bold text-slate-800 text-left">
+                    --
+                </div>
+                <button id="copySigBtn" onclick="copySummary()" class="no-print bg-blue-900 hover:bg-blue-950 text-white font-semibold px-4 py-4 rounded-lg shadow transition flex items-center gap-1.5 text-sm whitespace-nowrap">
+                    📋 Copy
+                </button>
+            </div>
+        </div>
+
+        <div class="mt-6 text-xs text-slate-500 border-t pt-4 italic space-y-2">
+            <p><strong>Formula:</strong> <em class="not-italic">CCCR = (24-h urine calcium × serum creatinine) ÷ (serum calcium × 24-h urine creatinine)</em> (Palermo et al., Reviews in Endocrine and Metabolic Disorders, 2024). Calcium values are converted with 1 mmol = 40.08 mg and creatinine values with 1 mmol = 113.12 mg (1 mg/dL = 88.4 µmol/L) before the ratio is taken.</p>
+            <p><strong>Cut-offs:</strong> Fractional excretion of calcium is usually below 0.01 in FHH and typically above 0.02 in PHPT, but up to 20% of patients with FHH have values above 0.01 (Walker and Shane, JAMA, 2022). A CCCR above 0.02 virtually rules out FHH; a CCCR below 0.01 has a reported sensitivity of 65–80% and specificity of 74–88% for FHH, and values from 0.01 to 0.02 do not discriminate (Asla et al., Endocrine, 2024). About 10% of individuals with PHPT also have a low ratio (Hannan et al., Nature Reviews Endocrinology, 2018). A low ratio therefore supports but does not establish FHH; confirmation is by genetic testing of CASR, GNA11, and AP2S1.</p>
+            <p><strong>Confounders:</strong> The ratio can be low in PHPT with coexisting vitamin D deficiency or impaired renal function, and the collection should be made off diuretics (Walker and Silverberg, Nature Reviews Endocrinology, 2018). Thiazides lower the ratio in PHPT and increase falsely suspected FHH (Riss et al., Clinical Endocrinology, 2016). Lithium exposure and low calcium intake should also be excluded (De Sousa et al., Endocrine, 2022).</p>
+            <p><strong>Spot urine:</strong> The cut-offs were derived from 24-hour collections. Agreement between spot (fasting) and 24-hour ratios has been reported only in a small study and requires cross-validation in FHH (Han et al., Reviews in Endocrine and Metabolic Disorders, 2020).</p>
+            <p>Interpretation applies only to hypercalcemia with a non-suppressed PTH. This tool supports, and does not replace, clinical judgment.</p>
+        </div>
+    </div>
+</div>
+
+<script>
+// Fetch dynamic navbar
+fetch('nav.html')
+    .then(res => res.text())
+    .then(data => {
+        document.getElementById('site-header').innerHTML = data;
+    })
+    .catch(err => console.error('Error loading navigation:', err));
+
+/* ---------- unit definitions ----------
+   Everything is converted to mg/dL (concentrations) or mg/24h (totals) before the ratio is taken.
+   basis: 'conc' = concentration, 'total' = 24-hour total */
+const CA_MG_PER_MMOL = 40.08;     // calcium: 1 mmol = 40.08 mg
+const CR_MG_PER_MMOL = 113.12;    // creatinine: 1 mmol = 113.12 mg (1 mg/dL = 88.4 µmol/L)
+
+const FIELDS = [
+    { key: 'sCa', label: 'Serum total calcium', units: [
+        { id: 'mg/dL',  basis: 'conc', toBase: v => v },
+        { id: 'mmol/L', basis: 'conc', toBase: v => v * CA_MG_PER_MMOL / 10 }
+    ]},
+    { key: 'sCr', label: 'Serum creatinine', units: [
+        { id: 'mg/dL',  basis: 'conc', toBase: v => v },
+        { id: 'µmol/L', basis: 'conc', toBase: v => v * CR_MG_PER_MMOL / 10000 }
+    ]},
+    { key: 'uCa', label: 'Urine calcium', units: [
+        { id: 'mg/24h',   basis: 'total', toBase: v => v },
+        { id: 'mmol/24h', basis: 'total', toBase: v => v * CA_MG_PER_MMOL },
+        { id: 'mg/dL',    basis: 'conc',  toBase: v => v },
+        { id: 'mmol/L',   basis: 'conc',  toBase: v => v * CA_MG_PER_MMOL / 10 }
+    ]},
+    { key: 'uCr', label: 'Urine creatinine', units: [
+        { id: 'mg/24h',   basis: 'total', toBase: v => v },
+        { id: 'g/24h',    basis: 'total', toBase: v => v * 1000 },
+        { id: 'mmol/24h', basis: 'total', toBase: v => v * CR_MG_PER_MMOL },
+        { id: 'mg/dL',    basis: 'conc',  toBase: v => v },
+        { id: 'mmol/L',   basis: 'conc',  toBase: v => v * CR_MG_PER_MMOL / 10 },
+        { id: 'µmol/L',   basis: 'conc',  toBase: v => v * CR_MG_PER_MMOL / 10000 }
+    ]}
+];
+
+const PRESETS = {
+    us: {
+        '24h':  { sCa: 'mg/dL',  sCr: 'mg/dL',  uCa: 'mg/24h',   uCr: 'mg/24h' },
+        'spot': { sCa: 'mg/dL',  sCr: 'mg/dL',  uCa: 'mg/dL',    uCr: 'mg/dL' }
+    },
+    si: {
+        '24h':  { sCa: 'mmol/L', sCr: 'µmol/L', uCa: 'mmol/24h', uCr: 'mmol/24h' },
+        'spot': { sCa: 'mmol/L', sCr: 'µmol/L', uCa: 'mmol/L',   uCr: 'mmol/L' }
+    }
+};
+
+const CONFOUNDERS = [
+    { id: 'cf-vitd',     text: 'Vitamin D deficiency (25-hydroxyvitamin D not replete)', short: 'vitamin D deficiency' },
+    { id: 'cf-renal',    text: 'Impaired renal function',                                 short: 'impaired renal function' },
+    { id: 'cf-thiazide', text: 'Thiazide diuretic not withdrawn before the collection',   short: 'thiazide use' },
+    { id: 'cf-lithium',  text: 'Lithium therapy',                                         short: 'lithium therapy' },
+    { id: 'cf-lowca',    text: 'Low dietary calcium intake',                              short: 'low dietary calcium intake' }
+];
+
+const SUPPORTIVE = [
+    { id: 'sf-family', text: 'Family history of hypercalcemia',                      short: 'family history of hypercalcemia' },
+    { id: 'sf-young',  text: 'Hypercalcemia detected at a young age',                short: 'young age at detection' },
+    { id: 'sf-never',  text: 'No previously documented normal serum calcium',        short: 'no previously documented normocalcemia' },
+    { id: 'sf-pth',    text: 'PTH normal or only minimally elevated',                short: 'normal or minimally elevated PTH' },
+    { id: 'sf-mg',     text: 'High-normal or elevated serum magnesium',              short: 'high-normal or elevated magnesium' }
+];
+
+const BANDS = [
+    { key: 'low',  cccr: 'Below 0.01',   pct: 'Below 1%', cls: 'text-amber-700',
+      headline: 'Hypocalciuric range',
+      meaning: 'Compatible with FHH but not diagnostic; a minority of PHPT cases also fall in this range',
+      next: 'Exclude confounders, then genetic testing (CASR, GNA11, AP2S1) before any parathyroid surgery' },
+    { key: 'mid',  cccr: '0.01 to 0.02', pct: '1% to 2%', cls: 'text-slate-700',
+      headline: 'Indeterminate',
+      meaning: 'Overlap zone between FHH and PHPT; does not discriminate',
+      next: 'Exclude confounders; consider genetic testing, especially when features of FHH are present' },
+    { key: 'high', cccr: 'Above 0.02',   pct: 'Above 2%', cls: 'text-green-700',
+      headline: 'FHH very unlikely',
+      meaning: 'Virtually rules out FHH; favors PHPT when PTH is not suppressed',
+      next: 'FHH genetic testing is not generally needed on the basis of urinary calcium' }
+];
+
+/* ---------- build form ---------- */
+function buildInputs() {
+    const container = document.getElementById('labInputsContainer');
+    FIELDS.forEach(f => {
+        const row = document.createElement('div');
+        row.className = 'flex flex-col md:flex-row md:items-center justify-between p-2.5 bg-slate-50 border border-slate-200 rounded-lg gap-2 text-xs sm:text-sm';
+
+        const label = document.createElement('label');
+        label.className = 'font-medium text-slate-800 md:w-1/2';
+        label.htmlFor = f.key;
+        label.textContent = f.label;
+
+        const wrap = document.createElement('div');
+        wrap.className = 'flex gap-2 md:w-1/2';
+
+        const input = document.createElement('input');
+        input.id = f.key;
+        input.type = 'number';
+        input.min = '0';
+        input.step = 'any';
+        input.inputMode = 'decimal';
+        input.className = 'flex-1 min-w-0 p-1.5 border border-slate-300 rounded bg-white font-medium text-blue-950 focus:ring-blue-900 focus:border-blue-900 text-xs sm:text-sm';
+        input.addEventListener('input', () => calculate(false));
+
+        const select = document.createElement('select');
+        select.id = f.key + 'Unit';
+        select.className = 'w-28 p-1.5 border border-slate-300 rounded bg-white font-medium text-blue-950 focus:ring-blue-900 focus:border-blue-900 text-xs sm:text-sm';
+        f.units.forEach(u => {
+            const opt = document.createElement('option');
+            opt.value = u.id;
+            opt.textContent = u.id;
+            select.appendChild(opt);
+        });
+        select.addEventListener('change', () => calculate(false));
+
+        wrap.appendChild(input);
+        wrap.appendChild(select);
+        row.appendChild(label);
+        row.appendChild(wrap);
+        container.appendChild(row);
+    });
+}
+
+function buildChecklist(items, containerId) {
+    const container = document.getElementById(containerId);
+    items.forEach(item => {
+        const label = document.createElement('label');
+        label.className = 'flex items-center gap-2 p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-xs sm:text-sm font-medium text-slate-800 cursor-pointer';
+
+        const box = document.createElement('input');
+        box.type = 'checkbox';
+        box.id = item.id;
+        box.className = 'h-4 w-4';
+        box.addEventListener('change', () => calculate(false));
+
+        const span = document.createElement('span');
+        span.textContent = item.text;
+
+        label.appendChild(box);
+        label.appendChild(span);
+        container.appendChild(label);
+    });
+}
+
+function applyPreset() {
+    const specimen = document.getElementById('specimen').value;
+    const system = document.getElementById('unitSystem').value;
+    const preset = PRESETS[system][specimen];
+    Object.keys(preset).forEach(key => {
+        document.getElementById(key + 'Unit').value = preset[key];
+    });
+    calculate(false);
+}
+
+function getUnit(field) {
+    const id = document.getElementById(field.key + 'Unit').value;
+    return field.units.find(u => u.id === id);
+}
+
+function checkedShort(items) {
+    return items.filter(item => document.getElementById(item.id).checked).map(item => item.short);
+}
+
+function classify(cccr) {
+    if (cccr < 0.01) return BANDS[0];
+    if (cccr <= 0.02) return BANDS[1];
+    return BANDS[2];
+}
+
+/* ---------- rendering ---------- */
+function renderBandTable(activeKey) {
+    const rows = BANDS.map(b => {
+        const active = b.key === activeKey;
+        const shade = active ? 'bg-slate-200 font-bold' : 'bg-white';
+        return `<tr class="${shade}">
+            <td class="border border-slate-300 p-2 text-center ${active ? 'text-blue-950' : ''}">${active ? '▶ ' : ''}${b.cccr}</td>
+            <td class="border border-slate-300 p-2 text-center">${b.pct}</td>
+            <td class="border border-slate-300 p-2 text-xs">${b.headline}: ${b.meaning}</td>
+            <td class="border border-slate-300 p-2 text-xs">${b.next}</td>
+        </tr>`;
+    }).join('');
+
+    document.getElementById('summaryTableContainer').innerHTML = `<table class="min-w-full border-collapse border border-slate-300 text-sm">
+        <thead class="bg-blue-900 text-white">
+            <tr>
+                <th class="border border-slate-300 p-2 text-center">CCCR</th>
+                <th class="border border-slate-300 p-2 text-center">FECa (%)</th>
+                <th class="border border-slate-300 p-2 text-left">Interpretation</th>
+                <th class="border border-slate-300 p-2 text-left">Suggested Next Step</th>
+            </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+    </table>`;
+}
+
+function renderInputsTable(entries) {
+    const body = entries
+        ? entries.map((e, i) => `<tr class="${i % 2 ? 'bg-slate-100/60' : 'bg-white'}">
+            <td class="border border-slate-300 p-2 font-medium">${e.label}</td>
+            <td class="border border-slate-300 p-2 text-center">${e.entered}</td>
+            <td class="border border-slate-300 p-2 text-center text-xs text-slate-600">${e.converted}</td>
+        </tr>`).join('')
+        : `<tr class="bg-white"><td colspan="3" class="border border-slate-300 p-2 text-center text-slate-500">No complete set of values entered</td></tr>`;
+
+    document.getElementById('inputsTableContainer').innerHTML = `<table class="min-w-full border-collapse border border-slate-300 text-sm">
+        <thead class="bg-blue-900 text-white">
+            <tr>
+                <th class="border border-slate-300 p-2 text-left">Measurement</th>
+                <th class="border border-slate-300 p-2 text-center">As Entered</th>
+                <th class="border border-slate-300 p-2 text-center">Converted for Calculation</th>
+            </tr>
+        </thead>
+        <tbody>${body}</tbody>
+    </table>`;
+}
+
+function renderWarnings(list) {
+    const box = document.getElementById('warningBox');
+    if (!list.length) {
+        box.classList.add('hidden');
+        box.innerHTML = '';
+        return;
+    }
+    box.classList.remove('hidden');
+    box.innerHTML = list.map(w => `<p>⚠️ ${w}</p>`).join('');
+}
+
+function renderEmpty(message) {
+    document.getElementById('calcMessage').textContent = message || '';
+    document.getElementById('cccrOutput').textContent = '--';
+    document.getElementById('fecaOutput').textContent = '--';
+    const band = document.getElementById('bandOutput');
+    band.textContent = '--';
+    band.className = 'text-lg font-bold text-slate-800 my-1';
+    document.getElementById('bandSub').textContent = 'Enter all four values';
+    document.getElementById('uca24Output').textContent = '--';
+    document.getElementById('uca24Sub').textContent = 'Shown when 24-hour totals are entered';
+    document.getElementById('patientInstructions').textContent = '--';
+    renderWarnings([]);
+    renderBandTable(null);
+    renderInputsTable(null);
+}
+
+/* ---------- calculation ---------- */
+function calculate(scrollToReport) {
+    const specimen = document.getElementById('specimen').value;
+    const data = {};
+    let anyEntered = false, missing = false, invalid = false;
+
+    FIELDS.forEach(f => {
+        const raw = document.getElementById(f.key).value;
+        const unit = getUnit(f);
+        if (raw === '') {
+            missing = true;
+            return;
+        }
+        anyEntered = true;
+        const v = parseFloat(raw);
+        if (!isFinite(v) || v <= 0) {
+            invalid = true;
+            return;
+        }
+        data[f.key] = { label: f.label, value: v, unit: unit, base: unit.toBase(v) };
+    });
+
+    if (invalid) return renderEmpty('All four values must be numbers greater than 0.');
+    if (missing) return renderEmpty(anyEntered ? 'Enter all four values to calculate.' : '');
+
+    if (data.uCa.unit.basis !== data.uCr.unit.basis) {
+        return renderEmpty('Urine calcium and urine creatinine must both be concentrations or both be 24-hour totals.');
+    }
+    if (specimen === 'spot' && data.uCa.unit.basis === 'total') {
+        return renderEmpty('A spot sample cannot be entered as 24-hour totals; choose concentration units for the urine values.');
+    }
+    document.getElementById('calcMessage').textContent = '';
+
+    // CCCR = (urine Ca x serum Cr) / (serum Ca x urine Cr); urine volume cancels out
+    const cccr = (data.uCa.base * data.sCr.base) / (data.sCa.base * data.uCr.base);
+    const pct = cccr * 100;
+    const band = classify(cccr);
+    const specimenLabel = specimen === '24h' ? '24-hour urine' : 'spot urine';
+
+    // Cards
+    document.getElementById('cccrOutput').textContent = cccr.toFixed(4);
+    document.getElementById('fecaOutput').textContent = pct.toFixed(2) + '%';
+    const bandEl = document.getElementById('bandOutput');
+    bandEl.textContent = band.headline;
+    bandEl.className = `text-lg font-bold my-1 ${band.cls}`;
+    document.getElementById('bandSub').textContent = `CCCR ${band.cccr.toLowerCase()}`;
+
+    const basisTotal = data.uCa.unit.basis === 'total';
+    if (basisTotal) {
+        document.getElementById('uca24Output').textContent = `${data.uCa.base.toFixed(0)} mg`;
+        document.getElementById('uca24Sub').textContent = `${(data.uCa.base / CA_MG_PER_MMOL).toFixed(2)} mmol per 24 h`;
+    } else {
+        document.getElementById('uca24Output').textContent = '--';
+        document.getElementById('uca24Sub').textContent = 'Shown when 24-hour totals are entered';
+    }
+
+    // Warnings
+    const warnings = [];
+    const confounders = checkedShort(CONFOUNDERS);
+    const features = checkedShort(SUPPORTIVE);
+
+    if (data.sCa.base < 5 || data.sCa.base > 20) warnings.push('Serum calcium looks implausible for the selected unit; check the unit.');
+    if (data.sCr.base < 0.2 || data.sCr.base > 15) warnings.push('Serum creatinine looks implausible for the selected unit; check the unit.');
+    if (cccr > 0.1) warnings.push('The ratio is unusually high; check that the urine and serum units are correct.');
+    if (confounders.length && band.key !== 'high') {
+        warnings.push(`A low or indeterminate ratio may be explained by ${confounders.join(', ')}. Correct or withdraw where possible and repeat the collection before attributing the result to FHH.`);
+    }
+    if (specimen === 'spot') {
+        warnings.push('The cut-offs were derived from 24-hour collections; a spot-urine ratio is less well validated.');
+    }
+    renderWarnings(warnings);
+
+    // Tables
+    renderBandTable(band.key);
+    const convUnit = basisTotal ? 'mg/24h' : 'mg/dL';
+    renderInputsTable([
+        { label: data.sCa.label, entered: `${data.sCa.value} ${data.sCa.unit.id}`, converted: `${data.sCa.base.toFixed(2)} mg/dL` },
+        { label: data.sCr.label, entered: `${data.sCr.value} ${data.sCr.unit.id}`, converted: `${data.sCr.base.toFixed(2)} mg/dL` },
+        { label: `${data.uCa.label} (${specimenLabel})`, entered: `${data.uCa.value} ${data.uCa.unit.id}`, converted: `${data.uCa.base.toFixed(1)} ${convUnit}` },
+        { label: `${data.uCr.label} (${specimenLabel})`, entered: `${data.uCr.value} ${data.uCr.unit.id}`, converted: `${data.uCr.base.toFixed(1)} ${convUnit}` }
+    ]);
+
+    // Sig
+    let sig = `CCCR ${cccr.toFixed(4)} (FECa ${pct.toFixed(2)}%) on ${specimenLabel} ` +
+        `[serum Ca ${data.sCa.value} ${data.sCa.unit.id}, serum Cr ${data.sCr.value} ${data.sCr.unit.id}, ` +
+        `urine Ca ${data.uCa.value} ${data.uCa.unit.id}, urine Cr ${data.uCr.value} ${data.uCr.unit.id}]. ` +
+        `${band.cccr}: ${band.headline.toLowerCase()}. ${band.meaning}. ${band.next}.`;
+    if (confounders.length && band.key !== 'high') {
+        sig += ` Factors that can lower the ratio independent of FHH: ${confounders.join(', ')}; repeat after correction.`;
+    }
+    if (features.length) {
+        sig += ` Features raising suspicion for FHH: ${features.join(', ')}.`;
+    }
+    if (specimen === 'spot') {
+        sig += ' Spot-urine ratio; confirm with a 24-hour collection if the result will change management.';
+    }
+    document.getElementById('patientInstructions').textContent = sig;
+
+    if (scrollToReport === true) document.getElementById('report').scrollIntoView({ behavior: 'smooth' });
+}
+
+/* ---------- copy / reset ---------- */
+function copySummary() {
+    const textToCopy = document.getElementById('patientInstructions').textContent.trim();
+    if (!textToCopy || textToCopy === '--') return;
+
+    navigator.clipboard.writeText(textToCopy).then(() => {
+        const btn = document.getElementById('copySigBtn');
+        const originalText = btn.innerHTML;
+        btn.innerHTML = '✅ Copied!';
+        btn.classList.remove('bg-blue-900', 'hover:bg-blue-950');
+        btn.classList.add('bg-green-600', 'hover:bg-green-700');
+
+        setTimeout(() => {
+            btn.innerHTML = originalText;
+            btn.classList.remove('bg-green-600', 'hover:bg-green-700');
+            btn.classList.add('bg-blue-900', 'hover:bg-blue-950');
+        }, 2000);
+    });
+}
+
+function resetForm() {
+    FIELDS.forEach(f => { document.getElementById(f.key).value = ''; });
+    CONFOUNDERS.concat(SUPPORTIVE).forEach(item => { document.getElementById(item.id).checked = false; });
+    document.getElementById('specimen').value = '24h';
+    document.getElementById('unitSystem').value = 'us';
+    applyPreset();
+}
+
+window.onload = () => {
+    buildInputs();
+    buildChecklist(CONFOUNDERS, 'confounderContainer');
+    buildChecklist(SUPPORTIVE, 'supportiveContainer');
+    applyPreset();   // sets default units and renders the empty report
+};
+</script>
+</body>
+</html>
