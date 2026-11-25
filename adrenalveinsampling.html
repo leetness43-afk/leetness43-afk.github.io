@@ -121,6 +121,15 @@
         </div>
     </div>
 
+    <!-- Anatomical & Index Visual Reference -->
+    <div class="no-print bg-white p-6 rounded-xl shadow-lg mt-8 border border-slate-300">
+        <h3 class="text-lg font-medium text-gray-800 mb-1 border-b pb-1.5">Adrenal Vein Sampling Anatomy &amp; Index Guide</h3>
+        <p class="text-xs text-gray-500 mb-4">Catheter cannulation sites and diagnostic interpretation criteria (Selectivity, Lateralization, and Contralateral Suppression Indices).</p>
+        <div class="flex justify-center">
+            <img src="avs-anatomy.jpg" alt="Adrenal Vein Sampling Anatomy and Index Guide showing Selectivity Index, Lateralization Index, and Contralateral Suppression Index" class="w-full max-w-4xl h-auto rounded-lg border border-slate-200">
+        </div>
+    </div>
+
     <div class="text-center mt-8 no-print pb-12">
         <button onclick="window.focus(); window.print();"
             class="bg-slate-600 hover:bg-slate-700 text-white font-bold py-4 px-10 rounded-full shadow-xl transition transform hover:scale-105">
@@ -369,7 +378,6 @@ function interpret() {
                 var ratioPass = false;
                 if (ok(ivc.epi) && ivc.epi.value > 0) {
                     d.epiRatio = d.epi.value / ivc.epi.value;
-                    // IVC below the assay limit means the true ratio is at least this value
                     d.epiRatioPrefix = ivc.epi.op === '<' ? '>' : d.epi.op;
                     ratioPass = measurable && ivc.epi.op !== '>' && d.epiRatio > EPI_RATIO;
                 }
