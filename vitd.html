@@ -1,0 +1,554 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vitamin D Deficiency Replacement Calculator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @media print {
+            @page {
+                size: portrait;
+                margin: 0;
+            }
+
+            .no-print { display: none !important; }
+
+            html, body {
+                margin: 0 !important;
+                padding: 0 !important;
+                background: white !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+
+            .print-area {
+                width: 100% !important;
+                max-width: 100% !important;
+                margin: 0 auto !important;
+                padding: 1.2cm !important;
+                box-shadow: none !important;
+                border: none !important;
+            }
+
+            table { page-break-inside: avoid !important; border-collapse: collapse !important; }
+            tr { page-break-inside: avoid !important; page-break-after: auto; }
+            th, td { border: 1px solid #000 !important; color: #000 !important; padding: 4px 6px !important; }
+        }
+        body { font-family: 'Inter', sans-serif; }
+    </style>
+</head>
+<body class="bg-slate-100 min-h-screen p-4 sm:p-8">
+
+<!-- Header container populated via fetch -->
+<header id="site-header" class="no-print sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b border-blue-200 shadow-sm -mx-4 -mt-4 sm:-mx-8 sm:-mt-8 mb-8 px-4 py-3"></header>
+
+<div id="app" class="max-w-4xl mx-auto">
+    <header class="text-center mb-6 no-print">
+        <h1 class="text-3xl font-extrabold text-blue-950">Vitamin D Deficiency Replacement Calculator</h1>
+        <p class="text-slate-600 mt-2">Adult 25-hydroxyvitamin D interpretation with guideline-based repletion and maintenance dosing, plus the 30–50 ng/mL osteoporosis target range.</p>
+    </header>
+
+    <!-- DATA ENTRY -->
+    <div class="no-print bg-white p-6 rounded-xl shadow-lg mb-8 border border-blue-200">
+        <div class="flex justify-between items-center border-b pb-3 mb-4">
+            <h3 class="text-lg font-medium text-slate-800">Serum 25-Hydroxyvitamin D and Patient Factors</h3>
+            <button onclick="resetForm()" class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-600 px-2.5 py-1 rounded transition">Reset Calculator</button>
+        </div>
+
+        <div class="space-y-6">
+            <div>
+                <h4 class="text-sm font-bold text-blue-950 uppercase tracking-wider bg-slate-100 p-2 rounded border border-blue-200 mb-3">Vitamin D Level</h4>
+                <div class="space-y-3">
+                    <div class="flex flex-col md:flex-row md:items-center justify-between p-2.5 bg-slate-50 border border-slate-200 rounded-lg gap-2 text-xs sm:text-sm">
+                        <label for="level" class="font-medium text-slate-800 md:w-1/2">Serum 25-hydroxyvitamin D <span class="text-[11px] italic font-normal text-slate-500">(total 25(OH)D, not 1,25-dihydroxyvitamin D)</span></label>
+                        <input id="level" type="number" min="0" step="0.1" inputmode="decimal" placeholder="e.g., 14" oninput="calculate(false)" class="p-1.5 border border-slate-300 rounded bg-white font-medium text-blue-950 focus:ring-blue-900 focus:border-blue-900 md:w-1/2 text-xs sm:text-sm">
+                    </div>
+                    <div class="flex flex-col md:flex-row md:items-center justify-between p-2.5 bg-slate-50 border border-slate-200 rounded-lg gap-2 text-xs sm:text-sm">
+                        <label for="unit" class="font-medium text-slate-800 md:w-1/2">Unit <span class="text-[11px] italic font-normal text-slate-500">(1 ng/mL = 2.496 nmol/L)</span></label>
+                        <select id="unit" onchange="calculate(false)" class="p-1.5 border border-slate-300 rounded bg-white font-medium text-blue-950 focus:ring-blue-900 focus:border-blue-900 md:w-1/2 text-xs sm:text-sm">
+                            <option value="ng">ng/mL</option>
+                            <option value="nmol">nmol/L</option>
+                        </select>
+                    </div>
+                </div>
+                <div id="calcMessage" class="text-xs font-semibold text-red-700 mt-2"></div>
+            </div>
+
+            <div>
+                <h4 class="text-sm font-bold text-blue-950 uppercase tracking-wider bg-slate-100 p-2 rounded border border-blue-200 mb-3">Factors That Increase the Vitamin D Requirement</h4>
+                <div id="highReqContainer" class="space-y-2"></div>
+            </div>
+
+            <div>
+                <h4 class="text-sm font-bold text-blue-950 uppercase tracking-wider bg-slate-100 p-2 rounded border border-blue-200 mb-3">Bone Health Context</h4>
+                <div id="contextContainer" class="space-y-2"></div>
+            </div>
+
+            <div>
+                <h4 class="text-sm font-bold text-blue-950 uppercase tracking-wider bg-slate-100 p-2 rounded border border-blue-200 mb-3">Cautions Before High-Dose Vitamin D</h4>
+                <div id="cautionContainer" class="space-y-2"></div>
+            </div>
+        </div>
+
+        <div class="flex flex-wrap gap-2 mt-6">
+            <button onclick="calculate(true)" class="bg-blue-900 hover:bg-blue-950 text-white font-semibold px-4 py-2 rounded-lg shadow text-sm transition">🧮 Calculate</button>
+            <button onclick="window.print()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 font-semibold px-3 py-2 rounded-lg text-sm transition">🖨️ Print Report</button>
+        </div>
+    </div>
+
+    <!-- REPORT -->
+    <div id="report" class="print-area bg-white p-6 rounded-xl shadow-2xl border border-slate-300">
+        <div class="flex justify-between items-center mb-6 border-b pb-4">
+            <div>
+                <h1 class="text-2xl font-bold text-slate-800">Vitamin D Replacement Report</h1>
+                <p class="text-sm text-slate-500 mt-1">Adult oral vitamin D2 or D3 dosing by 25(OH)D category (Endocrine Society 2011 categories and regimens)</p>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+            <div class="p-4 bg-slate-100 border border-blue-200 rounded-xl text-center">
+                <div class="text-xs font-semibold text-blue-900 uppercase tracking-wide">25(OH)D</div>
+                <div id="ngOutput" class="text-3xl font-black text-blue-950 my-1">--</div>
+                <div class="text-[10px] text-slate-500">ng/mL</div>
+            </div>
+            <div class="p-4 bg-slate-50 border border-slate-200 rounded-xl text-center">
+                <div class="text-xs font-semibold text-slate-600 uppercase tracking-wide">25(OH)D</div>
+                <div id="nmolOutput" class="text-2xl font-bold text-slate-800 my-1">--</div>
+                <div class="text-[10px] text-slate-500">nmol/L</div>
+            </div>
+            <div class="p-4 bg-slate-50 border border-slate-200 rounded-xl text-center">
+                <div class="text-xs font-semibold text-slate-600 uppercase tracking-wide">Category</div>
+                <div id="bandOutput" class="text-lg font-bold text-slate-800 my-1">--</div>
+                <div id="bandSub" class="text-[10px] text-slate-500">Enter a level</div>
+            </div>
+            <div class="p-4 bg-slate-50 border border-slate-200 rounded-xl text-center">
+                <div class="text-xs font-semibold text-slate-600 uppercase tracking-wide">Osteoporosis Target</div>
+                <div id="targetOutput" class="text-lg font-bold text-slate-800 my-1">--</div>
+                <div class="text-[10px] text-slate-500">30–50 ng/mL (75–125 nmol/L)</div>
+            </div>
+        </div>
+
+        <div id="warningBox" class="hidden mb-6 p-3 bg-amber-50 border border-amber-300 rounded-lg text-xs text-amber-900 space-y-1"></div>
+
+        <h4 class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Recommended Vitamin D Replacement</h4>
+        <div id="planTableContainer" class="overflow-x-auto mb-6"></div>
+
+        <!-- OSTEOPOROSIS TARGET PANEL (shown underneath the recommendation) -->
+        <div class="mb-6 p-4 bg-slate-50 border border-blue-200 rounded-xl">
+            <h4 class="text-xs font-bold text-blue-950 uppercase tracking-wider mb-1">Recommended 25(OH)D Range in Osteoporosis: 30–50 ng/mL (75–125 nmol/L)</h4>
+            <p class="text-xs text-slate-600 mb-8">AACE/ACE 2020: maintain 25(OH)D at 30 ng/mL or higher in patients with osteoporosis, with a preferable range of 30 to 50 ng/mL.</p>
+
+            <div class="relative h-5 bg-slate-200 rounded mx-2">
+                <div class="absolute top-0 h-5 bg-green-500/70 rounded-sm" style="left:30%; width:20%;"></div>
+                <div id="targetMarker" class="absolute hidden" style="top:-22px; left:0%; transform:translateX(-50%);">
+                    <div id="targetMarkerLabel" class="text-[10px] font-bold text-blue-950 whitespace-nowrap text-center">--</div>
+                    <div class="mx-auto bg-blue-950" style="width:3px; height:30px;"></div>
+                </div>
+            </div>
+            <div class="relative h-5 mx-2 mt-1 text-[10px] text-slate-500">
+                <span class="absolute" style="left:0%;">0</span>
+                <span class="absolute font-bold text-green-700" style="left:30%; transform:translateX(-50%);">30</span>
+                <span class="absolute font-bold text-green-700" style="left:50%; transform:translateX(-50%);">50</span>
+                <span class="absolute" style="right:0%;">100 ng/mL</span>
+            </div>
+
+            <div id="targetStatus" class="text-sm font-bold text-slate-800 mt-2">Enter a level to compare it with the target range.</div>
+            <ul class="list-disc pl-5 mt-2 text-xs text-slate-600 space-y-1">
+                <li>Vitamin D3 1,000–2,000 IU daily is typically required to stay in range; higher doses may be needed with obesity, malabsorption, or older age.</li>
+                <li>Total calcium intake (diet plus supplement if needed) of 1,200 mg daily for women aged 50 years or older.</li>
+                <li>Correct deficiency before starting zoledronic acid or denosumab to lower the risk of hypocalcemia.</li>
+                <li>The upper bound of 50 ng/mL is a consensus limit; no fracture benefit has been shown above it.</li>
+            </ul>
+        </div>
+
+        <h4 class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Interpretation Bands</h4>
+        <div id="bandTableContainer" class="overflow-x-auto mb-6"></div>
+
+        <div class="border-t pt-4">
+            <h4 class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Clinical Assessment Summary (Sig)</h4>
+            <div class="flex items-center gap-2">
+                <div id="patientInstructions" class="flex-1 p-4 bg-slate-50 border border-slate-200 rounded-lg text-sm font-bold text-slate-800 text-left">
+                    --
+                </div>
+                <button id="copySigBtn" onclick="copySummary()" class="no-print bg-blue-900 hover:bg-blue-950 text-white font-semibold px-4 py-4 rounded-lg shadow transition flex items-center gap-1.5 text-sm whitespace-nowrap">
+                    📋 Copy
+                </button>
+            </div>
+        </div>
+
+        <div class="mt-6 text-xs text-slate-500 border-t pt-4 italic">
+            <strong>Clinical Note:</strong> Categories and regimens follow the 2011 Endocrine Society guideline <em class="not-italic">(deficiency below 20 ng/mL, insufficiency 21–29 ng/mL, sufficiency 30 ng/mL or higher)</em>. The 2024 Endocrine Society guideline no longer endorses specific 25(OH)D thresholds and suggests against routine testing in healthy adults, so this tool applies to adults with an indication for testing (for example osteoporosis, malabsorption, or hypocalcemia). The band below 12 ng/mL is an added flag for possible osteomalacia. Not for children, pregnancy, or patients who need active vitamin D (calcitriol). Tolerable upper intake is 4,000 IU daily without supervision (National Academy of Medicine) and 10,000 IU daily under medical supervision (Endocrine Society 2011). Daily dosing is preferred for long-term maintenance; long-term large intermittent doses have been linked to more falls and fractures.
+        </div>
+    </div>
+</div>
+
+<script>
+// Fetch dynamic navbar
+fetch('nav.html')
+    .then(res => res.text())
+    .then(data => {
+        document.getElementById('site-header').innerHTML = data;
+    })
+    .catch(err => console.error('Error loading navigation:', err));
+
+const CONV = 2.496; // nmol/L per ng/mL
+
+// Band cut-offs in each unit: severe, deficiency, insufficiency, target upper, excess, toxicity
+const THRESHOLDS = {
+    ng:   [12, 20, 30, 50, 100, 150],
+    nmol: [30, 50, 75, 125, 250, 375]
+};
+
+const bands = [
+    { name: 'Severe deficiency',      range: 'Below 12 ng/mL (below 30 nmol/L)',                   action: 'Repletion course; screen for osteomalacia' },
+    { name: 'Deficiency',             range: '12 to under 20 ng/mL (30 to under 50 nmol/L)',       action: 'Repletion course, then maintenance' },
+    { name: 'Insufficiency',          range: '20 to under 30 ng/mL (50 to under 75 nmol/L)',       action: 'Daily supplementation when a target of 30 ng/mL applies' },
+    { name: 'Sufficient',             range: '30 to 50 ng/mL (75 to 125 nmol/L)',                  action: 'Osteoporosis target range; maintain intake' },
+    { name: 'Above preferred range',  range: 'Above 50 to 100 ng/mL (above 125 to 250 nmol/L)',    action: 'Reduce the supplement dose' },
+    { name: 'Excess',                 range: 'Above 100 to 150 ng/mL (above 250 to 375 nmol/L)',   action: 'Stop supplements; check calcium' },
+    { name: 'Toxicity range',         range: 'Above 150 ng/mL (above 375 nmol/L)',                 action: 'Stop vitamin D and calcium; urgent calcium and renal function' }
+];
+
+const highReqItems = [
+    { id: 'obesity',       label: 'Obesity',                                         def: 'BMI 30 kg/m² or higher' },
+    { id: 'malabsorption', label: 'Malabsorption',                                   def: 'e.g., celiac disease, inflammatory bowel disease, bariatric surgery, pancreatic insufficiency, cholestasis' },
+    { id: 'meds',          label: 'Medication that accelerates vitamin D breakdown', def: 'anticonvulsants such as phenytoin, phenobarbital, or carbamazepine; glucocorticoids; rifampin; azole antifungals; antiretrovirals' }
+];
+
+const contextItems = [
+    { id: 'osteo', label: 'Osteoporosis or on osteoporosis therapy', def: 'T-score of −2.5 or lower, fragility fracture, or receiving a bisphosphonate, denosumab, or an anabolic agent' }
+];
+
+const cautionItems = [
+    { id: 'hyperca',   label: 'Hypercalcemia',                      def: 'albumin-adjusted calcium above the laboratory reference range' },
+    { id: 'granuloma', label: 'Granulomatous disease or lymphoma',  def: 'e.g., sarcoidosis or tuberculosis; unregulated calcitriol production' },
+    { id: 'phpt',      label: 'Primary hyperparathyroidism',        def: 'elevated or non-suppressed PTH with high or high-normal calcium' },
+    { id: 'stones',    label: 'Kidney stones or hypercalciuria',    def: 'calcium nephrolithiasis or 24-hour urine calcium above the reference range' }
+];
+
+const cautionWarnings = {
+    hyperca:   'Hypercalcemia: do not start vitamin D replacement until the cause is established; vitamin D is contraindicated in hypercalcemia.',
+    granuloma: 'Granulomatous disease or lymphoma: vitamin D can precipitate hypercalcemia. Monitor serum calcium and 25(OH)D serially during treatment and avoid overshooting.',
+    phpt:      'Primary hyperparathyroidism: treat deficiency as needed and monitor serum calcium during repletion.',
+    stones:    'Kidney stones or hypercalciuria: check urine calcium during repletion and avoid high-dose calcium supplements.'
+};
+
+function buildChecklist(containerId, items) {
+    const container = document.getElementById(containerId);
+    items.forEach((item) => {
+        const label = document.createElement('label');
+        label.className = 'flex items-start gap-2 p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-xs sm:text-sm cursor-pointer';
+
+        const cb = document.createElement('input');
+        cb.type = 'checkbox';
+        cb.id = `chk-${item.id}`;
+        cb.className = 'mt-0.5 h-4 w-4 accent-blue-900';
+        cb.onchange = () => calculate(false);
+
+        const text = document.createElement('span');
+        text.className = 'font-medium text-slate-800';
+        text.appendChild(document.createTextNode(item.label + ' '));
+
+        const def = document.createElement('span');
+        def.className = 'text-[11px] italic font-normal text-slate-500';
+        def.textContent = `(${item.def})`;
+        text.appendChild(def);
+
+        label.appendChild(cb);
+        label.appendChild(text);
+        container.appendChild(label);
+    });
+}
+
+function isChecked(id) {
+    const el = document.getElementById(`chk-${id}`);
+    return !!(el && el.checked);
+}
+
+function f1(x) {
+    return (Math.round(x * 10) / 10).toFixed(1);
+}
+
+function classify(value, unit) {
+    const t = THRESHOLDS[unit];
+    if (value < t[0]) return 0;
+    if (value < t[1]) return 1;
+    if (value < t[2]) return 2;
+    if (value <= t[3]) return 3;
+    if (value <= t[4]) return 4;
+    if (value <= t[5]) return 5;
+    return 6;
+}
+
+function buildPlan(idx, highReq, osteo) {
+    const rows = [];
+    const notes = [];
+    let sig = '';
+
+    const recheck = {
+        step: 'Recheck',
+        rec: 'Repeat 25(OH)D and adjust the maintenance dose to keep the level in the target range',
+        timing: 'About 3 months after starting or changing the dose (steady state takes 8–12 weeks)'
+    };
+
+    if (idx <= 1) {
+        if (highReq) {
+            rows.push({ step: 'Repletion', rec: 'Vitamin D2 or D3 6,000–10,000 IU by mouth daily (2–3 times the standard dose)', timing: 'Until 25(OH)D is above 30 ng/mL (75 nmol/L)' });
+            rows.push({ step: 'Maintenance', rec: 'Vitamin D 3,000–6,000 IU by mouth daily', timing: 'Long term' });
+            sig = 'vitamin D 6,000–10,000 IU PO daily until 25(OH)D is above 30 ng/mL (75 nmol/L), then 3,000–6,000 IU PO daily (high-requirement dosing)';
+        } else {
+            rows.push({ step: 'Repletion', rec: 'Vitamin D2 or D3 50,000 IU by mouth once weekly, or 6,000 IU by mouth daily', timing: '8 weeks' });
+            rows.push({ step: 'Maintenance', rec: 'Vitamin D 1,500–2,000 IU by mouth daily', timing: 'Long term, starting after the repletion course' });
+            sig = 'vitamin D 50,000 IU PO once weekly (or 6,000 IU PO daily) for 8 weeks, then 1,500–2,000 IU PO daily';
+        }
+        rows.push(recheck);
+        if (idx === 0) {
+            notes.push('Level is below 12 ng/mL (30 nmol/L): check serum calcium, phosphate, alkaline phosphatase, and PTH, and consider osteomalacia if there is bone pain, proximal weakness, or a raised alkaline phosphatase.');
+        }
+    } else if (idx === 2) {
+        if (highReq) {
+            rows.push({ step: 'Supplementation', rec: 'Vitamin D 3,000–6,000 IU by mouth daily; no loading course is required', timing: 'Long term' });
+            sig = 'vitamin D 3,000–6,000 IU PO daily (high-requirement dosing), no loading course';
+        } else {
+            rows.push({ step: 'Supplementation', rec: 'Vitamin D 1,500–2,000 IU by mouth daily; no loading course is required', timing: 'Long term' });
+            sig = 'vitamin D 1,500–2,000 IU PO daily, no loading course';
+        }
+        rows.push({ step: 'Alternative', rec: 'Vitamin D 50,000 IU by mouth once weekly (the AME/AACE position statement treats insufficiency like deficiency)', timing: '8 weeks, then daily maintenance' });
+        rows.push(recheck);
+        if (osteo) {
+            notes.push('Below the osteoporosis target: supplement to reach 30–50 ng/mL (75–125 nmol/L).');
+        } else {
+            notes.push('A level of 20 ng/mL (50 nmol/L) or higher is regarded as adequate by the National Academy of Medicine; raising it to 30 ng/mL mainly applies to osteoporosis and other high-risk patients.');
+        }
+    } else if (idx === 3) {
+        rows.push({ step: 'Repletion', rec: 'Not needed', timing: '—' });
+        if (highReq) {
+            rows.push({ step: 'Maintenance', rec: 'Continue the dose that achieved this level; patients with obesity, malabsorption, or interacting medication often need 3,000–6,000 IU daily to stay in range', timing: 'Long term' });
+            sig = 'no repletion needed; continue the current maintenance dose';
+        } else if (osteo) {
+            rows.push({ step: 'Maintenance', rec: 'Vitamin D3 1,000–2,000 IU by mouth daily', timing: 'Long term' });
+            sig = 'no repletion needed; maintain vitamin D3 1,000–2,000 IU PO daily';
+        } else {
+            rows.push({ step: 'Maintenance', rec: 'Dietary reference intake: 600 IU daily (800 IU daily if older than 70 years)', timing: 'Long term' });
+            sig = 'no repletion needed; dietary reference intake of 600 IU daily (800 IU daily if older than 70 years)';
+        }
+        rows.push({ step: 'Recheck', rec: 'Repeat 25(OH)D only if the dose, body weight, absorption, or interacting medication changes', timing: 'As needed' });
+    } else if (idx === 4) {
+        rows.push({ step: 'Repletion', rec: 'Not needed', timing: '—' });
+        rows.push({ step: 'Adjustment', rec: 'Reduce the supplement dose; no benefit has been shown above 50 ng/mL (125 nmol/L). The 2011 Endocrine Society guideline regarded levels up to 100 ng/mL (250 nmol/L) as safe', timing: 'Now' });
+        rows.push({ step: 'Recheck', rec: 'Repeat 25(OH)D', timing: 'About 3 months after the dose change' });
+        sig = 'above the preferred range; reduce the supplement dose';
+    } else if (idx === 5) {
+        rows.push({ step: 'Stop', rec: 'Stop vitamin D supplements and review all sources (prescription, over-the-counter, multivitamins, fortified products)', timing: 'Now' });
+        rows.push({ step: 'Laboratory tests', rec: 'Serum calcium and creatinine', timing: 'Now' });
+        rows.push({ step: 'Recheck', rec: 'Repeat 25(OH)D; restart at a lower dose only once the level is back in range', timing: 'About 3 months' });
+        sig = 'excess; stop vitamin D supplements and check serum calcium and creatinine';
+    } else {
+        rows.push({ step: 'Stop', rec: 'Stop all vitamin D and calcium supplements', timing: 'Now' });
+        rows.push({ step: 'Laboratory tests', rec: 'Serum calcium, creatinine, phosphate, and PTH; treat hypercalcemia if present', timing: 'Urgent' });
+        rows.push({ step: 'Recheck', rec: 'Repeat 25(OH)D and calcium until normal; the level falls slowly over months', timing: 'Guided by calcium' });
+        sig = 'toxicity range; stop all vitamin D and calcium supplements and urgently check serum calcium, creatinine, phosphate, and PTH';
+    }
+
+    return { rows, notes, sig };
+}
+
+function renderPlanTable(rows) {
+    const container = document.getElementById('planTableContainer');
+    if (!rows || rows.length === 0) {
+        container.innerHTML = '<div class="p-4 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-500">Enter a 25-hydroxyvitamin D level to see the recommended regimen.</div>';
+        return;
+    }
+    let body = '';
+    rows.forEach((r, i) => {
+        body += `<tr class="${i % 2 === 0 ? 'bg-white' : 'bg-slate-100/60'}">
+            <td class="border border-slate-300 p-2 font-medium">${r.step}</td>
+            <td class="border border-slate-300 p-2 font-bold text-slate-800">${r.rec}</td>
+            <td class="border border-slate-300 p-2 text-center text-xs text-slate-600">${r.timing}</td>
+        </tr>`;
+    });
+    container.innerHTML = `<table class="min-w-full border-collapse border border-slate-300 text-sm">
+        <thead class="bg-blue-900 text-white">
+            <tr>
+                <th class="border border-slate-300 p-2 text-left">Step</th>
+                <th class="border border-slate-300 p-2 text-left">Recommendation</th>
+                <th class="border border-slate-300 p-2 text-center">Duration / Timing</th>
+            </tr>
+        </thead>
+        <tbody>${body}</tbody>
+    </table>`;
+}
+
+function renderBandTable(activeIdx) {
+    let body = '';
+    bands.forEach((b, i) => {
+        const active = i === activeIdx;
+        const rowClass = active ? 'bg-slate-200 font-bold' : (i % 2 === 0 ? 'bg-white' : 'bg-slate-100/60');
+        const textClass = active ? 'text-blue-950' : 'text-slate-800';
+        body += `<tr class="${rowClass}">
+            <td class="border border-slate-300 p-2 ${textClass}">${b.name}${active ? ' ◀' : ''}</td>
+            <td class="border border-slate-300 p-2 text-center text-xs ${textClass}">${b.range}</td>
+            <td class="border border-slate-300 p-2 text-xs ${textClass}">${b.action}</td>
+        </tr>`;
+    });
+    document.getElementById('bandTableContainer').innerHTML = `<table class="min-w-full border-collapse border border-slate-300 text-sm">
+        <thead class="bg-blue-900 text-white">
+            <tr>
+                <th class="border border-slate-300 p-2 text-left">Category</th>
+                <th class="border border-slate-300 p-2 text-center">25(OH)D</th>
+                <th class="border border-slate-300 p-2 text-left">Action</th>
+            </tr>
+        </thead>
+        <tbody>${body}</tbody>
+    </table>`;
+}
+
+function renderWarnings(list) {
+    const box = document.getElementById('warningBox');
+    box.innerHTML = '';
+    if (!list || list.length === 0) {
+        box.classList.add('hidden');
+        return;
+    }
+    list.forEach((w) => {
+        const p = document.createElement('p');
+        p.textContent = '⚠️ ' + w;
+        box.appendChild(p);
+    });
+    box.classList.remove('hidden');
+}
+
+function renderEmpty() {
+    document.getElementById('ngOutput').textContent = '--';
+    document.getElementById('nmolOutput').textContent = '--';
+    document.getElementById('bandOutput').textContent = '--';
+    document.getElementById('bandSub').textContent = 'Enter a level';
+    document.getElementById('targetOutput').textContent = '--';
+    document.getElementById('targetMarker').classList.add('hidden');
+    document.getElementById('targetStatus').textContent = 'Enter a level to compare it with the target range.';
+    document.getElementById('patientInstructions').textContent = '--';
+    renderWarnings([]);
+    renderPlanTable([]);
+    renderBandTable(-1);
+}
+
+function calculate(showErrors) {
+    const msg = document.getElementById('calcMessage');
+    msg.textContent = '';
+
+    const raw = document.getElementById('level').value.trim();
+    const unit = document.getElementById('unit').value;
+    const value = parseFloat(raw);
+
+    if (raw === '' || !isFinite(value) || value <= 0) {
+        if (showErrors) msg.textContent = 'Enter a 25-hydroxyvitamin D level greater than 0.';
+        renderEmpty();
+        return;
+    }
+
+    const ng = unit === 'ng' ? value : value / CONV;
+    const nmol = unit === 'ng' ? value * CONV : value;
+    const unitLabel = unit === 'ng' ? 'ng/mL' : 'nmol/L';
+    const idx = classify(value, unit);
+    const highReq = highReqItems.some((i) => isChecked(i.id));
+    const osteo = isChecked('osteo');
+    const plan = buildPlan(idx, highReq, osteo);
+
+    // Result cards
+    document.getElementById('ngOutput').textContent = f1(ng);
+    document.getElementById('nmolOutput').textContent = f1(nmol);
+    document.getElementById('bandOutput').textContent = bands[idx].name;
+    document.getElementById('bandSub').textContent = bands[idx].range;
+
+    // Osteoporosis target comparison (in the unit entered)
+    const lower = THRESHOLDS[unit][2];
+    const upper = THRESHOLDS[unit][3];
+    let targetShort = '';
+    let targetLong = '';
+    if (value < lower) {
+        targetShort = 'Below';
+        targetLong = `Below the osteoporosis target: ${f1(lower - value)} ${unitLabel} under the lower bound of ${lower} ${unitLabel}.`;
+    } else if (value <= upper) {
+        targetShort = 'Within';
+        targetLong = `Within the osteoporosis target range of ${lower}–${upper} ${unitLabel}.`;
+    } else {
+        targetShort = 'Above';
+        targetLong = `Above the osteoporosis target: ${f1(value - upper)} ${unitLabel} over the upper bound of ${upper} ${unitLabel}.`;
+    }
+    document.getElementById('targetOutput').textContent = targetShort;
+    document.getElementById('targetStatus').textContent = targetLong;
+
+    // Marker on the 0–100 ng/mL bar
+    const marker = document.getElementById('targetMarker');
+    const pct = Math.max(0, Math.min(ng, 100));
+    marker.style.left = pct + '%';
+    document.getElementById('targetMarkerLabel').textContent = ng > 100 ? `${f1(ng)} (off scale)` : f1(ng);
+    marker.classList.remove('hidden');
+
+    // Warnings
+    const warnings = plan.notes.slice();
+    const flagged = [];
+    cautionItems.forEach((c) => {
+        if (isChecked(c.id)) {
+            flagged.push(c.label.toLowerCase());
+            if (idx <= 2 || c.id === 'hyperca') warnings.push(cautionWarnings[c.id]);
+        }
+    });
+    if (idx >= 4 && unit === 'ng') {
+        warnings.push('Confirm the unit: results reported in nmol/L are about 2.5 times higher than the same level in ng/mL.');
+    }
+    renderWarnings(warnings);
+
+    // Tables
+    renderPlanTable(plan.rows);
+    renderBandTable(idx);
+
+    // Summary
+    const modifiers = [];
+    highReqItems.forEach((i) => { if (isChecked(i.id)) modifiers.push(i.label.toLowerCase()); });
+    let summary = `25(OH)D ${f1(ng)} ng/mL (${f1(nmol)} nmol/L): ${bands[idx].name.toLowerCase()}. Plan: ${plan.sig}.`;
+    if (idx <= 2 || idx === 4) summary += ' Recheck 25(OH)D in about 3 months.';
+    if (modifiers.length > 0) summary += ` Higher-requirement factors: ${modifiers.join(', ')}.`;
+    if (flagged.length > 0) summary += ` Cautions flagged: ${flagged.join(', ')}; monitor serum calcium.`;
+    summary += ` Osteoporosis target 30–50 ng/mL (75–125 nmol/L): ${targetShort.toLowerCase()} range.`;
+    document.getElementById('patientInstructions').textContent = summary;
+}
+
+function copySummary() {
+    const textToCopy = document.getElementById('patientInstructions').textContent.trim();
+    if (!textToCopy || textToCopy === '--') return;
+
+    navigator.clipboard.writeText(textToCopy).then(() => {
+        const btn = document.getElementById('copySigBtn');
+        const originalText = btn.innerHTML;
+        btn.innerHTML = '✅ Copied!';
+        btn.classList.remove('bg-blue-900', 'hover:bg-blue-950');
+        btn.classList.add('bg-green-600', 'hover:bg-green-700');
+
+        setTimeout(() => {
+            btn.innerHTML = originalText;
+            btn.classList.remove('bg-green-600', 'hover:bg-green-700');
+            btn.classList.add('bg-blue-900', 'hover:bg-blue-950');
+        }, 2000);
+    });
+}
+
+function resetForm() {
+    document.getElementById('level').value = '';
+    document.getElementById('unit').value = 'ng';
+    [...highReqItems, ...contextItems, ...cautionItems].forEach((i) => {
+        document.getElementById(`chk-${i.id}`).checked = false;
+    });
+    calculate(false);
+}
+
+window.onload = () => {
+    buildChecklist('highReqContainer', highReqItems);
+    buildChecklist('contextContainer', contextItems);
+    buildChecklist('cautionContainer', cautionItems);
+    calculate(false);
+};
+</script>
+</body>
+</html>
