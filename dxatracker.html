@@ -474,11 +474,11 @@ function extractModelFromText(text) {
     return '';
 }
 
-function normalizeSiteName(rawLine) {
-    // Ignore table header lines that contain multiple site labels or column headers
+function normalizeSiteName(rawLine, inheritedSide = '') {
+    // Ignore table header lines that contain multiple column headers
     if (/\b(?:region|site|location)\b.*\bbmd\b.*\bt-?score\b/i.test(rawLine)) return null;
 
-    const side = detectLaterality(rawLine);
+    const side = detectLaterality(rawLine) || inheritedSide;
     const sideSuffix = side ? ` (${side})` : '';
 
     if (/\b(?:ap\s+spine|lumbar\s+spine|spine|l1\s*-\s*l4|l1\s*-\s*l3|l2\s*-\s*l4)\b/i.test(rawLine)) {
@@ -508,15 +508,15 @@ function extractNumbersFromSegment(seg) {
         .replace(/\b(?:g\/cm2|g\/cm²|cm2|cm²|sd)\b/gi, ' ')
         .replace(/([+-])\s+(\d)/g, '$1$2'); // normalize "- 1.8" -> "-1.8"
 
-    // 1. Check for explicit labels first (e.g., "BMD: 0.854" and "T-score: -1.8" or "T: -2")
-    const explicitBmd = cleaned.match(/\bbmd[:\s=]*([0-2]?\.\d{2,4})\b/i);
-    const explicitT = cleaned.match(/\bt(?:[-\s]?score)?[:\s=]*([+-]?\d+(?:\.\d+)?)\b/i);
+    // 1. Explicit labels first (handles "T-score (SD) -0.5", "T-score: -1.8", "T = -2", "BMD of L1-L4 is 0.990")
+    const explicitBmd = cleaned.match(/\bbmd\b[^0-9+-]{0,25}([0-2]?\.\d{2,4})(?![0-9])/i);
+    const explicitT = cleaned.match(/\bt(?:[-\s]?score)?\b(?:\s*\([^)]*\))?[:=\s]*([+-]?(?:\d+\.\d+|\.\d+|\d+))(?![0-9]|\.\d)/i);
 
     let bmd = explicitBmd ? parseFloat(explicitBmd[1]) : null;
     let tscore = explicitT ? parseFloat(explicitT[1]) : null;
 
-    // 2. Positional extraction supporting both decimal and integer T-scores (e.g., 0.854  -1.8  or  0.854  -2)
-    const tokenMatches = [...cleaned.matchAll(/(?<![A-Za-z0-9.])([+-]?(?:\d+\.\d+|\.\d+|\d+))(?![A-Za-z0-9.])/g)];
+    // 2. Positional fallback allowing trailing punctuation (e.g., "-0.5." at the end of a sentence)
+    const tokenMatches = [...cleaned.matchAll(/(?<![A-Za-z0-9.])([+-]?(?:\d+\.\d+|\.\d+|\d+))(?![A-Za-z0-9]|\.\d)/g)];
     const tokens = tokenMatches.map(m => {
         const raw = m[1];
         const val = parseFloat(raw);
@@ -531,7 +531,6 @@ function extractNumbersFromSegment(seg) {
     }).filter(t => isFinite(t.val));
 
     if (bmd === null) {
-        // Prefer a 3-decimal BMD candidate (standard 0.xxx or 1.xxx) to avoid Hologic Area/BMC columns
         let bmdIdx = tokens.findIndex(t => !t.hasSign && t.decimals === 3 && t.val >= 0.15 && t.val <= 2.5);
         if (bmdIdx === -1) {
             bmdIdx = tokens.findIndex(t => !t.hasSign && t.hasDecimal && t.val >= 0.15 && t.val <= 2.2);
@@ -541,7 +540,6 @@ function extractNumbersFromSegment(seg) {
             bmd = tokens[bmdIdx].val;
 
             if (tscore === null) {
-                // T-score immediately follows BMD in virtually all DXA report tables (Hologic, Lunar, EMR)
                 for (let j = bmdIdx + 1; j < tokens.length; j++) {
                     const cand = tokens[j];
                     if (cand.val >= -7.5 && cand.val <= 6.0) {
@@ -552,7 +550,6 @@ function extractNumbersFromSegment(seg) {
             }
         }
     } else if (tscore === null) {
-        // BMD was found via explicit label; find the first plausible T-score token after the BMD value
         const bmdIdx = tokens.findIndex(t => Math.abs(t.val - bmd) < 0.0005);
         const startIdx = bmdIdx !== -1 ? bmdIdx + 1 : 0;
         for (let j = startIdx; j < tokens.length; j++) {
@@ -575,24 +572,38 @@ function parseDxaReportText(rawText) {
     const extractedRows = [];
     const seenSites = new Set();
 
-    // Split by newlines or semicolons, and group trailing numeric lines with their site header
-    // (handles PDF/EMR copy-pastes where Site, BMD, and T-score wrap onto consecutive lines)
     const rawLines = text.split(/\r?\n|;/).map(s => s.trim()).filter(Boolean);
-    const groupedSegments = [];
+    let currentSectionSide = '';
 
     for (let i = 0; i < rawLines.length; i++) {
         const line = rawLines[i];
-        const siteName = normalizeSiteName(line);
+
+        // Track section headers like "Left Hip:" or "Right Hip:" so sub-lines inherit laterality if omitted
+        if (/^(?:left|lt\.?)\s+(?:hip|femur|forearm|radius)\s*:?\s*$/i.test(line)) {
+            currentSectionSide = 'Left';
+            continue;
+        }
+        if (/^(?:right|rt\.?)\s+(?:hip|femur|forearm|radius)\s*:?\s*$/i.test(line)) {
+            currentSectionSide = 'Right';
+            continue;
+        }
+        if (/^(?:lumbar\s+spine|ap\s+spine|spine)\s*:?\s*$/i.test(line)) {
+            currentSectionSide = '';
+        }
+
+        const siteName = normalizeSiteName(line, currentSectionSide);
         if (!siteName) continue;
 
         let combined = line;
         let check = extractNumbersFromSegment(combined);
 
-        // If BMD or T-score wasn't on the same line, look ahead up to 4 lines until the next site appears
+        // Look ahead up to 4 lines when numbers appear below a header (e.g., "Lumbar Spine:\nBMD of L1-L4 is 0.990...")
         let lookahead = 1;
         while ((check.bmd === null || check.tscore === null) && lookahead <= 4 && (i + lookahead) < rawLines.length) {
             const nextLine = rawLines[i + lookahead];
-            if (normalizeSiteName(nextLine)) break;
+            const nextSite = normalizeSiteName(nextLine, currentSectionSide);
+            // Stop only if the next line introduces a DIFFERENT anatomical site
+            if (nextSite && nextSite.toLowerCase() !== siteName.toLowerCase()) break;
             combined += ' ' + nextLine;
             check = extractNumbersFromSegment(combined);
             lookahead++;
