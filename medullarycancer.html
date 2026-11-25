@@ -1,0 +1,569 @@
+Save the code below as an `.html` file (for example `mtc-doubling-time.html`) in the same folder as `nav.html`.
+
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MTC Calcitonin / CEA Doubling Time Calculator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- SheetJS: creates and reads Excel files entirely inside the browser (no server involved) -->
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+    <style>
+        @media print {
+            @page {
+                size: portrait;
+                margin: 0;
+            }
+
+            .no-print { display: none !important; }
+
+            html, body {
+                margin: 0 !important;
+                padding: 0 !important;
+                background: white !important;
+            }
+
+            .print-area {
+                width: 100% !important;
+                max-width: 100% !important;
+                margin: 0 auto !important;
+                padding: 1.2cm !important;
+                box-shadow: none !important;
+                border: none !important;
+            }
+
+            table { border-collapse: collapse !important; }
+            tr { page-break-inside: avoid !important; page-break-after: auto; }
+            th, td { border: 1px solid #000 !important; color: #000 !important; padding: 4px 6px !important; }
+        }
+        body { font-family: 'Inter', sans-serif; }
+    </style>
+</head>
+<body class="bg-slate-100 min-h-screen p-4 sm:p-8">
+
+<!-- Header container populated via fetch -->
+<header id="site-header" class="no-print sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b border-blue-200 shadow-sm -mx-4 -mt-4 sm:-mx-8 sm:-mt-8 mb-8 px-4 py-3"></header>
+
+<div id="app" class="max-w-4xl mx-auto">
+    <header class="text-center mb-6 no-print">
+        <h1 class="text-3xl font-extrabold text-blue-950">MTC Calcitonin / CEA Doubling Time Calculator</h1>
+        <p class="text-slate-600 mt-2">Serial tumor marker kinetics in medullary thyroid carcinoma (ATA 2015 guideline, Recommendation 49; DOI: 10.1089/thy.2014.0335).</p>
+    </header>
+
+    <!-- DATA ENTRY -->
+    <div class="no-print bg-white p-6 rounded-xl shadow-lg mb-8 border border-blue-200">
+        <div class="flex flex-wrap justify-between items-center gap-2 border-b pb-3 mb-4">
+            <h3 class="text-lg font-medium text-slate-800">Serial Measurements</h3>
+            <button onclick="resetForm()" class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-600 px-2.5 py-1 rounded transition">Reset Table</button>
+        </div>
+
+        <div class="mb-4">
+            <label for="recordLabel" class="block text-xs font-bold text-blue-950 uppercase tracking-wider mb-1">Record label (optional, stays on this device)</label>
+            <input id="recordLabel" type="text" maxlength="60" placeholder="e.g., study ID or initials" class="w-full sm:w-1/2 p-1.5 border border-slate-300 rounded bg-white text-sm text-blue-950 focus:ring-blue-900 focus:border-blue-900">
+        </div>
+
+        <div class="overflow-x-auto">
+            <table class="min-w-full border-collapse border border-slate-300 text-sm">
+                <thead class="bg-blue-900 text-white">
+                    <tr>
+                        <th class="border border-slate-300 p-2 text-left w-1/3">Test Date</th>
+                        <th class="border border-slate-300 p-2 text-left w-1/3">Calcitonin (pg/mL)</th>
+                        <th class="border border-slate-300 p-2 text-left w-1/3">CEA (ng/mL)</th>
+                    </tr>
+                </thead>
+                <tbody id="dataBody"></tbody>
+            </table>
+        </div>
+        <p class="text-[11px] text-slate-500 mt-2">Rows may be entered in any order and are sorted by date automatically. Blank rows are ignored; to delete an entry, clear its fields. Leave a marker blank if it was not measured or was undetectable.</p>
+
+        <div class="flex flex-wrap gap-2 mt-4">
+            <button onclick="addRow()" class="bg-slate-100 hover:bg-slate-200 text-blue-950 border border-blue-200 font-semibold px-3 py-2 rounded-lg text-sm transition">➕ Add Row</button>
+            <button onclick="calculate(true)" class="bg-blue-900 hover:bg-blue-950 text-white font-semibold px-4 py-2 rounded-lg shadow text-sm transition">🧮 Calculate Doubling Time</button>
+            <button onclick="downloadExcel()" class="bg-green-700 hover:bg-green-800 text-white font-semibold px-4 py-2 rounded-lg shadow text-sm transition">⬇️ Download Excel Record</button>
+            <label class="bg-slate-700 hover:bg-slate-800 text-white font-semibold px-4 py-2 rounded-lg shadow text-sm transition cursor-pointer">
+                📂 Load Excel Record (local only)
+                <input id="fileInput" type="file" accept=".xlsx,.xls" class="hidden" onchange="handleFile(event)">
+            </label>
+            <button onclick="window.print()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 font-semibold px-3 py-2 rounded-lg text-sm transition">🖨️ Print Report</button>
+        </div>
+        <div id="fileStatus" class="text-xs text-slate-600 mt-3"></div>
+        <p class="text-[11px] text-slate-500 mt-2">🔒 Excel files are created and read inside this browser tab only. Nothing entered or loaded on this page is transmitted to a server.</p>
+    </div>
+
+    <!-- REPORT -->
+    <div id="report" class="print-area bg-white p-6 rounded-xl shadow-2xl border border-slate-300">
+        <div class="flex justify-between items-center mb-6 border-b pb-4">
+            <div>
+                <h1 class="text-2xl font-bold text-slate-800">MTC Tumor Marker Doubling Time Report</h1>
+                <p class="text-sm text-slate-500 mt-1">Log-linear least-squares fit of each marker against time (shorter doubling time = faster progression)</p>
+                <p id="reportLabel" class="text-sm font-semibold text-blue-950 mt-1"></p>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+            <div class="p-4 bg-slate-100 border border-blue-200 rounded-xl text-center">
+                <div class="text-xs font-semibold text-blue-900 uppercase tracking-wide">Calcitonin Doubling Time</div>
+                <div id="ctnDtOutput" class="text-3xl font-black text-blue-950 my-1">--</div>
+                <div id="ctnDtSub" class="text-[11px] text-slate-600">Enter at least 2 dated values</div>
+            </div>
+            <div class="p-4 bg-slate-100 border border-blue-200 rounded-xl text-center">
+                <div class="text-xs font-semibold text-blue-900 uppercase tracking-wide">CEA Doubling Time</div>
+                <div id="ceaDtOutput" class="text-3xl font-black text-blue-950 my-1">--</div>
+                <div id="ceaDtSub" class="text-[11px] text-slate-600">Enter at least 2 dated values</div>
+            </div>
+        </div>
+
+        <div id="summaryTableContainer" class="overflow-x-auto mb-6"></div>
+
+        <h4 class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Measurements Used</h4>
+        <div id="dataTableContainer" class="overflow-x-auto mb-6"></div>
+
+        <div class="border-t pt-4">
+            <h4 class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Clinical Assessment Summary (Sig)</h4>
+            <div class="flex items-center gap-2">
+                <div id="patientInstructions" class="flex-1 p-4 bg-slate-50 border border-slate-200 rounded-lg text-sm font-bold text-slate-800 text-left">
+                    --
+                </div>
+                <button id="copySigBtn" onclick="copySummary()" class="no-print bg-blue-900 hover:bg-blue-950 text-white font-semibold px-4 py-4 rounded-lg shadow transition flex items-center gap-1.5 text-sm whitespace-nowrap">
+                    📋 Copy
+                </button>
+            </div>
+        </div>
+
+        <div class="mt-6 text-xs text-slate-500 border-t pt-4 italic space-y-2">
+            <p><strong>Method:</strong> For each marker, ln(concentration) is regressed on time by least squares; <em class="not-italic">Doubling time = ln(2) ÷ slope</em>. Months are calculated as days ÷ 30.4375. The ATA guideline describes fitting single exponentials by nonlinear least-squares regression, so results may differ slightly from the ATA online calculator when values fluctuate.</p>
+            <p><strong>Data requirements:</strong> The ATA guideline states that reliable estimates require at least four data points over a minimum of 2 years, although doubling times under 6 months can be reliably estimated within the first 12 months postoperatively (Wells et al., Thyroid, 2015). Use postoperative values from the same assay, and do not combine values from before and after a change in treatment in one fit.</p>
+            <p><strong>Prognostic context (calcitonin):</strong> In a retrospective study of 65 patients, 5- and 10-year survival was 25% and 8% with a calcitonin doubling time under 6 months and 92% and 37% with 6 to 24 months; all patients with doubling times over 2 years were alive at the end of the study (Barbet et al., Journal of Clinical Endocrinology and Metabolism, 2005). A meta-analysis found the strongest separation at 1 year or less versus more than 1 year for both calcitonin and CEA (Meijer et al., Clinical Endocrinology, 2010). The 6- and 24-month bands shown for CEA are descriptive only. Both markers should be assessed; a rising CEA with stable or falling calcitonin may indicate dedifferentiation.</p>
+            <p>This tool supports, and does not replace, clinical judgment and imaging assessment.</p>
+        </div>
+    </div>
+</div>
+
+<script>
+// Fetch dynamic navbar
+fetch('nav.html')
+    .then(res => res.text())
+    .then(data => {
+        document.getElementById('site-header').innerHTML = data;
+    })
+    .catch(err => console.error('Error loading navigation:', err));
+
+const MIN_ROWS = 6;
+const DAYS_PER_MONTH = 30.4375;
+const MARKERS = {
+    ctn: { name: 'Calcitonin', unit: 'pg/mL' },
+    cea: { name: 'CEA', unit: 'ng/mL' }
+};
+let lastResults = { ctn: null, cea: null };
+
+/* ---------- helpers ---------- */
+function pad2(n) { return String(n).padStart(2, '0'); }
+
+function todayIso() {
+    const d = new Date();
+    return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+}
+
+// Converts YYYY-MM-DD to a whole-day count (UTC, so daylight-saving shifts cannot affect intervals)
+function dayNumber(iso) {
+    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso || '');
+    if (!m) return NaN;
+    return Date.UTC(+m[1], +m[2] - 1, +m[3]) / 86400000;
+}
+
+function fmtMonths(months) {
+    if (months >= 24) return `${months.toFixed(1)} months (${(months / 12).toFixed(1)} years)`;
+    return `${months.toFixed(1)} months`;
+}
+
+/* ---------- table ---------- */
+function addRow(date, ctn, cea) {
+    const tr = document.createElement('tr');
+    const cellCls = 'border border-slate-300 p-1.5';
+    const inputCls = 'w-full p-1.5 border border-slate-300 rounded bg-white font-medium text-blue-950 focus:ring-blue-900 focus:border-blue-900 text-sm';
+    tr.innerHTML = `
+        <td class="${cellCls}"><input type="date" class="date-input ${inputCls}"></td>
+        <td class="${cellCls}"><input type="number" min="0" step="any" inputmode="decimal" placeholder="pg/mL" class="ctn-input ${inputCls}"></td>
+        <td class="${cellCls}"><input type="number" min="0" step="any" inputmode="decimal" placeholder="ng/mL" class="cea-input ${inputCls}"></td>`;
+    if (date) tr.querySelector('.date-input').value = date;
+    if (ctn !== undefined && ctn !== null && ctn !== '') tr.querySelector('.ctn-input').value = ctn;
+    if (cea !== undefined && cea !== null && cea !== '') tr.querySelector('.cea-input').value = cea;
+    tr.querySelectorAll('input').forEach(el => el.addEventListener('input', () => calculate(false)));
+    document.getElementById('dataBody').appendChild(tr);
+}
+
+function getRows() {
+    const rows = [];
+    document.querySelectorAll('#dataBody tr').forEach(tr => {
+        const date = tr.querySelector('.date-input').value;
+        const ctn = parseFloat(tr.querySelector('.ctn-input').value);
+        const cea = parseFloat(tr.querySelector('.cea-input').value);
+        if (date || isFinite(ctn) || isFinite(cea)) {
+            rows.push({ date: date, ctn: isFinite(ctn) ? ctn : null, cea: isFinite(cea) ? cea : null });
+        }
+    });
+    rows.sort((a, b) => (a.date || '9999-99-99').localeCompare(b.date || '9999-99-99'));
+    return rows;
+}
+
+function loadRows(rows) {
+    document.getElementById('dataBody').innerHTML = '';
+    rows.forEach(r => addRow(r.date, r.ctn, r.cea));
+    for (let i = rows.length; i < MIN_ROWS; i++) addRow();
+    calculate(false);
+}
+
+function resetForm() {
+    document.getElementById('recordLabel').value = '';
+    document.getElementById('fileStatus').textContent = '';
+    loadRows([]);
+}
+
+/* ---------- doubling time: least-squares fit of ln(marker) vs time ---------- */
+function fitMarker(rows, key) {
+    const pts = rows
+        .filter(r => r.date && r[key] !== null && r[key] > 0)
+        .map(r => ({ t: dayNumber(r.date), v: r[key], date: r.date }))
+        .filter(p => isFinite(p.t))
+        .sort((a, b) => a.t - b.t);
+
+    const fit = { n: pts.length, status: 'insufficient' };
+    if (pts.length === 0) return fit;
+
+    fit.first = pts[0].v;
+    fit.last = pts[pts.length - 1].v;
+    fit.firstDate = pts[0].date;
+    fit.lastDate = pts[pts.length - 1].date;
+    fit.spanDays = pts[pts.length - 1].t - pts[0].t;
+    if (pts.length < 2 || fit.spanDays <= 0) return fit;
+
+    const n = pts.length;
+    const meanT = pts.reduce((s, p) => s + p.t, 0) / n;
+    const meanY = pts.reduce((s, p) => s + Math.log(p.v), 0) / n;
+    let sxx = 0, sxy = 0, syy = 0;
+    pts.forEach(p => {
+        const dx = p.t - meanT;
+        const dy = Math.log(p.v) - meanY;
+        sxx += dx * dx;
+        sxy += dx * dy;
+        syy += dy * dy;
+    });
+
+    fit.slope = sxy / sxx;                                   // per day
+    fit.r2 = (n >= 3 && syy > 0) ? (sxy * sxy) / (sxx * syy) : null;
+    fit.adequate = (n >= 4 && fit.spanDays >= 730);          // ATA: >=4 points over >=2 years
+
+    if (fit.slope > 0) {
+        fit.dtMonths = (Math.LN2 / fit.slope) / DAYS_PER_MONTH;
+        fit.status = (fit.dtMonths / 12 > 100) ? 'flat' : 'rising';
+    } else if (fit.slope < 0) {
+        fit.halfLifeMonths = (-Math.LN2 / fit.slope) / DAYS_PER_MONTH;
+        fit.status = (fit.halfLifeMonths / 12 > 100) ? 'flat' : 'falling';
+    } else {
+        fit.status = 'flat';
+    }
+    return fit;
+}
+
+function categorize(months) {
+    if (months < 6) return { label: 'Under 6 months', cls: 'text-red-700' };
+    if (months <= 24) return { label: '6 to 24 months', cls: 'text-amber-700' };
+    return { label: 'Over 24 months', cls: 'text-green-700' };
+}
+
+function trendText(fit) {
+    if (fit.status === 'rising') return fmtMonths(fit.dtMonths);
+    if (fit.status === 'falling') return `Not rising (declining, half-life ${fmtMonths(fit.halfLifeMonths)})`;
+    if (fit.status === 'flat') return 'Stable (no measurable rise)';
+    return 'Not calculable';
+}
+
+function adequacyText(fit) {
+    if (fit.status === 'insufficient') return 'Needs at least 2 values above 0 on different dates';
+    if (fit.adequate) return 'Meets ATA minimum (at least 4 values over at least 2 years)';
+    return 'Below ATA minimum (fewer than 4 values or under 2 years); interpret cautiously';
+}
+
+/* ---------- rendering ---------- */
+function renderCard(key, fit) {
+    const out = document.getElementById(`${key}DtOutput`);
+    const sub = document.getElementById(`${key}DtSub`);
+    out.className = 'text-3xl font-black text-blue-950 my-1';
+
+    if (fit.status === 'rising') {
+        const cat = categorize(fit.dtMonths);
+        out.textContent = `${fit.dtMonths.toFixed(1)} mo`;
+        out.className = `text-3xl font-black my-1 ${cat.cls}`;
+        sub.textContent = `${cat.label} | ${fit.n} values over ${(fit.spanDays / DAYS_PER_MONTH).toFixed(1)} months`;
+    } else if (fit.status === 'falling') {
+        out.textContent = 'Declining';
+        sub.textContent = `Half-life ${fmtMonths(fit.halfLifeMonths)} | ${fit.n} values`;
+    } else if (fit.status === 'flat') {
+        out.textContent = 'Stable';
+        sub.textContent = `No measurable rise | ${fit.n} values`;
+    } else {
+        out.textContent = '--';
+        sub.textContent = 'Enter at least 2 values above 0 on different dates';
+    }
+}
+
+function summaryRow(key, fit, shade) {
+    const m = MARKERS[key];
+    const interval = (fit.spanDays !== undefined && fit.n >= 2) ? `${(fit.spanDays / DAYS_PER_MONTH).toFixed(1)} mo` : '--';
+    const range = fit.n >= 1 ? `${fit.first} → ${fit.last} ${m.unit}` : '--';
+    const r2 = (fit.r2 !== null && fit.r2 !== undefined) ? fit.r2.toFixed(2) : '--';
+    const band = fit.status === 'rising' ? categorize(fit.dtMonths).label : '--';
+    return `<tr class="${shade}">
+        <td class="border border-slate-300 p-2 font-medium">${m.name}</td>
+        <td class="border border-slate-300 p-2 text-center">${fit.n}</td>
+        <td class="border border-slate-300 p-2 text-center">${interval}</td>
+        <td class="border border-slate-300 p-2 text-center text-xs">${range}</td>
+        <td class="border border-slate-300 p-2 text-center font-bold text-slate-800">${trendText(fit)}</td>
+        <td class="border border-slate-300 p-2 text-center">${r2}</td>
+        <td class="border border-slate-300 p-2 text-center text-xs">${band}</td>
+    </tr>
+    <tr class="${shade}">
+        <td colspan="7" class="border border-slate-300 p-2 text-xs text-slate-600">${m.name} data adequacy: ${adequacyText(fit)}</td>
+    </tr>`;
+}
+
+function renderSummaryTable(ctn, cea) {
+    document.getElementById('summaryTableContainer').innerHTML = `<table class="min-w-full border-collapse border border-slate-300 text-sm">
+        <thead class="bg-blue-900 text-white">
+            <tr>
+                <th class="border border-slate-300 p-2 text-left">Marker</th>
+                <th class="border border-slate-300 p-2 text-center">Values (n)</th>
+                <th class="border border-slate-300 p-2 text-center">Interval</th>
+                <th class="border border-slate-300 p-2 text-center">First → Latest</th>
+                <th class="border border-slate-300 p-2 text-center">Doubling Time</th>
+                <th class="border border-slate-300 p-2 text-center">R²</th>
+                <th class="border border-slate-300 p-2 text-center">Band</th>
+            </tr>
+        </thead>
+        <tbody>
+            ${summaryRow('ctn', ctn, 'bg-white')}
+            ${summaryRow('cea', cea, 'bg-slate-100/60')}
+        </tbody>
+    </table>`;
+}
+
+function renderDataTable(rows) {
+    const body = rows.length
+        ? rows.map((r, i) => `<tr class="${i % 2 ? 'bg-slate-100/60' : 'bg-white'}">
+            <td class="border border-slate-300 p-2">${r.date || '(no date, excluded)'}</td>
+            <td class="border border-slate-300 p-2 text-center">${r.ctn !== null ? r.ctn : '--'}</td>
+            <td class="border border-slate-300 p-2 text-center">${r.cea !== null ? r.cea : '--'}</td>
+        </tr>`).join('')
+        : `<tr class="bg-white"><td colspan="3" class="border border-slate-300 p-2 text-center text-slate-500">No measurements entered</td></tr>`;
+
+    document.getElementById('dataTableContainer').innerHTML = `<table class="min-w-full border-collapse border border-slate-300 text-sm">
+        <thead class="bg-blue-900 text-white">
+            <tr>
+                <th class="border border-slate-300 p-2 text-left">Test Date</th>
+                <th class="border border-slate-300 p-2 text-center">Calcitonin (pg/mL)</th>
+                <th class="border border-slate-300 p-2 text-center">CEA (ng/mL)</th>
+            </tr>
+        </thead>
+        <tbody>${body}</tbody>
+    </table>`;
+}
+
+function sigPart(key, fit) {
+    const m = MARKERS[key];
+    if (fit.status === 'insufficient') return `${m.name} doubling time not calculable (insufficient data)`;
+    const detail = `n=${fit.n} over ${(fit.spanDays / DAYS_PER_MONTH).toFixed(1)} months, ${fit.first} to ${fit.last} ${m.unit}` +
+        (fit.r2 !== null && fit.r2 !== undefined ? `, R² ${fit.r2.toFixed(2)}` : '');
+    const prefix = fit.status === 'rising' ? `${m.name} doubling time ${trendText(fit)}` : `${m.name}: ${trendText(fit)}`;
+    return `${prefix} [${detail}]`;
+}
+
+function renderSig(ctn, cea) {
+    const el = document.getElementById('patientInstructions');
+    if (ctn.status === 'insufficient' && cea.status === 'insufficient') {
+        el.textContent = '--';
+        return;
+    }
+    let text = `MTC tumor marker kinetics (log-linear regression): ${sigPart('ctn', ctn)}; ${sigPart('cea', cea)}.`;
+    const limited = [ctn, cea].some(f => f.status !== 'insufficient' && !f.adequate);
+    if (limited) text += ' Estimate based on fewer than 4 values or under 2 years of follow-up for at least one marker; interpret with caution.';
+    el.textContent = text;
+}
+
+function calculate(scrollToReport) {
+    const rows = getRows();
+    const ctn = fitMarker(rows, 'ctn');
+    const cea = fitMarker(rows, 'cea');
+    lastResults = { ctn: ctn, cea: cea };
+
+    const label = document.getElementById('recordLabel').value.trim();
+    document.getElementById('reportLabel').textContent = label ? `Record: ${label}` : '';
+
+    renderCard('ctn', ctn);
+    renderCard('cea', cea);
+    renderSummaryTable(ctn, cea);
+    renderDataTable(rows);
+    renderSig(ctn, cea);
+
+    if (scrollToReport === true) document.getElementById('report').scrollIntoView({ behavior: 'smooth' });
+}
+
+/* ---------- Excel export (generated in the browser) ---------- */
+function summaryExportRow(key, fit) {
+    const hasFit = fit.status !== 'insufficient';
+    return [
+        MARKERS[key].name,
+        fit.n,
+        hasFit ? +(fit.spanDays / DAYS_PER_MONTH).toFixed(1) : null,
+        fit.n >= 1 ? fit.first : null,
+        fit.n >= 1 ? fit.last : null,
+        fit.status === 'rising' ? +fit.dtMonths.toFixed(2) : null,
+        (fit.r2 !== null && fit.r2 !== undefined) ? +fit.r2.toFixed(3) : null,
+        trendText(fit)
+    ];
+}
+
+function downloadExcel() {
+    if (typeof XLSX === 'undefined') {
+        alert('The Excel library did not load. Check the internet connection or host xlsx.full.min.js locally.');
+        return;
+    }
+    calculate(false);
+    const rows = getRows();
+    const label = document.getElementById('recordLabel').value.trim();
+
+    const dataAoa = [['Test Date (YYYY-MM-DD)', 'Calcitonin (pg/mL)', 'CEA (ng/mL)']];
+    rows.forEach(r => dataAoa.push([r.date || null, r.ctn, r.cea]));
+    const wsData = XLSX.utils.aoa_to_sheet(dataAoa);
+    wsData['!cols'] = [{ wch: 24 }, { wch: 20 }, { wch: 16 }];
+
+    const summaryAoa = [
+        ['MTC Calcitonin / CEA Doubling Time Record'],
+        ['Record label', label],
+        ['Exported', todayIso()],
+        [],
+        ['Marker', 'Values used (n)', 'Interval (months)', 'First value', 'Latest value', 'Doubling time (months)', 'R²', 'Trend'],
+        summaryExportRow('ctn', lastResults.ctn),
+        summaryExportRow('cea', lastResults.cea),
+        [],
+        ['Method', 'Least-squares regression of ln(marker) on time; doubling time = ln(2) / slope; months = days / 30.4375']
+    ];
+    const wsSummary = XLSX.utils.aoa_to_sheet(summaryAoa);
+    wsSummary['!cols'] = [{ wch: 16 }, { wch: 16 }, { wch: 18 }, { wch: 12 }, { wch: 12 }, { wch: 22 }, { wch: 8 }, { wch: 46 }];
+
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, wsData, 'Data');
+    XLSX.utils.book_append_sheet(wb, wsSummary, 'Summary');
+
+    const safeLabel = label.replace(/[^A-Za-z0-9_-]+/g, '_').slice(0, 40);
+    XLSX.writeFile(wb, `MTC_doubling_time_${safeLabel ? safeLabel + '_' : ''}${todayIso()}.xlsx`);
+}
+
+/* ---------- Excel import (FileReader: the file is read in memory, never uploaded) ---------- */
+function toIsoDate(v) {
+    if (v === null || v === undefined || v === '') return '';
+    if (v instanceof Date && !isNaN(v)) {
+        return `${v.getFullYear()}-${pad2(v.getMonth() + 1)}-${pad2(v.getDate())}`;
+    }
+    if (typeof v === 'number') {                       // Excel serial date (cell was converted to a date in Excel)
+        const d = XLSX.SSF.parse_date_code(v);
+        return (d && d.y > 1900) ? `${d.y}-${pad2(d.m)}-${pad2(d.d)}` : '';
+    }
+    const s = String(v).trim();
+    let m = /^(\d{4})-(\d{1,2})-(\d{1,2})/.exec(s);    // YYYY-MM-DD
+    if (m) return `${m[1]}-${pad2(m[2])}-${pad2(m[3])}`;
+    m = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(s);     // M/D/YYYY (US format)
+    if (m) return `${m[3]}-${pad2(m[1])}-${pad2(m[2])}`;
+    return '';
+}
+
+function toNumber(v) {
+    if (v === null || v === undefined || v === '') return null;
+    if (typeof v === 'number') return isFinite(v) ? v : null;
+    const s = String(v).replace(/[,\s]/g, '');
+    if (!/^\d*\.?\d+$/.test(s)) return null;           // rejects text such as "<2" or header labels
+    return parseFloat(s);
+}
+
+function handleFile(evt) {
+    const file = evt.target.files[0];
+    const status = document.getElementById('fileStatus');
+    if (!file) return;
+
+    if (typeof XLSX === 'undefined') {
+        status.textContent = '⚠️ The Excel library did not load. Check the internet connection or host xlsx.full.min.js locally.';
+        return;
+    }
+    if (!/\.(xlsx|xls)$/i.test(file.name)) {
+        status.textContent = '⚠️ Only Excel files (.xlsx or .xls) can be loaded.';
+        evt.target.value = '';
+        return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = function (e) {
+        try {
+            const wb = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
+            const ws = wb.Sheets['Data'] || wb.Sheets[wb.SheetNames[0]];
+            const aoa = XLSX.utils.sheet_to_json(ws, { header: 1, raw: true, defval: null });
+
+            const parsed = [];
+            aoa.forEach(row => {
+                if (!row) return;
+                const date = toIsoDate(row[0]);
+                const ctn = toNumber(row[1]);
+                const cea = toNumber(row[2]);
+                if (date || ctn !== null || cea !== null) parsed.push({ date: date, ctn: ctn, cea: cea });
+            });
+            if (!parsed.length) throw new Error('No measurement rows found');
+
+            // Restore the record label if the file came from this calculator
+            const wsSummary = wb.Sheets['Summary'];
+            if (wsSummary) {
+                const sAoa = XLSX.utils.sheet_to_json(wsSummary, { header: 1, raw: true, defval: null });
+                const labelRow = sAoa.find(r => r && r[0] === 'Record label');
+                document.getElementById('recordLabel').value = (labelRow && labelRow[1]) ? String(labelRow[1]) : '';
+            }
+
+            loadRows(parsed);
+            status.textContent = `✅ Loaded ${parsed.length} row(s) from "${file.name}". The file was read locally in this browser and was not uploaded.`;
+        } catch (err) {
+            status.textContent = `⚠️ Could not read "${file.name}": ${err.message}. Expected columns: Test Date, Calcitonin, CEA.`;
+        }
+    };
+    reader.onerror = function () {
+        status.textContent = `⚠️ Could not read "${file.name}".`;
+    };
+    reader.readAsArrayBuffer(file);
+    evt.target.value = '';   // allows the same file to be selected again
+}
+
+/* ---------- copy ---------- */
+function copySummary() {
+    const textToCopy = document.getElementById('patientInstructions').textContent.trim();
+    if (!textToCopy || textToCopy === '--') return;
+
+    navigator.clipboard.writeText(textToCopy).then(() => {
+        const btn = document.getElementById('copySigBtn');
+        const originalText = btn.innerHTML;
+        btn.innerHTML = '✅ Copied!';
+        btn.classList.remove('bg-blue-900', 'hover:bg-blue-950');
+        btn.classList.add('bg-green-600', 'hover:bg-green-700');
+
+        setTimeout(() => {
+            btn.innerHTML = originalText;
+            btn.classList.remove('bg-green-600', 'hover:bg-green-700');
+            btn.classList.add('bg-blue-900', 'hover:bg-blue-950');
+        }, 2000);
+    });
+}
+
+window.onload = () => {
+    document.getElementById('recordLabel').addEventListener('input', () => calculate(false));
+    loadRows([]);   // builds the initial 6-row table
+};
+</script>
+</body>
+</html>
+```
