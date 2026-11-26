@@ -309,6 +309,7 @@ const DEFAULT_LOCATIONS = [
 
 const LOCATION_OPTIONS = [
     'Lumbar Spine (L1-L4)',
+    'Lumbar Spine (L2-L4)',
     'Total Hip (Left)',
     'Femoral Neck (Left)',
     'Total Hip (Right)',
@@ -353,7 +354,7 @@ function detectLaterality(str) {
 
 function matchLscCategory(location) {
     const loc = (location || '').toLowerCase();
-    if (loc.includes('spine') || loc.includes('l1') || loc.includes('l2') || loc.includes('lumbar')) return 'spine';
+    if (loc.includes('spine') || loc.includes('l1') || loc.includes('l2') || loc.includes('l3') || loc.includes('l4') || loc.includes('lumbar')) return 'spine';
     if (loc.includes('neck')) return 'femNeck';
     if (loc.includes('hip') || loc.includes('femur')) return 'totalHip';
     if (loc.includes('radius') || loc.includes('forearm')) return 'radius';
@@ -452,7 +453,7 @@ function preprocessImageForOcr(imageSource) {
     return new Promise((resolve, reject) => {
         const img = new Image();
         img.onload = () => {
-            const scale = img.width < 1200 ? Math.min(2.5, 1600 / Math.max(img.width, 1)) : 1;
+            const scale = img.width < 1400 ? Math.min(2.5, 1800 / Math.max(img.width, 1)) : 1;
             const canvas = document.createElement('canvas');
             canvas.width = Math.round(img.width * scale);
             canvas.height = Math.round(img.height * scale);
@@ -543,7 +544,8 @@ function normalizeText(raw) {
         .replace(/[\u2212\u2013\u2014~]/g, '-')
         .replace(/\u00A0/g, ' ')
         .replace(/\bO\.(\d)/g, '0.$1')
-        .replace(/(\d),(\d{2,3})\b/g, '$1.$2');
+        .replace(/(\d),(\d{2,3})\b/g, '$1.$2')
+        .replace(/\bL([1-4])\s*-\s*L?([1-4])\b/gi, (_, a, b) => `L${a}-L${b}`);
 }
 
 function extractDateFromText(text) {
@@ -601,10 +603,64 @@ function extractModelFromText(text) {
     return '';
 }
 
+/* ---------- Lumbar Spine Vertebra Span Parsing & Ranking ---------- */
+function parseLumbarVertebrae(str) {
+    const cleaned = String(str || '').replace(/\s+/g, '');
+    const found = new Set();
+
+    // Match ranges like L1-L4, L2-L4, L1-L2
+    const rangeMatches = [...cleaned.matchAll(/\bL([1-4])-L([1-4])\b/gi)];
+    rangeMatches.forEach(m => {
+        const start = Math.min(parseInt(m[1], 10), parseInt(m[2], 10));
+        const end = Math.max(parseInt(m[1], 10), parseInt(m[2], 10));
+        for (let v = start; v <= end; v++) found.add(v);
+    });
+
+    // Match standalone levels like L1, L2, L3, L4 (including non-contiguous combinations like L1, L3-L4)
+    const singleMatches = [...cleaned.matchAll(/\bL([1-4])\b/gi)];
+    singleMatches.forEach(m => {
+        found.add(parseInt(m[1], 10));
+    });
+
+    const levels = [...found].sort((a, b) => a - b);
+    if (levels.length === 0) {
+        return { levels: [], count: 0, spanLabel: 'L1-L4', isExplicit: false };
+    }
+
+    // Format canonical label (e.g., [1,2,3,4] -> "L1-L4", [2,3,4] -> "L2-L4", [1,2,4] -> "L1-L2, L4")
+    const segments = [];
+    let i = 0;
+    while (i < levels.length) {
+        let j = i;
+        while (j + 1 < levels.length && levels[j + 1] === levels[j] + 1) {
+            j++;
+        }
+        if (j > i) {
+            segments.push(`L${levels[i]}-L${levels[j]}`);
+        } else {
+            segments.push(`L${levels[i]}`);
+        }
+        i = j + 1;
+    }
+
+    return {
+        levels,
+        count: levels.length,
+        spanLabel: segments.join(', '),
+        isExplicit: true
+    };
+}
+
 function isTableHeaderLine(line) {
     const hasSiteHeader = /\b(?:anatomical\s+region|region|site|location|roi)\b/i.test(line);
     const hasMetricHeader = /\b(?:bmd|t-?score|z-?score|young\s+adult|age\s+matched)\b/i.test(line);
     return hasSiteHeader && hasMetricHeader;
+}
+
+function isSectionBannerLine(line) {
+    // e.g., "ANCILLARY RESULTS: AP Spine", "AP Spine", "Lumbar Spine:", "Left Hip:"
+    const stripped = line.replace(/^ancillary\s+results\s*:\s*/i, '').replace(/:$/, '').trim();
+    return /^(?:(?:left|lt\.?|right|rt\.?)\s+)?(?:ap\s+spine|pa\s+spine|lumbar\s+spine|spine|hip|femur|forearm|radius|arm)$/i.test(stripped);
 }
 
 function detectTableColumnMap(line) {
@@ -612,12 +668,13 @@ function detectTableColumnMap(line) {
     const cols = line.split(/\t+|\s{2,}/).map(c => c.trim().toLowerCase()).filter(Boolean);
     if (cols.length < 2) return null;
 
-    const map = { site: -1, bmd: -1, tscore: -1, zscore: -1 };
+    const map = { site: -1, bmd: -1, tscore: -1, zscore: -1, area: -1 };
     cols.forEach((col, idx) => {
         if (map.site === -1 && /\b(?:region|site|location|roi)\b/.test(col)) map.site = idx;
         else if (map.bmd === -1 && /\bbmd\b/.test(col)) map.bmd = idx;
         else if (map.tscore === -1 && /\bt-?score\b/.test(col)) map.tscore = idx;
         else if (map.zscore === -1 && /\bz-?score\b/.test(col)) map.zscore = idx;
+        else if (map.area === -1 && /\barea\b/.test(col)) map.area = idx;
     });
 
     if (map.site !== -1 && (map.bmd !== -1 || map.tscore !== -1)) {
@@ -637,33 +694,55 @@ function parseSingleCellNumber(cellStr, minVal, maxVal) {
     return (isFinite(val) && val >= minVal && val <= maxVal) ? val : null;
 }
 
-function normalizeSiteName(rawLine, inheritedSide = '') {
+function normalizeSiteInfo(rawLine, inheritedSide = '') {
     if (isTableHeaderLine(rawLine)) return null;
 
     const cleanedLine = rawLine.replace(/\(\s+/g, '(').replace(/\s+\)/g, ')');
     const side = detectLaterality(cleanedLine) || inheritedSide;
     const sideSuffix = side ? ` (${side})` : '';
 
-    if (/\b(?:ap\s+spine|pa\s+spine|lumbar\s+spine|spine|l1\s*-\s*l4|l1\s*-\s*l3|l2\s*-\s*l4)\b/i.test(cleanedLine)) {
-        const spanMatch = cleanedLine.match(/\b(L[1-4]\s*-\s*L[1-4])\b/i);
-        const span = spanMatch ? spanMatch[1].replace(/\s+/g, '').toUpperCase() : 'L1-L4';
-        return `Lumbar Spine (${span})`;
+    // Check for Lumbar Spine (including standalone L1, L2, L3, L4 or spans L1-L4, L2-L4, L1-L2, L1-L2, L4)
+    const hasSpineKeyword = /\b(?:ap\s+spine|pa\s+spine|lumbar\s+spine|spine)\b/i.test(cleanedLine);
+    const hasVertebraToken = /\bL[1-4](?:\s*-\s*L?[1-4])?\b/i.test(cleanedLine);
+    if (hasSpineKeyword || hasVertebraToken) {
+        const vertInfo = parseLumbarVertebrae(cleanedLine);
+        const span = vertInfo.isExplicit ? vertInfo.spanLabel : 'L1-L4';
+        return {
+            category: 'spine',
+            location: `Lumbar Spine (${span})`,
+            vertebraCount: vertInfo.isExplicit ? vertInfo.count : 0
+        };
     }
+
     if (/\b(?:femoral\s+neck|femur\s+neck|neck)\b/i.test(cleanedLine)) {
-        return `Femoral Neck${sideSuffix}`;
+        return {
+            category: 'femNeck',
+            location: `Femoral Neck${sideSuffix}`,
+            vertebraCount: 0
+        };
     }
     if (/\b(?:total\s+hip|total\s+femur|hip\s+total|femur\s+total)\b/i.test(cleanedLine)) {
-        return `Total Hip${sideSuffix}`;
+        return {
+            category: 'totalHip',
+            location: `Total Hip${sideSuffix}`,
+            vertebraCount: 0
+        };
     }
     if (/\b(?:1\/3\s*radius|radius\s*1\/3|one-third\s*radius|radius\s*33%|33%\s*radius|forearm|distal\s*radius|mid\s*radius)\b/i.test(cleanedLine)) {
-        return `1/3 Radius${sideSuffix || ' (Forearm)'}`;
+        return {
+            category: 'radius',
+            location: `1/3 Radius${sideSuffix || ' (Forearm)'}`,
+            vertebraCount: 0
+        };
     }
     return null;
 }
 
 function extractNumbersFromSegment(seg) {
+    // Strip vertebral labels (L1-L4 as well as standalone L1..L4), 1/3 fraction, percentage values, and units
     const cleaned = seg
-        .replace(/\bL[1-4]\s*-\s*L[1-4]\b/gi, ' ')
+        .replace(/\bL[1-4]\s*-\s*L?[1-4]\b/gi, ' ')
+        .replace(/\bL[1-4]\b/gi, ' ')
         .replace(/\b1\/3\b/g, ' ')
         .replace(/\b33\s*%/g, ' ')
         .replace(/[+-]?\s*\d+(?:\.\d+)?\s*%/g, ' ')
@@ -675,6 +754,7 @@ function extractNumbersFromSegment(seg) {
 
     let bmd = explicitBmd ? parseFloat(explicitBmd[1]) : null;
     let tscore = explicitT ? parseFloat(explicitT[1]) : null;
+    let area = null;
 
     const tokenMatches = [...cleaned.matchAll(/(?<![A-Za-z0-9.])([+-]?(?:\d+\.\d+|\.\d+|\d+))(?![A-Za-z0-9]|\.\d)/g)];
     const tokens = tokenMatches.map(m => {
@@ -729,7 +809,34 @@ function extractNumbersFromSegment(seg) {
         }
     }
 
-    return { bmd, tscore };
+    // Detect Area (cm²) in GE Lunar ancillary tables (typically 10.00 - 85.00 with 2 decimals)
+    const areaTok = tokens.find(t => !t.hasSign && t.decimals === 2 && t.val >= 8.0 && t.val <= 90.0 && (bmd === null || Math.abs(t.val - bmd) > 0.01));
+    if (areaTok) area = areaTok.val;
+
+    return { bmd, tscore, area };
+}
+
+function selectBestLumbarCandidate(candidates) {
+    if (!candidates || candidates.length === 0) return null;
+    if (candidates.length === 1) return candidates[0];
+
+    // Sort descending by:
+    // 1. Number of vertebrae included (e.g. L1-L4 [4] > L2-L4 [3] > L1-L2 [2] > L1 [1])
+    // 2. Bone Area (cm²) if tied in vertebra count (e.g. L2-L4 area > L1-L3 area)
+    // 3. Completeness (both BMD and T-score present)
+    return [...candidates].sort((a, b) => {
+        if (b.vertebraCount !== a.vertebraCount) {
+            return b.vertebraCount - a.vertebraCount;
+        }
+        const areaA = a.area ?? 0;
+        const areaB = b.area ?? 0;
+        if (Math.abs(areaB - areaA) > 0.01) {
+            return areaB - areaA;
+        }
+        const compA = (a.bmd !== '' ? 1 : 0) + (a.tscore !== '' ? 1 : 0);
+        const compB = (b.bmd !== '' ? 1 : 0) + (b.tscore !== '' ? 1 : 0);
+        return compB - compA;
+    })[0];
 }
 
 function parseDxaReportText(rawText) {
@@ -738,8 +845,9 @@ function parseDxaReportText(rawText) {
     const age = extractAgeFromText(text);
     const model = extractModelFromText(text);
 
-    const extractedRows = [];
-    const seenSites = new Set();
+    const nonSpineRows = [];
+    const seenNonSpine = new Set();
+    const lumbarCandidates = [];
 
     const rawLines = text.split(/\r?\n|;/).map(s => s.trim()).filter(Boolean);
     let currentSectionSide = '';
@@ -754,6 +862,7 @@ function parseDxaReportText(rawText) {
             continue;
         }
 
+        // Track section banners like "ANCILLARY RESULTS: AP Spine", "Left Hip:", "Right Hip:"
         if (/^(?:left|lt\.?)\s+(?:hip|femur|forearm|radius|arm)\s*:?\s*$/i.test(line)) {
             currentSectionSide = 'Left';
             continue;
@@ -762,68 +871,110 @@ function parseDxaReportText(rawText) {
             currentSectionSide = 'Right';
             continue;
         }
-        if (/^(?:lumbar\s+spine|ap\s+spine|pa\s+spine|spine)\s*:?\s*$/i.test(line)) {
+        if (isSectionBannerLine(line)) {
             currentSectionSide = '';
+            continue;
         }
 
+        // Column-mapped extraction when a table header row was detected
         if (activeColumnMap) {
             const cells = line.split(/\t+|\s{2,}/).map(c => c.trim()).filter(Boolean);
             if (cells.length >= 2 && cells[activeColumnMap.site]) {
-                const mappedSite = normalizeSiteName(cells[activeColumnMap.site], currentSectionSide);
-                if (mappedSite) {
+                const siteInfo = normalizeSiteInfo(cells[activeColumnMap.site], currentSectionSide);
+                if (siteInfo) {
                     const mappedBmd = activeColumnMap.bmd !== -1
                         ? parseSingleCellNumber(cells[activeColumnMap.bmd], 0.1, 2.6)
                         : null;
                     const mappedT = activeColumnMap.tscore !== -1
                         ? parseSingleCellNumber(cells[activeColumnMap.tscore], -7.5, 6.0)
                         : null;
+                    const mappedArea = activeColumnMap.area !== -1
+                        ? parseSingleCellNumber(cells[activeColumnMap.area], 5.0, 120.0)
+                        : null;
 
-                    const key = mappedSite.toLowerCase();
-                    if (!seenSites.has(key) && (mappedBmd !== null || mappedT !== null)) {
-                        seenSites.add(key);
-                        extractedRows.push({
-                            location: mappedSite,
+                    if (mappedBmd !== null || mappedT !== null) {
+                        const rowObj = {
+                            location: siteInfo.location,
                             bmd: mappedBmd !== null ? +mappedBmd.toFixed(3) : '',
-                            tscore: mappedT !== null ? +mappedT.toFixed(1) : ''
-                        });
+                            tscore: mappedT !== null ? +mappedT.toFixed(1) : '',
+                            vertebraCount: siteInfo.vertebraCount,
+                            area: mappedArea
+                        };
+                        if (siteInfo.category === 'spine') {
+                            lumbarCandidates.push(rowObj);
+                        } else {
+                            const key = siteInfo.location.toLowerCase();
+                            if (!seenNonSpine.has(key)) {
+                                seenNonSpine.add(key);
+                                nonSpineRows.push(rowObj);
+                            }
+                        }
                         continue;
                     }
                 }
             }
         }
 
-        const siteName = normalizeSiteName(line, currentSectionSide);
-        if (!siteName) continue;
+        const siteInfo = normalizeSiteInfo(line, currentSectionSide);
+        if (!siteInfo) continue;
 
         let remainder = line;
         const cols = line.split(/\t+|\s{2,}/);
-        if (cols.length >= 2 && normalizeSiteName(cols[0], currentSectionSide)) {
+        if (cols.length >= 2 && normalizeSiteInfo(cols[0], currentSectionSide)) {
             remainder = cols.slice(1).join('  ');
         }
 
         let combined = remainder;
         let check = extractNumbersFromSegment(combined);
 
+        // Look ahead only if the next line is NOT a table header, section banner, or another anatomical site
         let lookahead = 1;
         while ((check.bmd === null && check.tscore === null) && lookahead <= 4 && (i + lookahead) < rawLines.length) {
             const nextLine = rawLines[i + lookahead];
-            const nextSite = normalizeSiteName(nextLine, currentSectionSide);
-            if (nextSite && nextSite.toLowerCase() !== siteName.toLowerCase()) break;
+            if (isTableHeaderLine(nextLine) || isSectionBannerLine(nextLine)) break;
+            const nextSite = normalizeSiteInfo(nextLine, currentSectionSide);
+            if (nextSite) break;
             combined += ' ' + nextLine;
             check = extractNumbersFromSegment(combined);
             lookahead++;
         }
 
-        const key = siteName.toLowerCase();
-        if (!seenSites.has(key) && (check.bmd !== null || check.tscore !== null)) {
-            seenSites.add(key);
-            extractedRows.push({
-                location: siteName,
+        if (check.bmd !== null || check.tscore !== null) {
+            const rowObj = {
+                location: siteInfo.location,
                 bmd: check.bmd !== null ? +check.bmd.toFixed(3) : '',
-                tscore: check.tscore !== null ? +check.tscore.toFixed(1) : ''
-            });
+                tscore: check.tscore !== null ? +check.tscore.toFixed(1) : '',
+                vertebraCount: siteInfo.vertebraCount,
+                area: check.area
+            };
+            if (siteInfo.category === 'spine') {
+                lumbarCandidates.push(rowObj);
+            } else {
+                const key = siteInfo.location.toLowerCase();
+                if (!seenNonSpine.has(key)) {
+                    seenNonSpine.add(key);
+                    nonSpineRows.push(rowObj);
+                }
+            }
         }
     }
+
+    const extractedRows = [];
+    const bestLumbar = selectBestLumbarCandidate(lumbarCandidates);
+    if (bestLumbar) {
+        extractedRows.push({
+            location: bestLumbar.location,
+            bmd: bestLumbar.bmd,
+            tscore: bestLumbar.tscore
+        });
+    }
+    nonSpineRows.forEach(r => {
+        extractedRows.push({
+            location: r.location,
+            bmd: r.bmd,
+            tscore: r.tscore
+        });
+    });
 
     return { date, age, model, rows: extractedRows };
 }
@@ -1388,7 +1539,7 @@ function getCanonicalRegionRank(siteName) {
     const s = siteName.toLowerCase();
     const isLeft = detectLaterality(siteName) === 'Left';
     const isRight = detectLaterality(siteName) === 'Right';
-    if (s.includes('spine') || s.includes('l1') || s.includes('lumbar')) return 1;
+    if (s.includes('spine') || s.includes('l1') || s.includes('l2') || s.includes('l3') || s.includes('l4') || s.includes('lumbar')) return 1;
     if ((s.includes('hip') || s.includes('femur')) && !s.includes('neck')) {
         if (isLeft) return 2;
         if (isRight) return 4;
@@ -1412,13 +1563,12 @@ function downloadExcel() {
         alert('The Excel library did not load. Check your internet connection or host xlsx.full.min.js locally.');
         return;
     }
-    const scans = collectScans(); // Sorted oldest -> newest
+    const scans = collectScans();
     const label = document.getElementById('recordLabel').value.trim();
     const defaultModel = document.getElementById('defaultModel').value.trim();
     const showModel = document.getElementById('includeModelToggle').checked;
     const lscConfig = getLscConfig();
 
-    // Collect distinct anatomical regions in canonical clinical order
     const siteMap = new Map();
     scans.forEach(s => {
         s.rows.forEach(r => {
@@ -1434,7 +1584,6 @@ function downloadExcel() {
         return diff !== 0 ? diff : a.localeCompare(b);
     });
 
-    // Sheet 1: Region-Grouped "Previous Exams" Table (matching Hologic serial summary layout)
     const headerMetaRow = ['Previous Exams:'];
     if (label) headerMetaRow.push(`Record: ${label}`);
     if (showModel && defaultModel) headerMetaRow.push(`Scanner: ${defaultModel}`);
@@ -1445,7 +1594,6 @@ function downloadExcel() {
     ];
 
     siteList.forEach(siteName => {
-        // Gather chronological observations for this specific region (oldest -> newest)
         const regionEntries = [];
         scans.forEach((s, scanIdx) => {
             const match = s.rows.find(r => r.location && r.location.toLowerCase() === siteName.toLowerCase());
@@ -1462,7 +1610,6 @@ function downloadExcel() {
 
         const baselineEntry = regionEntries[0];
 
-        // Compute vs. Baseline and vs. Previous in chronological order, then display newest-to-oldest
         const computedRows = regionEntries.map((entry, idx) => {
             if (idx === 0) {
                 return {
@@ -1489,7 +1636,6 @@ function downloadExcel() {
             };
         });
 
-        // Reverse so most recent exam is at the top of the region block and baseline is at the bottom
         const newestFirstRows = computedRows.reverse();
         newestFirstRows.forEach((r, rowIdx) => {
             summaryAoa.push([
@@ -1504,7 +1650,6 @@ function downloadExcel() {
         });
     });
 
-    // Footnote matching Hologic LSC significance note
     summaryAoa.push([buildLscFootnote(lscConfig)]);
 
     const sigText = document.getElementById('clinicalSummary').textContent.trim();
@@ -1515,16 +1660,15 @@ function downloadExcel() {
 
     const wsSummary = XLSX.utils.aoa_to_sheet(summaryAoa);
     wsSummary['!cols'] = [
-        { wch: 24 }, // Region
-        { wch: 14 }, // Exam Date
-        { wch: 8 },  // Age
-        { wch: 15 }, // BMD (g/cm²)
-        { wch: 11 }, // T-score
-        { wch: 24 }, // BMD Change vs. Baseline
-        { wch: 24 }  // BMD Change vs. Previous
+        { wch: 24 },
+        { wch: 14 },
+        { wch: 8 },
+        { wch: 15 },
+        { wch: 11 },
+        { wch: 24 },
+        { wch: 24 }
     ];
 
-    // Enforce exact 3-decimal BMD and 1-decimal T-score number formatting in Excel cells
     const range = XLSX.utils.decode_range(wsSummary['!ref']);
     for (let R = 2; R <= range.e.r; R++) {
         const bmdCell = wsSummary[XLSX.utils.encode_cell({ r: R, c: 3 })];
@@ -1533,7 +1677,6 @@ function downloadExcel() {
         if (tCell && typeof tCell.v === 'number') tCell.z = '0.0';
     }
 
-    // Sheet 2: Normalized Raw Scan Data (preserves full round-trip import into this tool)
     const rawAoa = [['Scan #', 'Scan Date (YYYY-MM-DD)', 'Scanner Model', 'Location', 'BMD (g/cm2)', 'T-score', 'Age']];
     scans.forEach((s, idx) => {
         s.rows.forEach(r => {
@@ -1545,7 +1688,6 @@ function downloadExcel() {
     const wsRaw = XLSX.utils.aoa_to_sheet(rawAoa);
     wsRaw['!cols'] = [{ wch: 10 }, { wch: 22 }, { wch: 24 }, { wch: 24 }, { wch: 16 }, { wch: 12 }, { wch: 10 }];
 
-    // Sheet 3: LSC Settings
     const metaAoa = [
         ['Serial Bone Density (DXA) & LSC Record'],
         ['Record label', label],
