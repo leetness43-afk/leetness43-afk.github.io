@@ -104,7 +104,7 @@
                 <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-xs">
                     <div>
                         <label for="lscSpine" class="block font-semibold text-slate-700 mb-1">Lumbar Spine</label>
-                        <input id="lscSpine" type="number" min="0" step="any" inputmode="decimal" placeholder="e.g., 0.028" class="lsc-input w-full p-1.5 border border-slate-300 rounded bg-white text-sm font-medium text-blue-950">
+                        <input id="lscSpine" type="number" min="0" step="any" inputmode="decimal" placeholder="e.g., 0.022" class="lsc-input w-full p-1.5 border border-slate-300 rounded bg-white text-sm font-medium text-blue-950">
                     </div>
                     <div>
                         <label for="lscTotalHip" class="block font-semibold text-slate-700 mb-1">Total Hip (Default)</label>
@@ -112,7 +112,7 @@
                     </div>
                     <div>
                         <label for="lscFemNeck" class="block font-semibold text-slate-700 mb-1">Femoral Neck (Default)</label>
-                        <input id="lscFemNeck" type="number" min="0" step="any" inputmode="decimal" placeholder="e.g., 0.035" class="lsc-input w-full p-1.5 border border-slate-300 rounded bg-white text-sm font-medium text-blue-950">
+                        <input id="lscFemNeck" type="number" min="0" step="any" inputmode="decimal" placeholder="e.g., 0.029" class="lsc-input w-full p-1.5 border border-slate-300 rounded bg-white text-sm font-medium text-blue-950">
                     </div>
                     <div>
                         <label for="lscRadius" class="block font-semibold text-slate-700 mb-1">1/3 Radius</label>
@@ -173,7 +173,7 @@
                     </div>
 
                     <textarea id="rawReportPaste" rows="4"
-                        placeholder="Paste DXA text OR press Ctrl+V / Cmd+V to paste a screenshot image directly here (e.g.,&#10;Anatomical Region     T-score *   Z-score **&#10;PA Spine ( L1-L4 )    -1.9        -0.3&#10;Left Hip (Femoral Neck) -0.8      0.6&#10;Left Arm (Radius 1/3)   -1.0      0.5)"
+                        placeholder="Paste DXA text OR press Ctrl+V / Cmd+V to paste a screenshot image directly here (e.g.,&#10;Exam Date: 10/01/2026 | Age: 43&#10;AP Spine (L1-L4)      1.121    0.7&#10;Total Hip (Left)      0.960    0.2&#10;Femoral Neck (Left)   0.933    0.8)"
                         class="w-full p-2 border border-blue-200 rounded-lg bg-white text-xs text-slate-800 font-mono focus:ring-blue-900 focus:border-blue-900"></textarea>
 
                     <!-- Optional Image Preview Strip when an image is pasted/uploaded -->
@@ -237,7 +237,7 @@
                         &#10133; Add Year / Scan
                     </button>
                     <button type="button" onclick="downloadExcel()" class="bg-green-700 hover:bg-green-800 text-white font-semibold px-3.5 py-2 rounded-lg shadow text-xs transition">
-                        &#11015;&#65039; Download Side-by-Side Excel
+                        &#11015;&#65039; Download Region-Grouped Excel
                     </button>
                     <label class="bg-slate-700 hover:bg-slate-800 text-white font-semibold px-3.5 py-2 rounded-lg shadow text-xs transition cursor-pointer">
                         &#128194; Load Excel Record (local only)
@@ -324,6 +324,13 @@ function pad2(n) { return String(n).padStart(2, '0'); }
 function todayIso() {
     const d = new Date();
     return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+}
+
+function formatUsDate(isoStr) {
+    if (!isoStr) return '';
+    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(isoStr).trim());
+    if (m) return `${m[2]}/${m[3]}/${m[1]}`;
+    return String(isoStr);
 }
 
 function escapeHtml(str) {
@@ -445,7 +452,6 @@ function preprocessImageForOcr(imageSource) {
     return new Promise((resolve, reject) => {
         const img = new Image();
         img.onload = () => {
-            // Upscale smaller screenshots to ~1600px wide & boost grayscale contrast for crisp digit/minus recognition
             const scale = img.width < 1200 ? Math.min(2.5, 1600 / Math.max(img.width, 1)) : 1;
             const canvas = document.createElement('canvas');
             canvas.width = Math.round(img.width * scale);
@@ -459,7 +465,6 @@ function preprocessImageForOcr(imageSource) {
             const d = imgData.data;
             for (let i = 0; i < d.length; i += 4) {
                 const gray = 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
-                // High-contrast curve to sharpen faint minus signs and decimals
                 const contrasted = gray < 155 ? Math.max(0, gray * 0.75) : Math.min(255, gray * 1.15 + 20);
                 d[i] = d[i + 1] = d[i + 2] = contrasted;
             }
@@ -535,10 +540,10 @@ function clearImagePreview() {
 /* ---------- Paste & Auto-Extract Parser ---------- */
 function normalizeText(raw) {
     return String(raw || '')
-        .replace(/[\u2212\u2013\u2014~]/g, '-') // Unicode minus/dashes/tilde -> ASCII hyphen
+        .replace(/[\u2212\u2013\u2014~]/g, '-')
         .replace(/\u00A0/g, ' ')
-        .replace(/\bO\.(\d)/g, '0.$1')           // Common OCR 'O.854' -> '0.854'
-        .replace(/(\d),(\d{2,3})\b/g, '$1.$2');  // Common OCR '0,854' -> '0.854'
+        .replace(/\bO\.(\d)/g, '0.$1')
+        .replace(/(\d),(\d{2,3})\b/g, '$1.$2');
 }
 
 function extractDateFromText(text) {
@@ -572,6 +577,15 @@ function extractDateFromText(text) {
     return '';
 }
 
+function extractAgeFromText(text) {
+    const m = text.match(/\b(?:patient\s+)?age[:\s-]+(\d{2,3})\b/i);
+    if (m) {
+        const age = parseInt(m[1], 10);
+        if (age >= 18 && age <= 120) return age;
+    }
+    return '';
+}
+
 function extractModelFromText(text) {
     const patterns = [
         /\b(Hologic\s+(?:Horizon|Discovery|Delphi|Explorer|QDR)(?:\s+[A-Za-z0-9-]+)?)/i,
@@ -595,7 +609,6 @@ function isTableHeaderLine(line) {
 
 function detectTableColumnMap(line) {
     if (!isTableHeaderLine(line)) return null;
-    // Split on tabs or 2+ spaces
     const cols = line.split(/\t+|\s{2,}/).map(c => c.trim().toLowerCase()).filter(Boolean);
     if (cols.length < 2) return null;
 
@@ -627,7 +640,6 @@ function parseSingleCellNumber(cellStr, minVal, maxVal) {
 function normalizeSiteName(rawLine, inheritedSide = '') {
     if (isTableHeaderLine(rawLine)) return null;
 
-    // Normalize whitespace inside parentheses: "( L1-L4 )" -> "(L1-L4)"
     const cleanedLine = rawLine.replace(/\(\s+/g, '(').replace(/\s+\)/g, ')');
     const side = detectLaterality(cleanedLine) || inheritedSide;
     const sideSuffix = side ? ` (${side})` : '';
@@ -650,7 +662,6 @@ function normalizeSiteName(rawLine, inheritedSide = '') {
 }
 
 function extractNumbersFromSegment(seg) {
-    // Strip vertebral labels (L1-L4), 1/3 fraction (both "1/3 radius" and "radius 1/3"), percentage values, and units
     const cleaned = seg
         .replace(/\bL[1-4]\s*-\s*L[1-4]\b/gi, ' ')
         .replace(/\b1\/3\b/g, ' ')
@@ -659,14 +670,12 @@ function extractNumbersFromSegment(seg) {
         .replace(/\b(?:g\/cm2|g\/cm²|cm2|cm²|sd)\b/gi, ' ')
         .replace(/([+-])\s+(\d)/g, '$1$2');
 
-    // 1. Explicit labels first (e.g., "T-score: -1.9", "BMD of L1-L4 is 0.990")
     const explicitBmd = cleaned.match(/\bbmd\b[^0-9+-]{0,25}([0-2]?\.\d{2,4})(?![0-9])/i);
     const explicitT = cleaned.match(/\bt(?:[-\s]?score)?\b(?:\s*\([^)]*\))?[:=\s]*([+-]?(?:\d+\.\d+|\.\d+|\d+))(?![0-9]|\.\d)/i);
 
     let bmd = explicitBmd ? parseFloat(explicitBmd[1]) : null;
     let tscore = explicitT ? parseFloat(explicitT[1]) : null;
 
-    // 2. Positional fallback
     const tokenMatches = [...cleaned.matchAll(/(?<![A-Za-z0-9.])([+-]?(?:\d+\.\d+|\.\d+|\d+))(?![A-Za-z0-9]|\.\d)/g)];
     const tokens = tokenMatches.map(m => {
         const raw = m[1];
@@ -700,7 +709,6 @@ function extractNumbersFromSegment(seg) {
                 }
             }
         } else if (tscore === null) {
-            // No BMD present (e.g., T-score & Z-score only table): pick the first valid T-score candidate
             for (let j = 0; j < tokens.length; j++) {
                 const cand = tokens[j];
                 if (cand.val >= -7.5 && cand.val <= 6.0) {
@@ -727,6 +735,7 @@ function extractNumbersFromSegment(seg) {
 function parseDxaReportText(rawText) {
     const text = normalizeText(rawText);
     const date = extractDateFromText(text);
+    const age = extractAgeFromText(text);
     const model = extractModelFromText(text);
 
     const extractedRows = [];
@@ -739,14 +748,12 @@ function parseDxaReportText(rawText) {
     for (let i = 0; i < rawLines.length; i++) {
         const line = rawLines[i];
 
-        // Check if this line is a table header defining columns (e.g., Anatomical Region | T-score * | Z-score **)
         const headerMap = detectTableColumnMap(line);
         if (headerMap) {
             activeColumnMap = headerMap;
             continue;
         }
 
-        // Track section headers like "Left Hip:" or "Right Hip:" so sub-lines inherit laterality if omitted
         if (/^(?:left|lt\.?)\s+(?:hip|femur|forearm|radius|arm)\s*:?\s*$/i.test(line)) {
             currentSectionSide = 'Left';
             continue;
@@ -759,7 +766,6 @@ function parseDxaReportText(rawText) {
             currentSectionSide = '';
         }
 
-        // Try column-mapped extraction first if a header row was seen and line has tabs or 2+ spaces
         if (activeColumnMap) {
             const cells = line.split(/\t+|\s{2,}/).map(c => c.trim()).filter(Boolean);
             if (cells.length >= 2 && cells[activeColumnMap.site]) {
@@ -789,7 +795,6 @@ function parseDxaReportText(rawText) {
         const siteName = normalizeSiteName(line, currentSectionSide);
         if (!siteName) continue;
 
-        // Strip the matched site label prefix before parsing numbers so numbers inside site names don't interfere
         let remainder = line;
         const cols = line.split(/\t+|\s{2,}/);
         if (cols.length >= 2 && normalizeSiteName(cols[0], currentSectionSide)) {
@@ -799,7 +804,6 @@ function parseDxaReportText(rawText) {
         let combined = remainder;
         let check = extractNumbersFromSegment(combined);
 
-        // Look ahead up to 4 lines when numbers appear below a header
         let lookahead = 1;
         while ((check.bmd === null && check.tscore === null) && lookahead <= 4 && (i + lookahead) < rawLines.length) {
             const nextLine = rawLines[i + lookahead];
@@ -821,7 +825,7 @@ function parseDxaReportText(rawText) {
         }
     }
 
-    return { date, model, rows: extractedRows };
+    return { date, age, model, rows: extractedRows };
 }
 
 function cardHasMeasurements(card) {
@@ -846,6 +850,9 @@ function populateScanCard(card, parsed, scanModelOverride) {
     if (parsed.date) {
         dateInput.value = parsed.date;
     }
+    if (parsed.age) {
+        card.querySelector('.scan-age').value = parsed.age;
+    }
     if (scanModelOverride) {
         card.querySelector('.scan-model').value = scanModelOverride;
     }
@@ -869,7 +876,7 @@ function extractFromPastedReport() {
 
     const parsed = parseDxaReportText(raw);
 
-    if (!parsed.date && !parsed.model && parsed.rows.length === 0) {
+    if (!parsed.date && !parsed.model && !parsed.age && parsed.rows.length === 0) {
         statusEl.textContent = '⚠️ Could not detect BMD or T-score values. Ensure site names (e.g., L1-L4, Hip, Neck, Radius) and numbers are included.';
         statusEl.className = 'text-[11px] font-medium text-red-700 mt-2';
         return;
@@ -891,7 +898,7 @@ function extractFromPastedReport() {
     let targetLabel = '';
 
     if (targetChoice === 'new') {
-        targetCard = addScan({ date: parsed.date, model: scanModelOverride, rows: parsed.rows }, true);
+        targetCard = addScan({ date: parsed.date, age: parsed.age, model: scanModelOverride, rows: parsed.rows }, true);
         targetLabel = `Year ${cards.length + 1}`;
     } else if (targetChoice !== 'auto' && cards[Number(targetChoice)]) {
         const idx = Number(targetChoice);
@@ -909,7 +916,7 @@ function extractFromPastedReport() {
             populateScanCard(targetCard, parsed, scanModelOverride);
             targetLabel = matchedIdx === 0 ? 'Year 1 / Baseline' : `Year ${matchedIdx + 1}`;
         } else {
-            targetCard = addScan({ date: parsed.date, model: scanModelOverride, rows: parsed.rows }, true);
+            targetCard = addScan({ date: parsed.date, age: parsed.age, model: scanModelOverride, rows: parsed.rows }, true);
             targetLabel = `Year ${cards.length + 1}`;
         }
     }
@@ -921,6 +928,7 @@ function extractFromPastedReport() {
     const tScoreCount = parsed.rows.filter(r => r.tscore !== '' && r.tscore !== null).length;
     const parts = [`Loaded into ${targetLabel}`];
     if (effectiveDate) parts.push(`Date: ${effectiveDate}`);
+    if (parsed.age) parts.push(`Age: ${parsed.age}`);
     if (parsed.model) parts.push(`Model: ${parsed.model}`);
     parts.push(`${parsed.rows.length} site(s), ${bmdCount} BMD, ${tScoreCount} T-score(s)`);
 
@@ -999,14 +1007,19 @@ function addScan(scanData = null, skipAutoRender = false) {
             </div>
         </div>
 
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 mb-3">
-            <div>
+        <div class="grid grid-cols-1 sm:grid-cols-12 gap-2.5 mb-3">
+            <div class="sm:col-span-5">
                 <label class="block text-[11px] font-bold text-slate-600 mb-0.5">Scan Date</label>
                 <input type="date" value="${scanData && scanData.date ? escapeHtml(scanData.date) : ''}"
                     class="scan-date w-full p-1.5 border border-slate-300 rounded bg-white text-xs font-medium text-blue-950">
             </div>
-            <div class="scan-model-wrapper ${showModel ? '' : 'hidden'}">
-                <label class="block text-[11px] font-bold text-slate-600 mb-0.5">Scanner Model (Optional override)</label>
+            <div class="sm:col-span-2">
+                <label class="block text-[11px] font-bold text-slate-600 mb-0.5">Age (Opt.)</label>
+                <input type="number" min="18" max="120" step="1" inputmode="numeric" value="${scanData && scanData.age ? escapeHtml(scanData.age) : ''}" placeholder="e.g., 43"
+                    class="scan-age w-full p-1.5 border border-slate-300 rounded bg-white text-xs font-medium text-blue-950">
+            </div>
+            <div class="sm:col-span-5 scan-model-wrapper ${showModel ? '' : 'hidden'}">
+                <label class="block text-[11px] font-bold text-slate-600 mb-0.5">Scanner Model (Opt.)</label>
                 <input type="text" value="${scanData && scanData.model ? escapeHtml(scanData.model) : ''}" placeholder="Uses default model above"
                     class="scan-model w-full p-1.5 border border-slate-300 rounded bg-white text-xs text-blue-950">
             </div>
@@ -1100,6 +1113,8 @@ function collectScans() {
 
     document.querySelectorAll('#scansContainer .scan-card').forEach((card, idx) => {
         const date = card.querySelector('.scan-date').value;
+        const ageVal = parseInt(card.querySelector('.scan-age').value, 10);
+        const age = isFinite(ageVal) ? ageVal : null;
         const specificModel = card.querySelector('.scan-model').value.trim();
         const model = specificModel || globalModel;
         const rows = [];
@@ -1119,6 +1134,7 @@ function collectScans() {
         scans.push({
             index: idx + 1,
             date,
+            age,
             model,
             rows
         });
@@ -1203,6 +1219,7 @@ function updateReport() {
         const prevScan = idx > 0 ? scans[idx - 1] : null;
 
         const dateDisplay = scan.date || 'Date not entered';
+        const ageDisplay = scan.age !== null ? ` (Age ${scan.age})` : '';
         const modelDisplay = (showModel && scan.model) ? `Model: ${escapeHtml(scan.model)}` : '';
 
         let rowsHtml = '';
@@ -1284,7 +1301,7 @@ function updateReport() {
         block.innerHTML = `
             <div class="bg-slate-100 px-3 py-2 border-b border-slate-300 flex flex-wrap justify-between items-center gap-1">
                 <span class="text-xs font-extrabold text-blue-950 uppercase tracking-wide">
-                    ${isBaseline ? 'Year 1 (Baseline)' : `Year ${idx + 1} (Follow-Up)`} &mdash; ${escapeHtml(dateDisplay)}
+                    ${isBaseline ? 'Year 1 (Baseline)' : `Year ${idx + 1} (Follow-Up)`} &mdash; ${escapeHtml(dateDisplay)}${escapeHtml(ageDisplay)}
                 </span>
                 <span class="text-[11px] font-medium text-slate-600">${modelDisplay}</span>
             </div>
@@ -1339,13 +1356,55 @@ function renderClinicalSummary(scans, sigNotes, showModel) {
     el.textContent = `${lowestText}${modelText}${changeText}`;
 }
 
-/* ---------- Excel Export: Side-by-Side Longitudinal Comparison ---------- */
-function formatLscStatusLabel(evalRes) {
+/* ---------- Excel Export: Hologic-Style "Previous Exams" Grouped by Region ---------- */
+function formatPctWithLscStar(evalRes) {
     if (!evalRes) return '';
-    if (evalRes.status === 'gain') return 'Significant Gain (>= LSC)';
-    if (evalRes.status === 'loss') return 'Significant Loss (>= LSC)';
-    if (evalRes.status === 'stable') return 'No Significant Change (< LSC)';
-    return 'LSC Not Set';
+    const pctStr = `${evalRes.pctChange.toFixed(1)}%`;
+    const isSignificant = evalRes.status === 'gain' || evalRes.status === 'loss';
+    return isSignificant ? `${pctStr}*` : pctStr;
+}
+
+function buildLscFootnote(lscConfig) {
+    const unitLabel = lscConfig.unit === 'abs' ? ' g/cm²' : '%';
+    const parts = [];
+    if (lscConfig.values.spine !== null) parts.push(`LSC for AP Spine = ${lscConfig.values.spine}${unitLabel}`);
+    if (lscConfig.values.totalHip !== null) parts.push(`LSC for Total Hip = ${lscConfig.values.totalHip}${unitLabel}`);
+    if (lscConfig.values.femNeck !== null) parts.push(`LSC for Femoral Neck = ${lscConfig.values.femNeck}${unitLabel}`);
+    if (lscConfig.values.radius !== null) parts.push(`LSC for 1/3 Radius = ${lscConfig.values.radius}${unitLabel}`);
+    if (lscConfig.separateHipLsc) {
+        if (lscConfig.values.leftTotalHip !== null) parts.push(`LSC for Left Total Hip = ${lscConfig.values.leftTotalHip}${unitLabel}`);
+        if (lscConfig.values.rightTotalHip !== null) parts.push(`LSC for Right Total Hip = ${lscConfig.values.rightTotalHip}${unitLabel}`);
+        if (lscConfig.values.leftFemNeck !== null) parts.push(`LSC for Left Femoral Neck = ${lscConfig.values.leftFemNeck}${unitLabel}`);
+        if (lscConfig.values.rightFemNeck !== null) parts.push(`LSC for Right Femoral Neck = ${lscConfig.values.rightFemNeck}${unitLabel}`);
+    }
+
+    if (parts.length === 0) {
+        return '*Denotes significance at 95% confidence level (no site LSC thresholds entered)';
+    }
+    return `*Denotes significance at 95% confidence level, ${parts.join(', ')}`;
+}
+
+function getCanonicalRegionRank(siteName) {
+    const s = siteName.toLowerCase();
+    const isLeft = detectLaterality(siteName) === 'Left';
+    const isRight = detectLaterality(siteName) === 'Right';
+    if (s.includes('spine') || s.includes('l1') || s.includes('lumbar')) return 1;
+    if ((s.includes('hip') || s.includes('femur')) && !s.includes('neck')) {
+        if (isLeft) return 2;
+        if (isRight) return 4;
+        return 2.5;
+    }
+    if (s.includes('neck')) {
+        if (isLeft) return 3;
+        if (isRight) return 5;
+        return 3.5;
+    }
+    if (s.includes('radius') || s.includes('forearm')) {
+        if (isLeft) return 6;
+        if (isRight) return 7;
+        return 6.5;
+    }
+    return 99;
 }
 
 function downloadExcel() {
@@ -1353,135 +1412,138 @@ function downloadExcel() {
         alert('The Excel library did not load. Check your internet connection or host xlsx.full.min.js locally.');
         return;
     }
-    const scans = collectScans();
+    const scans = collectScans(); // Sorted oldest -> newest
     const label = document.getElementById('recordLabel').value.trim();
     const defaultModel = document.getElementById('defaultModel').value.trim();
     const showModel = document.getElementById('includeModelToggle').checked;
     const lscConfig = getLscConfig();
 
-    const siteList = [];
-    const seenSites = new Set();
+    // Collect distinct anatomical regions in canonical clinical order
+    const siteMap = new Map();
     scans.forEach(s => {
         s.rows.forEach(r => {
             const loc = (r.location || '').trim();
-            if (loc && !seenSites.has(loc.toLowerCase())) {
-                seenSites.add(loc.toLowerCase());
-                siteList.push(loc);
+            if (loc && !siteMap.has(loc.toLowerCase())) {
+                siteMap.set(loc.toLowerCase(), loc);
             }
         });
     });
 
-    // Sheet 1: Side-by-Side Longitudinal Comparison Table (Primary Visual Sheet)
-    const compAoa = [
-        ['Serial Bone Density (DXA) & LSC Longitudinal Comparison'],
-        ['Record Label:', label || '--', '', 'Default Scanner Model:', defaultModel || '--', '', 'Exported:', todayIso()],
-        []
+    const siteList = [...siteMap.values()].sort((a, b) => {
+        const diff = getCanonicalRegionRank(a) - getCanonicalRegionRank(b);
+        return diff !== 0 ? diff : a.localeCompare(b);
+    });
+
+    // Sheet 1: Region-Grouped "Previous Exams" Table (matching Hologic serial summary layout)
+    const headerMetaRow = ['Previous Exams:'];
+    if (label) headerMetaRow.push(`Record: ${label}`);
+    if (showModel && defaultModel) headerMetaRow.push(`Scanner: ${defaultModel}`);
+
+    const summaryAoa = [
+        headerMetaRow,
+        ['Region', 'Exam Date', 'Age', 'BMD (g/cm²)', 'T-score', 'BMD Change vs. Baseline', 'BMD Change vs. Previous']
     ];
 
-    const groupHeaderRow = ['Anatomical Site / ROI', `LSC (${lscConfig.unit === 'abs' ? 'g/cm²' : '%'})`];
-    const colHeaderRow = ['Location / ROI', 'LSC Threshold'];
-    const colWidths = [{ wch: 26 }, { wch: 16 }];
-
-    scans.forEach((s, idx) => {
-        const scanTag = s.date || `Scan ${idx + 1}`;
-        const roleTag = idx === 0 ? 'Baseline' : `Follow-Up #${idx}`;
-        if (idx === 0) {
-            groupHeaderRow.push(`${scanTag} (${roleTag})`, '');
-            colHeaderRow.push(`${scanTag} BMD (g/cm²)`, `${scanTag} T-score`);
-            colWidths.push({ wch: 18 }, { wch: 16 });
-        } else {
-            groupHeaderRow.push(`${scanTag} (${roleTag})`, '', '', '', '');
-            colHeaderRow.push(
-                `${scanTag} BMD (g/cm²)`,
-                `${scanTag} T-score`,
-                'Δ BMD vs Prior (g/cm²)',
-                '% Change vs Prior',
-                'LSC Status vs Prior'
-            );
-            colWidths.push({ wch: 18 }, { wch: 16 }, { wch: 21 }, { wch: 17 }, { wch: 25 });
-        }
-    });
-
-    if (scans.length >= 2) {
-        const firstTag = scans[0].date || 'Scan 1';
-        const lastTag = scans[scans.length - 1].date || `Scan ${scans.length}`;
-        groupHeaderRow.push(`Cumulative Change (${firstTag} → ${lastTag})`, '', '');
-        colHeaderRow.push('Total Δ BMD (g/cm²)', 'Total % Change', 'Overall LSC Status');
-        colWidths.push({ wch: 20 }, { wch: 16 }, { wch: 25 });
-    }
-
-    compAoa.push(groupHeaderRow);
-    compAoa.push(colHeaderRow);
-
     siteList.forEach(siteName => {
-        const threshold = getThresholdForLocation(siteName, lscConfig);
-        const row = [siteName, threshold !== null ? threshold : null];
-
-        scans.forEach((s, idx) => {
+        // Gather chronological observations for this specific region (oldest -> newest)
+        const regionEntries = [];
+        scans.forEach((s, scanIdx) => {
             const match = s.rows.find(r => r.location && r.location.toLowerCase() === siteName.toLowerCase());
-            const bmd = match ? match.bmd : null;
-            const tscore = match ? match.tscore : null;
-
-            if (idx === 0) {
-                row.push(bmd, tscore);
-            } else {
-                const prevScan = scans[idx - 1];
-                const prevMatch = prevScan.rows.find(r => r.location && r.location.toLowerCase() === siteName.toLowerCase());
-                const evalRes = evaluateChange(prevMatch, match, lscConfig);
-
-                row.push(
-                    bmd,
-                    tscore,
-                    evalRes ? +evalRes.deltaBmd.toFixed(3) : null,
-                    evalRes ? +evalRes.pctChange.toFixed(1) : null,
-                    evalRes ? formatLscStatusLabel(evalRes) : ''
-                );
+            if (match && (match.bmd !== null || match.tscore !== null)) {
+                regionEntries.push({
+                    date: s.date ? formatUsDate(s.date) : `Scan ${scanIdx + 1}`,
+                    age: s.age,
+                    row: match
+                });
             }
         });
 
-        if (scans.length >= 2) {
-            const firstMatch = scans[0].rows.find(r => r.location && r.location.toLowerCase() === siteName.toLowerCase());
-            const lastMatch = scans[scans.length - 1].rows.find(r => r.location && r.location.toLowerCase() === siteName.toLowerCase());
-            const cumEval = evaluateChange(firstMatch, lastMatch, lscConfig);
-            row.push(
-                cumEval ? +cumEval.deltaBmd.toFixed(3) : null,
-                cumEval ? +cumEval.pctChange.toFixed(1) : null,
-                cumEval ? formatLscStatusLabel(cumEval) : ''
-            );
-        }
+        if (regionEntries.length === 0) return;
 
-        compAoa.push(row);
+        const baselineEntry = regionEntries[0];
+
+        // Compute vs. Baseline and vs. Previous in chronological order, then display newest-to-oldest
+        const computedRows = regionEntries.map((entry, idx) => {
+            if (idx === 0) {
+                return {
+                    date: entry.date,
+                    age: entry.age,
+                    bmd: entry.row.bmd !== null ? +entry.row.bmd.toFixed(3) : null,
+                    tscore: entry.row.tscore !== null ? +entry.row.tscore.toFixed(1) : null,
+                    vsBaseline: '',
+                    vsPrevious: ''
+                };
+            }
+
+            const prevEntry = regionEntries[idx - 1];
+            const evalBaseline = evaluateChange(baselineEntry.row, entry.row, lscConfig);
+            const evalPrevious = evaluateChange(prevEntry.row, entry.row, lscConfig);
+
+            return {
+                date: entry.date,
+                age: entry.age,
+                bmd: entry.row.bmd !== null ? +entry.row.bmd.toFixed(3) : null,
+                tscore: entry.row.tscore !== null ? +entry.row.tscore.toFixed(1) : null,
+                vsBaseline: formatPctWithLscStar(evalBaseline),
+                vsPrevious: formatPctWithLscStar(evalPrevious)
+            };
+        });
+
+        // Reverse so most recent exam is at the top of the region block and baseline is at the bottom
+        const newestFirstRows = computedRows.reverse();
+        newestFirstRows.forEach((r, rowIdx) => {
+            summaryAoa.push([
+                rowIdx === 0 ? siteName : '',
+                r.date,
+                r.age !== null ? r.age : '',
+                r.bmd,
+                r.tscore,
+                r.vsBaseline,
+                r.vsPrevious
+            ]);
+        });
     });
 
-    const modelRow = ['DXA Scanner Model', ''];
-    scans.forEach((s, idx) => {
-        if (idx === 0) {
-            modelRow.push(s.model || '--', '');
-        } else {
-            modelRow.push(s.model || '--', '', '', '', '');
-        }
-    });
-    compAoa.push([]);
-    compAoa.push(modelRow);
+    // Footnote matching Hologic LSC significance note
+    summaryAoa.push([buildLscFootnote(lscConfig)]);
 
     const sigText = document.getElementById('clinicalSummary').textContent.trim();
-    compAoa.push([]);
-    compAoa.push(['Clinical Assessment Summary (Sig):', sigText]);
+    if (sigText && sigText !== '--') {
+        summaryAoa.push([]);
+        summaryAoa.push(['Clinical Assessment Summary (Sig):', sigText]);
+    }
 
-    const wsComp = XLSX.utils.aoa_to_sheet(compAoa);
-    wsComp['!cols'] = colWidths;
+    const wsSummary = XLSX.utils.aoa_to_sheet(summaryAoa);
+    wsSummary['!cols'] = [
+        { wch: 24 }, // Region
+        { wch: 14 }, // Exam Date
+        { wch: 8 },  // Age
+        { wch: 15 }, // BMD (g/cm²)
+        { wch: 11 }, // T-score
+        { wch: 24 }, // BMD Change vs. Baseline
+        { wch: 24 }  // BMD Change vs. Previous
+    ];
 
-    // Sheet 2: Normalized Raw Scan Data
-    const rawAoa = [['Scan #', 'Scan Date (YYYY-MM-DD)', 'Scanner Model', 'Location', 'BMD (g/cm2)', 'T-score']];
+    // Enforce exact 3-decimal BMD and 1-decimal T-score number formatting in Excel cells
+    const range = XLSX.utils.decode_range(wsSummary['!ref']);
+    for (let R = 2; R <= range.e.r; R++) {
+        const bmdCell = wsSummary[XLSX.utils.encode_cell({ r: R, c: 3 })];
+        if (bmdCell && typeof bmdCell.v === 'number') bmdCell.z = '0.000';
+        const tCell = wsSummary[XLSX.utils.encode_cell({ r: R, c: 4 })];
+        if (tCell && typeof tCell.v === 'number') tCell.z = '0.0';
+    }
+
+    // Sheet 2: Normalized Raw Scan Data (preserves full round-trip import into this tool)
+    const rawAoa = [['Scan #', 'Scan Date (YYYY-MM-DD)', 'Scanner Model', 'Location', 'BMD (g/cm2)', 'T-score', 'Age']];
     scans.forEach((s, idx) => {
         s.rows.forEach(r => {
             if (s.date || r.location || r.bmd !== null || r.tscore !== null) {
-                rawAoa.push([idx + 1, s.date || null, s.model || null, r.location || null, r.bmd, r.tscore]);
+                rawAoa.push([idx + 1, s.date || null, s.model || null, r.location || null, r.bmd, r.tscore, s.age]);
             }
         });
     });
     const wsRaw = XLSX.utils.aoa_to_sheet(rawAoa);
-    wsRaw['!cols'] = [{ wch: 10 }, { wch: 22 }, { wch: 24 }, { wch: 24 }, { wch: 16 }, { wch: 12 }];
+    wsRaw['!cols'] = [{ wch: 10 }, { wch: 22 }, { wch: 24 }, { wch: 24 }, { wch: 16 }, { wch: 12 }, { wch: 10 }];
 
     // Sheet 3: LSC Settings
     const metaAoa = [
@@ -1506,12 +1568,12 @@ function downloadExcel() {
     wsMeta['!cols'] = [{ wch: 28 }, { wch: 28 }];
 
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, wsComp, 'Side_by_Side_Comparison');
+    XLSX.utils.book_append_sheet(wb, wsSummary, 'Previous_Exams_Summary');
     XLSX.utils.book_append_sheet(wb, wsRaw, 'Raw_Scans_Data');
     XLSX.utils.book_append_sheet(wb, wsMeta, 'LSC_Settings');
 
     const safeLabel = label.replace(/[^A-Za-z0-9_-]+/g, '_').slice(0, 40);
-    XLSX.writeFile(wb, `DXA_BMD_comparison_${safeLabel ? safeLabel + '_' : ''}${todayIso()}.xlsx`);
+    XLSX.writeFile(wb, `DXA_Previous_Exams_${safeLabel ? safeLabel + '_' : ''}${todayIso()}.xlsx`);
 }
 
 /* ---------- Excel Import (Local FileReader Only) ---------- */
@@ -1566,15 +1628,17 @@ function handleFile(evt) {
                 const location = row[3] ? String(row[3]).trim() : '';
                 const bmd = toNum(row[4]);
                 const tscore = toNum(row[5]);
+                const age = toNum(row[6]);
 
                 if (!date && !location && bmd === null && tscore === null) return;
 
                 const groupKey = scanNum || date || '1';
                 if (!grouped.has(groupKey)) {
-                    grouped.set(groupKey, { date, model, rows: [] });
+                    grouped.set(groupKey, { date, age, model, rows: [] });
                 }
                 const entry = grouped.get(groupKey);
                 if (!entry.date && date) entry.date = date;
+                if (!entry.age && age !== null) entry.age = age;
                 if (!entry.model && model) entry.model = model;
                 entry.rows.push({ location, bmd, tscore });
             });
