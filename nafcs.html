@@ -1,0 +1,763 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NAFCS Score Calculator &amp; Hypertriglyceridemia Management</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @media print {
+            @page { size: portrait; margin: 0; }
+            .no-print { display: none !important; }
+            html, body { margin: 0 !important; padding: 0 !important; background: white !important; }
+            .print-wrapper { display: block !important; max-width: 100% !important; margin: 0 !important; padding: 0 !important; }
+            .print-area {
+                width: 100% !important; max-width: 100% !important; margin: 0 auto !important;
+                padding: 1.2cm !important; box-shadow: none !important; border: none !important;
+            }
+            table { border-collapse: collapse !important; }
+            tr { page-break-inside: avoid !important; page-break-after: auto; }
+            th, td { border: 1px solid #000 !important; padding: 4px 6px !important; }
+        }
+        body { font-family: 'Inter', sans-serif; }
+    </style>
+</head>
+<body class="bg-slate-100 min-h-screen p-4 sm:p-8">
+
+<!-- Header container populated via fetch (matching site theme) -->
+<header id="site-header" class="no-print sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b border-blue-200 shadow-sm -mx-4 -mt-4 sm:-mx-8 sm:-mt-8 mb-8 px-4 py-3"></header>
+
+<div id="app" class="max-w-7xl mx-auto">
+    <header class="text-center mb-6 no-print">
+        <h1 class="text-3xl font-extrabold text-blue-950">NAFCS Score Calculator &amp; Severe Hypertriglyceridemia Guide</h1>
+        <p class="text-slate-600 mt-2 text-sm">Calculate the <strong>North American Familial Chylomicronemia Syndrome (NAFCS) Score</strong> (0&ndash;100 pts) to distinguish monogenic FCS from Multifactorial Chylomicronemia Syndrome (MCS), with pancreatitis-prevention and therapy recommendations.</p>
+    </header>
+
+    <div class="print-wrapper grid grid-cols-1 lg:grid-cols-12 gap-6 items-start mb-8">
+
+        <!-- LEFT SIDE: NAFCS CLINICAL & BIOCHEMICAL INPUTS -->
+        <div class="no-print lg:col-span-5 space-y-5">
+
+            <!-- 1. Laboratory Values -->
+            <div class="bg-white p-5 rounded-xl shadow-lg border border-blue-200">
+                <div class="flex flex-wrap justify-between items-center gap-2 border-b pb-3 mb-3">
+                    <div>
+                        <h2 class="text-base font-bold text-blue-950">1. Biochemical &amp; Lipid Panel Inputs</h2>
+                        <p class="text-[11px] text-slate-500">Auto-computes TG/TC ratio and biochemical NAFCS points.</p>
+                    </div>
+                    <button type="button" onclick="resetNafcs()" class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-600 px-2.5 py-1 rounded transition">Reset</button>
+                </div>
+
+                <div class="space-y-3 text-xs">
+                    <div class="grid grid-cols-3 gap-2.5">
+                        <div>
+                            <label for="fastingTg" class="block font-bold text-slate-700 uppercase tracking-wider mb-1">Fasting TG</label>
+                            <input id="fastingTg" type="number" min="40" max="15000" step="1" inputmode="numeric" value="1650"
+                                class="w-full p-2 border border-slate-300 rounded-lg bg-white text-sm font-bold text-blue-950 focus:ring-blue-900 focus:border-blue-900">
+                            <p id="tgMmolHint" class="text-[10px] text-slate-500 mt-0.5">18.6 mmol/L</p>
+                        </div>
+                        <div>
+                            <label for="totalChol" class="block font-bold text-slate-700 uppercase tracking-wider mb-1">Total Chol</label>
+                            <input id="totalChol" type="number" min="40" max="2000" step="1" inputmode="numeric" value="185"
+                                class="w-full p-2 border border-slate-300 rounded-lg bg-white text-sm font-bold text-blue-950 focus:ring-blue-900 focus:border-blue-900">
+                            <p class="text-[10px] text-slate-500 mt-0.5">mg/dL</p>
+                        </div>
+                        <div>
+                            <label for="apob" class="block font-bold text-slate-700 uppercase tracking-wider mb-1">ApoB (g/L)</label>
+                            <input id="apob" type="number" min="0.10" max="4.00" step="0.01" inputmode="decimal" value="0.72"
+                                class="w-full p-2 border border-slate-300 rounded-lg bg-white text-sm font-bold text-blue-950 focus:ring-blue-900 focus:border-blue-900">
+                            <p id="apobMgHint" class="text-[10px] text-slate-500 mt-0.5">= 72 mg/dL</p>
+                        </div>
+                    </div>
+
+                    <label class="flex items-start gap-2.5 p-2.5 rounded-lg border border-blue-200 bg-blue-50/60 cursor-pointer">
+                        <input id="allTgAbove880" type="checkbox" checked class="mt-0.5 rounded border-slate-300 text-blue-900 focus:ring-blue-900">
+                        <div class="flex-1">
+                            <div class="flex justify-between gap-2">
+                                <span class="font-bold text-blue-950">ALL documented fasting TG readings &gt; 880 mg/dL (&gt; 10 mmol/L)</span>
+                                <span class="shrink-0 font-extrabold text-blue-900">+13 pts</span>
+                            </div>
+                            <span class="text-[10px] text-slate-600 block mt-0.5">Uncheck if any historical TG value was &le; 880 mg/dL (e.g., dropped below 880 with diet/fibrates).</span>
+                        </div>
+                    </label>
+
+                    <div class="grid grid-cols-2 gap-2 pt-0.5">
+                        <div class="p-2 rounded-lg bg-slate-50 border border-slate-200 flex items-center justify-between">
+                            <span class="text-slate-600 font-semibold">TG / TC Ratio (&gt;8 = +8):</span>
+                            <span id="ratioReadout" class="font-extrabold text-blue-950">8.9 (+8 pts)</span>
+                        </div>
+                        <div class="p-2 rounded-lg bg-slate-50 border border-slate-200 flex items-center justify-between">
+                            <span class="text-slate-600 font-semibold">ApoB &lt; 1.0 g/L (+12):</span>
+                            <span id="apobReadout" class="font-extrabold text-blue-950">Yes (+12 pts)</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 2. Age, Onset & Body Mass Index -->
+            <div class="bg-white p-5 rounded-xl shadow-lg border border-blue-200">
+                <div class="border-b pb-2.5 mb-3">
+                    <h2 class="text-base font-bold text-blue-950">2. Age, HTG Onset &amp; Body Mass Index</h2>
+                </div>
+
+                <div class="space-y-3 text-xs">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                            <label for="ageGroup" class="block font-bold text-slate-700 uppercase tracking-wider mb-1">Current Age</label>
+                            <select id="ageGroup" class="w-full p-2 border border-slate-300 rounded-lg bg-white text-xs font-semibold text-blue-950">
+                                <option value="adult" selected>&ge; 10 years old (0 pts)</option>
+                                <option value="child">1 &ndash; 9 years old (+12 pts)</option>
+                                <option value="infant">&lt; 1 year old (Infant Pathway)</option>
+                            </select>
+                        </div>
+
+                        <div id="onsetContainer">
+                            <label for="htgOnset" class="block font-bold text-slate-700 uppercase tracking-wider mb-1">Age at HTG Onset</label>
+                            <select id="htgOnset" class="w-full p-2 border border-slate-300 rounded-lg bg-white text-xs font-semibold text-blue-950">
+                                <option value="ge10" selected>&ge; 10 years old (0 pts)</option>
+                                <option value="lt10">&lt; 10 years old (+12 pts)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label for="bmiGroup" class="block font-bold text-slate-700 uppercase tracking-wider mb-1">Body Mass Index (BMI)</label>
+                        <select id="bmiGroup" class="w-full p-2 border border-slate-300 rounded-lg bg-white text-xs font-semibold text-blue-950">
+                            <option value="lean" selected>&lt; 25.0 kg/m&sup2; (or &lt; 85th percentile in youth) (+9 pts)</option>
+                            <option value="overweight">&ge; 25.0 kg/m&sup2; (or &ge; 85th percentile in youth) (0 pts)</option>
+                        </select>
+                        <p class="text-[10px] italic text-slate-500 mt-0.5">(FCS patients are typically lean/normal weight, whereas MCS is strongly linked to overweight/obesity)</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 3. Abdominal Pain & Pancreatitis History -->
+            <div class="bg-white p-5 rounded-xl shadow-lg border border-blue-200">
+                <div class="flex justify-between items-center border-b pb-2.5 mb-3">
+                    <div>
+                        <h2 class="text-base font-bold text-blue-950">3. Abdominal Pain &amp; Pancreatitis</h2>
+                        <p class="text-[11px] text-slate-500">Attributed to hypertriglyceridemia / chylomicronemia.</p>
+                    </div>
+                    <span id="giScoreBadge" class="text-xs font-extrabold px-2 py-0.5 rounded bg-blue-50 text-blue-900 border border-blue-200">+16 pts</span>
+                </div>
+
+                <div class="space-y-2 text-xs">
+                    <label class="flex items-start gap-2.5 p-2.5 rounded-lg border border-slate-200 bg-slate-50/70 cursor-pointer">
+                        <input type="radio" name="giHistory" value="none" class="mt-0.5 text-blue-900 focus:ring-blue-900">
+                        <div class="flex-1 flex justify-between gap-2">
+                            <span class="font-semibold text-slate-800">Neither recurrent abdominal pain nor acute pancreatitis</span>
+                            <span class="shrink-0 font-bold text-slate-500">0 pts</span>
+                        </div>
+                    </label>
+                    <label class="flex items-start gap-2.5 p-2.5 rounded-lg border border-slate-200 bg-slate-50/70 cursor-pointer">
+                        <input type="radio" name="giHistory" value="pain" class="mt-0.5 text-blue-900 focus:ring-blue-900">
+                        <div class="flex-1 flex justify-between gap-2">
+                            <span class="font-bold text-slate-800">Recurrent unexplained abdominal pain (no prior pancreatitis)</span>
+                            <span class="shrink-0 font-extrabold text-blue-900">+9 pts</span>
+                        </div>
+                    </label>
+                    <label class="flex items-start gap-2.5 p-2.5 rounded-lg border border-slate-200 bg-slate-50/70 cursor-pointer">
+                        <input type="radio" name="giHistory" value="pancreatitis" checked class="mt-0.5 text-blue-900 focus:ring-blue-900">
+                        <div class="flex-1 flex justify-between gap-2">
+                            <span class="font-bold text-slate-800">History of acute pancreatitis (&ge;1 episode, with or without chronic pain)</span>
+                            <span class="shrink-0 font-extrabold text-blue-900">+16 pts</span>
+                        </div>
+                    </label>
+                </div>
+            </div>
+
+            <!-- 4. Secondary Factors Contributing to HTG -->
+            <div class="bg-white p-5 rounded-xl shadow-lg border border-blue-200">
+                <div class="flex justify-between items-center border-b pb-2.5 mb-3">
+                    <div>
+                        <h2 class="text-base font-bold text-blue-950">4. Secondary Contributing Factors</h2>
+                        <p class="text-[11px] text-slate-500">Absence of secondary triggers awards +11 pts (plus interaction bonuses).</p>
+                    </div>
+                    <span id="secScoreBadge" class="text-xs font-extrabold px-2 py-0.5 rounded bg-blue-50 text-blue-900 border border-blue-200">+11 pts</span>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                    <label class="flex items-start gap-2 p-2 rounded-lg border border-slate-200 bg-slate-50/70 cursor-pointer">
+                        <input type="checkbox" class="sec-factor mt-0.5 rounded border-slate-300 text-blue-900" value="Uncontrolled diabetes / insulin resistance">
+                        <span class="text-slate-800">Uncontrolled diabetes / severe insulin resistance</span>
+                    </label>
+                    <label class="flex items-start gap-2 p-2 rounded-lg border border-slate-200 bg-slate-50/70 cursor-pointer">
+                        <input type="checkbox" class="sec-factor mt-0.5 rounded border-slate-300 text-blue-900" value="Alcohol intake">
+                        <span class="text-slate-800">Excess alcohol intake</span>
+                    </label>
+                    <label class="flex items-start gap-2 p-2 rounded-lg border border-slate-200 bg-slate-50/70 cursor-pointer">
+                        <input type="checkbox" class="sec-factor mt-0.5 rounded border-slate-300 text-blue-900" value="High-fat / high-sugar / ultra-processed diet">
+                        <span class="text-slate-800">High-fat, high-sugar, or ultra-processed diet</span>
+                    </label>
+                    <label class="flex items-start gap-2 p-2 rounded-lg border border-slate-200 bg-slate-50/70 cursor-pointer">
+                        <input type="checkbox" class="sec-factor mt-0.5 rounded border-slate-300 text-blue-900" value="TG-raising medications (oral estrogens, steroids, retinoids, beta-blockers, thiazides, antipsychotics, protease inhibitors)">
+                        <span class="text-slate-800">TG-raising meds (estrogens, steroids, antipsychotics, retinoids, etc.)</span>
+                    </label>
+                    <label class="flex items-start gap-2 p-2 rounded-lg border border-slate-200 bg-slate-50/70 cursor-pointer">
+                        <input type="checkbox" class="sec-factor mt-0.5 rounded border-slate-300 text-blue-900" value="Untreated hypothyroidism">
+                        <span class="text-slate-800">Untreated hypothyroidism</span>
+                    </label>
+                    <label class="flex items-start gap-2 p-2 rounded-lg border border-slate-200 bg-slate-50/70 cursor-pointer">
+                        <input type="checkbox" class="sec-factor mt-0.5 rounded border-slate-300 text-blue-900" value="Renal disease (nephrotic syndrome/CKD) or pregnancy">
+                        <span class="text-slate-800">Nephrotic syndrome / CKD / pregnancy</span>
+                    </label>
+                </div>
+            </div>
+
+            <!-- 5. Optional Physical Exam / Infant Clues -->
+            <div class="bg-blue-950 text-white p-4 rounded-xl shadow-lg text-xs space-y-1.5">
+                <div class="font-extrabold uppercase tracking-wider text-blue-200 text-[11px]">Bedside Chylomicronemia Clues (Supportive)</div>
+                <p class="text-slate-200 leading-relaxed">
+                    Look for <strong>eruptive xanthomas</strong> (3&ndash;5 mm yellow papules on buttocks/extensor surfaces), <strong>lipemia retinalis</strong> (creamy-white retinal vessels when TG &gt;3,500 mg/dL), <strong>hepatosplenomegaly</strong>, and a <strong>creamy supranatant layer</strong> over clear infranatant plasma after overnight refrigeration (&ldquo;refrigerator test&rdquo;).
+                </p>
+            </div>
+        </div>
+
+        <!-- RIGHT SIDE: NAFCS SCORE RESULT & MANAGEMENT PLAN -->
+        <div id="report" class="print-area lg:col-span-7 bg-white p-6 rounded-xl shadow-2xl border border-slate-300">
+            <div class="border-b pb-3 mb-4 flex flex-wrap justify-between items-start gap-2">
+                <div>
+                    <h2 class="text-xl font-bold text-slate-800">NAFCS Diagnostic Score &amp; Clinical Action Plan</h2>
+                    <p id="summarySubheader" class="text-xs text-slate-500 mt-0.5">--</p>
+                </div>
+                <div class="flex items-center gap-2 no-print">
+                    <button type="button" onclick="window.print()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 font-semibold px-3 py-1.5 rounded-lg text-xs transition">&#128424;&#65039; Print</button>
+                </div>
+            </div>
+
+            <!-- KPI Strip -->
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5">
+                <div class="p-3 rounded-lg bg-blue-50 border-2 border-blue-900 text-center">
+                    <div class="text-[10px] font-bold uppercase tracking-wider text-blue-900">NAFCS Score</div>
+                    <div id="kpiTotalScore" class="text-2xl font-extrabold text-blue-950 mt-0.5">--</div>
+                    <div id="kpiCatShort" class="text-[11px] font-extrabold text-blue-800">--</div>
+                </div>
+                <div class="p-3 rounded-lg bg-slate-50 border border-slate-200 text-center">
+                    <div class="text-[10px] font-bold uppercase tracking-wider text-slate-500">TG / TC Ratio</div>
+                    <div id="kpiRatio" class="text-xl font-extrabold text-slate-800 mt-0.5">--</div>
+                    <div class="text-[10px] text-slate-500">&gt; 8 favors FCS</div>
+                </div>
+                <div class="p-3 rounded-lg bg-slate-50 border border-slate-200 text-center">
+                    <div class="text-[10px] font-bold uppercase tracking-wider text-slate-500">ApoB Level</div>
+                    <div id="kpiApob" class="text-xl font-extrabold text-slate-800 mt-0.5">--</div>
+                    <div class="text-[10px] text-slate-500">&lt; 1.0 g/L favors FCS</div>
+                </div>
+                <div class="p-3 rounded-lg bg-slate-50 border border-slate-200 text-center">
+                    <div class="text-[10px] font-bold uppercase tracking-wider text-slate-500">Interaction Bonus</div>
+                    <div id="kpiBonus" class="text-xl font-extrabold text-blue-900 mt-0.5">--</div>
+                    <div class="text-[10px] text-slate-500">max +19 pts</div>
+                </div>
+            </div>
+
+            <!-- Visual NAFCS Score Gauge (0 to 100) -->
+            <div id="gaugeSection" class="mb-5 p-3.5 rounded-xl bg-slate-50 border border-slate-200">
+                <div class="flex justify-between items-center text-[11px] font-bold text-slate-700 mb-1.5">
+                    <span>NAFCS Diagnostic Threshold Scale (0 &ndash; 100 Points)</span>
+                    <span id="gaugeReadout" class="text-blue-950">--</span>
+                </div>
+                <div class="relative h-3 rounded-full overflow-hidden flex bg-slate-200">
+                    <div class="bg-slate-400 h-full" style="width: 30%" title="Unlikely FCS: <30 pts"></div>
+                    <div class="bg-amber-400 h-full" style="width: 15%" title="Possible FCS: 30-44 pts"></div>
+                    <div class="bg-orange-500 h-full" style="width: 15%" title="Likely FCS: 45-59 pts"></div>
+                    <div class="bg-red-600 h-full" style="width: 40%" title="Definite FCS: >=60 pts"></div>
+                </div>
+                <div class="relative h-4 mt-0.5">
+                    <div id="gaugeMarker" class="absolute -top-1 -translate-x-1/2 transition-all duration-300 flex flex-col items-center" style="left: 50%;">
+                        <div class="w-0 h-0 border-l-[5px] border-l-transparent border-r-[5px] border-r-transparent border-b-[6px] border-b-blue-950"></div>
+                    </div>
+                </div>
+                <div class="flex justify-between text-[10px] font-semibold text-slate-500">
+                    <span>0 (&lt;30 Unlikely)</span>
+                    <span>30 (Possible)</span>
+                    <span>45 (Likely)</span>
+                    <span>60 (Definite FCS)</span>
+                    <span>100</span>
+                </div>
+            </div>
+
+            <!-- Acute Pancreatitis / TG Severity Alerts -->
+            <div id="alertsContainer" class="space-y-2 mb-4"></div>
+
+            <!-- Primary Diagnostic & Management Card -->
+            <div id="diagnosisCard" class="mb-5"></div>
+
+            <!-- Point Breakdown Pill Summary -->
+            <div class="mb-5 p-3 rounded-lg bg-slate-50 border border-slate-200">
+                <div class="text-[10px] font-extrabold uppercase tracking-wider text-slate-500 mb-1.5">Active Scoring Components</div>
+                <div id="activeChipsContainer" class="flex flex-wrap gap-1.5 text-[11px]"></div>
+            </div>
+
+            <!-- Step-by-Step Clinical Management Checklist -->
+            <div class="mb-5">
+                <h3 class="text-xs font-extrabold text-blue-950 uppercase tracking-wider mb-2.5">What to Do Next (Targeted FCS vs. MCS Action Plan)</h3>
+                <div id="nextStepsContainer" class="space-y-2.5"></div>
+            </div>
+
+            <!-- Cross-links to related Lipid tools -->
+            <div class="mb-5 p-3.5 rounded-xl bg-blue-50 border border-blue-200 flex flex-wrap items-center justify-between gap-3 no-print">
+                <div class="text-xs text-blue-950">
+                    <strong class="block">Need to address residual ASCVD / LDL-C risk once TG &lt; 500 mg/dL?</strong>
+                    <span class="text-slate-600">Check 10-year PREVENT risk or build a stepwise statin/ezetimibe/PCSK9i plan.</span>
+                </div>
+                <div class="flex flex-wrap gap-2">
+                    <a href="https://www.endocrineinfo.org/ascvdprevent.html" class="bg-white hover:bg-blue-100 text-blue-950 border border-blue-300 font-bold px-3 py-1.5 rounded-lg text-xs transition">ASCVD/PREVENT &rarr;</a>
+                    <a href="https://www.endocrineinfo.org/ldlgoal.html" class="bg-blue-900 hover:bg-blue-950 text-white font-bold px-3 py-1.5 rounded-lg text-xs shadow transition">LDL Calculator &rarr;</a>
+                </div>
+            </div>
+
+            <!-- EHR Clinical Note -->
+            <div class="border-t pt-4">
+                <h4 class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Clinical Assessment Note (Copy to EHR)</h4>
+                <div class="flex items-stretch gap-2">
+                    <div id="clinicalNoteBox" class="flex-1 p-3.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-semibold text-slate-800 leading-relaxed">--</div>
+                    <button id="copyPlanBtn" type="button" onclick="copyPlanNote()" class="no-print bg-blue-900 hover:bg-blue-950 text-white font-semibold px-3.5 py-2 rounded-lg shadow transition flex items-center gap-1.5 text-xs whitespace-nowrap">&#128203; Copy</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- BOTTOM REFERENCE TABLE 1: EXACT NAFCS SCORING RUBRIC -->
+    <div class="bg-white p-6 rounded-xl shadow-xl border border-blue-200 mb-8">
+        <div class="border-b pb-3 mb-4">
+            <h2 class="text-lg font-extrabold text-blue-950">Reference 1: Official NAFCS Scoring Rubric (Hegele et al., 2024)</h2>
+            <p class="text-xs text-slate-500 mt-0.5">Maximum score = 100 points. Infants (&lt;1 year) follow a separate clinical decision rule (see below).</p>
+        </div>
+
+        <div class="overflow-x-auto">
+            <table class="min-w-full border-collapse border border-slate-300 text-xs">
+                <thead class="bg-blue-900 text-white">
+                    <tr>
+                        <th class="border border-slate-300 p-2.5 text-left w-48">Parameter</th>
+                        <th class="border border-slate-300 p-2.5 text-left">Condition</th>
+                        <th class="border border-slate-300 p-2.5 text-center w-24">Points</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr class="bg-white">
+                        <td class="border border-slate-300 p-2.5 font-bold text-blue-950">Current Age</td>
+                        <td class="border border-slate-300 p-2.5">1 &ndash; 9 years old (vs. &ge;10 years = 0 pts)</td>
+                        <td class="border border-slate-300 p-2.5 text-center font-extrabold text-blue-950">+12</td>
+                    </tr>
+                    <tr class="bg-slate-50">
+                        <td class="border border-slate-300 p-2.5 font-bold text-blue-950">Hypertriglyceridemia Onset</td>
+                        <td class="border border-slate-300 p-2.5">If currently &ge;10 years old: onset of HTG at &lt;10 years old</td>
+                        <td class="border border-slate-300 p-2.5 text-center font-extrabold text-blue-950">+12</td>
+                    </tr>
+                    <tr class="bg-white">
+                        <td class="border border-slate-300 p-2.5 font-bold text-blue-950">Body Mass Index (BMI)</td>
+                        <td class="border border-slate-300 p-2.5">&lt; 25.0 kg/m&sup2; in adults (or &lt; 85th percentile in children/adolescents)</td>
+                        <td class="border border-slate-300 p-2.5 text-center font-extrabold text-blue-950">+9</td>
+                    </tr>
+                    <tr class="bg-slate-50">
+                        <td class="border border-slate-300 p-2.5 font-bold text-blue-950 align-top" rowspan="2">Abdominal Pain / Pancreatitis</td>
+                        <td class="border border-slate-300 p-2.5">History of acute pancreatitis (with or without abdominal pain)</td>
+                        <td class="border border-slate-300 p-2.5 text-center font-extrabold text-blue-950">+16</td>
+                    </tr>
+                    <tr class="bg-slate-50">
+                        <td class="border border-slate-300 p-2.5">Recurrent abdominal pain, no history of pancreatitis</td>
+                        <td class="border border-slate-300 p-2.5 text-center font-extrabold text-blue-950">+9</td>
+                    </tr>
+                    <tr class="bg-white">
+                        <td class="border border-slate-300 p-2.5 font-bold text-blue-950">Secondary Factors</td>
+                        <td class="border border-slate-300 p-2.5">No secondary factors contributing to HTG (vs. &ge;1 factor = 0 pts)</td>
+                        <td class="border border-slate-300 p-2.5 text-center font-extrabold text-blue-950">+11</td>
+                    </tr>
+                    <tr class="bg-slate-50">
+                        <td class="border border-slate-300 p-2.5 font-bold text-blue-950 align-top" rowspan="3">Laboratory Values</td>
+                        <td class="border border-slate-300 p-2.5">All fasting triglyceride measurements &gt; 880 mg/dL (&gt; 10 mmol/L)</td>
+                        <td class="border border-slate-300 p-2.5 text-center font-extrabold text-blue-950">+13</td>
+                    </tr>
+                    <tr class="bg-slate-50">
+                        <td class="border border-slate-300 p-2.5">Triglyceride / Total Cholesterol (TG/TC) ratio &gt; 8 (in mg/dL)</td>
+                        <td class="border border-slate-300 p-2.5 text-center font-extrabold text-blue-950">+8</td>
+                    </tr>
+                    <tr class="bg-slate-50">
+                        <td class="border border-slate-300 p-2.5">Apolipoprotein B (ApoB) &lt; 1.0 g/L (&lt; 100 mg/dL)</td>
+                        <td class="border border-slate-300 p-2.5 text-center font-extrabold text-blue-950">+12</td>
+                    </tr>
+                    <tr class="bg-white">
+                        <td class="border border-slate-300 p-2.5 font-bold text-blue-950 align-top" rowspan="3">Interaction Bonus Points</td>
+                        <td class="border border-slate-300 p-2.5">Age 1&ndash;9 years old <strong>AND</strong> no secondary factors</td>
+                        <td class="border border-slate-300 p-2.5 text-center font-extrabold text-blue-950">+7</td>
+                    </tr>
+                    <tr class="bg-white">
+                        <td class="border border-slate-300 p-2.5">TG/TC ratio &gt; 8 <strong>AND</strong> ApoB &lt; 1.0 g/L</td>
+                        <td class="border border-slate-300 p-2.5 text-center font-extrabold text-blue-950">+7</td>
+                    </tr>
+                    <tr class="bg-white">
+                        <td class="border border-slate-300 p-2.5">TG/TC ratio &gt; 8 <strong>AND</strong> no secondary factors</td>
+                        <td class="border border-slate-300 p-2.5 text-center font-extrabold text-blue-950">+5</td>
+                    </tr>
+                    <tr class="bg-blue-50/70">
+                        <td class="border border-slate-300 p-2.5 font-extrabold text-blue-950">Interpretation</td>
+                        <td class="border border-slate-300 p-2.5 text-slate-800" colspan="2">
+                            <strong>&ge; 60 pts:</strong> Definite FCS &nbsp;|&nbsp;
+                            <strong>45&ndash;59 pts:</strong> Likely FCS (genetic testing recommended) &nbsp;|&nbsp;
+                            <strong>30&ndash;44 pts:</strong> Possible FCS (indeterminate; consider genetic testing) &nbsp;|&nbsp;
+                            <strong>&lt; 30 pts:</strong> Unlikely FCS (likely MCS)
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- BOTTOM REFERENCE TABLE 2: HYPERTRIGLYCERIDEMIA & CHYLOMICRONEMIA THERAPIES -->
+    <div class="bg-white p-6 rounded-xl shadow-xl border border-blue-200">
+        <div class="border-b pb-3 mb-4">
+            <h2 class="text-lg font-extrabold text-blue-950">Reference 2: Hypertriglyceridemia &amp; Chylomicronemia Therapies (FCS vs. MCS)</h2>
+            <p class="text-xs text-slate-500 mt-0.5">Expected TG reduction, efficacy in LPL-deficient FCS vs. Multifactorial Chylomicronemia Syndrome (MCS), and key precautions.</p>
+        </div>
+
+        <div class="overflow-x-auto">
+            <table class="min-w-full border-collapse border border-slate-300 text-xs">
+                <thead class="bg-blue-900 text-white">
+                    <tr>
+                        <th class="border border-slate-300 p-2.5 text-left">Therapy / Class</th>
+                        <th class="border border-slate-300 p-2.5 text-left">Dosing &amp; Route</th>
+                        <th class="border border-slate-300 p-2.5 text-center w-28">Expected TG Drop (MCS)</th>
+                        <th class="border border-slate-300 p-2.5 text-center w-28">Efficacy in Monogenic FCS</th>
+                        <th class="border border-slate-300 p-2.5 text-left">Clinical Role &amp; Precautions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr class="bg-white">
+                        <td class="border border-slate-300 p-2.5 font-bold text-blue-950">Strict Very-Low-Fat Diet + MCT Oil</td>
+                        <td class="border border-slate-300 p-2.5">Dietary fat &lt;10&ndash;15% of calories (15&ndash;20 g/day), zero alcohol, MCT oil</td>
+                        <td class="border border-slate-300 p-2.5 text-center font-extrabold text-blue-950">&minus;50% to &minus;80%</td>
+                        <td class="border border-slate-300 p-2.5 text-center font-extrabold text-green-800">Essential Foundation</td>
+                        <td class="border border-slate-300 p-2.5">Cornerstone of FCS care (halts intestinal chylomicron assembly). MCTs bypass lymphatics via portal vein. Monitor vitamins A, D, E, K and essential fatty acids.</td>
+                    </tr>
+                    <tr class="bg-slate-50">
+                        <td class="border border-slate-300 p-2.5 font-bold text-blue-950">Olezarsen (Tryngolza)<br><span class="font-normal text-[11px] text-slate-500">APOC3 antisense oligonucleotide</span></td>
+                        <td class="border border-slate-300 p-2.5">80 mg SubQ once monthly</td>
+                        <td class="border border-slate-300 p-2.5 text-center font-extrabold text-blue-950">&minus;50% to &minus;60%</td>
+                        <td class="border border-slate-300 p-2.5 text-center font-extrabold text-green-800">&minus;43% to &minus;53%<br><span class="font-normal text-[10px]">(~88% &darr; pancreatitis)</span></td>
+                        <td class="border border-slate-300 p-2.5">FDA-approved for FCS (Balance trial); clears TG via LPL-independent hepatic uptake. Monitor platelets and liver enzymes; injection-site reactions.</td>
+                    </tr>
+                    <tr class="bg-white">
+                        <td class="border border-slate-300 p-2.5 font-bold text-blue-950">Plozasiran<br><span class="font-normal text-[11px] text-slate-500">APOC3 siRNA</span></td>
+                        <td class="border border-slate-300 p-2.5">25 mg SubQ every 3 months</td>
+                        <td class="border border-slate-300 p-2.5 text-center font-extrabold text-blue-950">&minus;60% to &minus;75%</td>
+                        <td class="border border-slate-300 p-2.5 text-center font-extrabold text-green-800">~&minus;80%<br><span class="font-normal text-[10px]">(PALISADE trial)</span></td>
+                        <td class="border border-slate-300 p-2.5">Silences hepatic APOC3 mRNA; marked TG and pancreatitis reduction in genetically confirmed and clinical FCS. Monitor mild glycemic changes.</td>
+                    </tr>
+                    <tr class="bg-slate-50">
+                        <td class="border border-slate-300 p-2.5 font-bold text-blue-950">Fibrates<br><span class="font-normal text-[11px] text-slate-500">Fenofibrate, gemfibrozil</span></td>
+                        <td class="border border-slate-300 p-2.5">Fenofibrate 145&ndash;160 mg PO daily (adjust for eGFR)</td>
+                        <td class="border border-slate-300 p-2.5 text-center font-extrabold text-blue-950">&minus;30% to &minus;50%</td>
+                        <td class="border border-slate-300 p-2.5 text-center font-bold text-red-700">Minimal / None<br><span class="font-normal text-[10px]">(requires functional LPL)</span></td>
+                        <td class="border border-slate-300 p-2.5">1st-line pharmacotherapy for MCS with TG &ge;500 mg/dL to prevent pancreatitis. Never combine gemfibrozil with statins (rhabdomyolysis); monitor creatinine &amp; gallstones.</td>
+                    </tr>
+                    <tr class="bg-white">
+                        <td class="border border-slate-300 p-2.5 font-bold text-blue-950">Prescription Omega-3 Fatty Acids<br><span class="font-normal text-[11px] text-slate-500">Icosapent ethyl (Vascepa); omega-3-acid ethyl esters</span></td>
+                        <td class="border border-slate-300 p-2.5">2 g PO twice daily with meals (4 g/day total)</td>
+                        <td class="border border-slate-300 p-2.5 text-center font-extrabold text-blue-950">&minus;20% to &minus;30%</td>
+                        <td class="border border-slate-300 p-2.5 text-center font-bold text-red-700">Minimal / None</td>
+                        <td class="border border-slate-300 p-2.5">Icosapent ethyl reduced MACE by 25% in REDUCE-IT (statin-treated ASCVD/diabetes with TG 150&ndash;499 mg/dL). Slight increase in atrial fibrillation and bleeding risk.</td>
+                    </tr>
+                    <tr class="bg-slate-50">
+                        <td class="border border-slate-300 p-2.5 font-bold text-blue-950">High-Intensity Statins</td>
+                        <td class="border border-slate-300 p-2.5">Rosuvastatin 20&ndash;40 mg or atorvastatin 40&ndash;80 mg PO daily</td>
+                        <td class="border border-slate-300 p-2.5 text-center font-extrabold text-blue-950">&minus;15% to &minus;30%</td>
+                        <td class="border border-slate-300 p-2.5 text-center font-bold text-red-700">Minimal / None</td>
+                        <td class="border border-slate-300 p-2.5">Essential in MCS to lower atherogenic VLDL remnants, Non-HDL-C, and ApoB; not needed for ASCVD in pure FCS (chylomicrons are non-atherogenic).</td>
+                    </tr>
+                    <tr class="bg-white">
+                        <td class="border border-slate-300 p-2.5 font-bold text-blue-950">Acute Hypertriglyceridemic Pancreatitis Protocol</td>
+                        <td class="border border-slate-300 p-2.5">NPO, IV fluids, IV regular insulin 0.1&ndash;0.3 U/kg/hr (+ D5/D10), &plusmn; plasmapheresis</td>
+                        <td class="border border-slate-300 p-2.5 text-center font-extrabold text-blue-950">&minus;50% to &minus;70% in 24&ndash;48h</td>
+                        <td class="border border-slate-300 p-2.5 text-center font-semibold text-amber-800">NPO halts chylomicrons;<br>insulin ineffective if zero LPL</td>
+                        <td class="border border-slate-300 p-2.5">Used during acute pancreatitis with TG &gt;1,000 mg/dL until TG &lt;500 mg/dL. Note: IV insulin stimulates LPL and works rapidly in MCS/DKA, whereas NPO fasting drives clearance in complete LPL deficiency.</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <p class="text-[11px] text-slate-500 mt-3 italic">
+            <strong>Sources:</strong> Hegele RA et al., <em>J Clin Lipidol</em> 2024;18:e934&ndash;e944 (NAFCS Score Development &amp; Validation); Stroes ESG et al., <em>N Engl J Med</em> 2024 (Balance / Olezarsen); Watts GF et al., <em>N Engl J Med</em> 2024 (PALISADE / Plozasiran); 2026 ACC/AHA Multisociety Dyslipidemia Guideline. For clinician decision support only.
+        </p>
+    </div>
+</div>
+
+<script>
+// Fetch dynamic navbar
+fetch('nav.html')
+    .then(res => res.text())
+    .then(data => { document.getElementById('site-header').innerHTML = data; })
+    .catch(err => console.error('Error loading navigation:', err));
+
+const el = id => document.getElementById(id);
+
+function resetNafcs() {
+    el('fastingTg').value = 1650;
+    el('totalChol').value = 185;
+    el('apob').value = 0.72;
+    el('allTgAbove880').checked = true;
+    el('ageGroup').value = 'adult';
+    el('htgOnset').value = 'ge10';
+    el('bmiGroup').value = 'lean';
+    document.querySelector('input[name="giHistory"][value="pancreatitis"]').checked = true;
+    document.querySelectorAll('.sec-factor').forEach(cb => { cb.checked = false; });
+    updateNafcs();
+}
+
+function updateNafcs() {
+    const tg = parseFloat(el('fastingTg').value);
+    const tc = parseFloat(el('totalChol').value);
+    const apob = parseFloat(el('apob').value);
+    const allTg880 = el('allTgAbove880').checked;
+    const ageGroup = el('ageGroup').value;
+    const htgOnset = el('htgOnset').value;
+    const bmiGroup = el('bmiGroup').value;
+    const giVal = document.querySelector('input[name="giHistory"]:checked').value;
+
+    const secFactors = Array.from(document.querySelectorAll('.sec-factor:checked')).map(cb => cb.value);
+    const noSecondary = secFactors.length === 0;
+
+    // Show/hide HTG onset selector (only relevant if age >= 10)
+    el('onsetContainer').classList.toggle('opacity-50', ageGroup !== 'adult');
+    el('htgOnset').disabled = ageGroup !== 'adult';
+
+    // Unit helpers
+    el('tgMmolHint').textContent = isFinite(tg) ? `${(tg * 0.01129).toFixed(1)} mmol/L` : '-- mmol/L';
+    el('apobMgHint').textContent = isFinite(apob) ? `= ${Math.round(apob * 100)} mg/dL` : '-- mg/dL';
+
+    const validLabs = isFinite(tg) && isFinite(tc) && tc > 0 && isFinite(apob);
+    const ratio = (isFinite(tg) && isFinite(tc) && tc > 0) ? (tg / tc) : NaN;
+    const ratioGt8 = isFinite(ratio) && ratio > 8;
+    const apobLt1 = isFinite(apob) && apob < 1.0;
+
+    el('ratioReadout').textContent = isFinite(ratio)
+        ? `${ratio.toFixed(1)} (${ratioGt8 ? '+8 pts' : '0 pts'})`
+        : '--';
+    el('apobReadout').textContent = isFinite(apob)
+        ? `${apobLt1 ? 'Yes (+12 pts)' : 'No (0 pts)'}`
+        : '--';
+
+    // Individual component points
+    const ptsAge = ageGroup === 'child' ? 12 : 0;
+    const ptsOnset = (ageGroup === 'adult' && htgOnset === 'lt10') ? 12 : 0;
+    const ptsBmi = bmiGroup === 'lean' ? 9 : 0;
+    const ptsGi = giVal === 'pancreatitis' ? 16 : (giVal === 'pain' ? 9 : 0);
+    const ptsSec = noSecondary ? 11 : 0;
+    const ptsAllTg = allTg880 ? 13 : 0;
+    const ptsRatio = ratioGt8 ? 8 : 0;
+    const ptsApob = apobLt1 ? 12 : 0;
+
+    // Interaction bonus points
+    const bonusAgeSec = (ageGroup === 'child' && noSecondary) ? 7 : 0;
+    const bonusRatioApob = (ratioGt8 && apobLt1) ? 7 : 0;
+    const bonusRatioSec = (ratioGt8 && noSecondary) ? 5 : 0;
+    const totalBonus = bonusAgeSec + bonusRatioApob + bonusRatioSec;
+
+    const total = ptsAge + ptsOnset + ptsBmi + ptsGi + ptsSec + ptsAllTg + ptsRatio + ptsApob + totalBonus;
+
+    el('giScoreBadge').textContent = `+${ptsGi} pts`;
+    el('secScoreBadge').textContent = noSecondary ? '+11 pts (None)' : `0 pts (${secFactors.length} present)`;
+
+    el('kpiRatio').textContent = isFinite(ratio) ? ratio.toFixed(1) : '--';
+    el('kpiApob').textContent = isFinite(apob) ? `${apob.toFixed(2)} g/L` : '--';
+    el('kpiBonus').textContent = `+${totalBonus} pts`;
+
+    // Active component chips
+    const chips = [];
+    if (ptsAge) chips.push(`Age 1–9 yr (+12)`);
+    if (ptsOnset) chips.push(`HTG onset <10 yr (+12)`);
+    if (ptsBmi) chips.push(`BMI <25 / <85th %ile (+9)`);
+    if (ptsGi === 16) chips.push(`History of pancreatitis (+16)`);
+    else if (ptsGi === 9) chips.push(`Recurrent abdominal pain (+9)`);
+    if (ptsSec) chips.push(`No secondary factors (+11)`);
+    if (ptsAllTg) chips.push(`All TG >880 mg/dL (+13)`);
+    if (ptsRatio) chips.push(`TG/TC >8 (+8)`);
+    if (ptsApob) chips.push(`ApoB <1.0 g/L (+12)`);
+    if (bonusAgeSec) chips.push(`Bonus: Age 1–9 + No secondary (+7)`);
+    if (bonusRatioApob) chips.push(`Bonus: TG/TC >8 + ApoB <1.0 (+7)`);
+    if (bonusRatioSec) chips.push(`Bonus: TG/TC >8 + No secondary (+5)`);
+
+    el('activeChipsContainer').innerHTML = chips.length
+        ? chips.map(c => `<span class="px-2.5 py-1 rounded-full bg-blue-100 text-blue-950 font-bold border border-blue-200">${c}</span>`).join('')
+        : `<span class="text-slate-500 italic">No positive NAFCS points selected.</span>`;
+
+    // Alerts
+    const alerts = [];
+    if (isFinite(tg) && tg >= 1770) {
+        alerts.push(`<div class="p-3 rounded-lg bg-red-50 border border-red-300 text-xs text-red-950 leading-relaxed">
+            <strong>&#9888;&#65039; Extreme Chylomicronemia (TG ${Math.round(tg)} mg/dL &ge; 1,770 mg/dL):</strong> Very high imminent risk of acute pancreatitis. If symptomatic (epigastric pain, nausea, vomiting), evaluate urgently for acute pancreatitis (lipase/amylase, NPO, IV hydration).
+        </div>`);
+    } else if (isFinite(tg) && tg >= 880) {
+        alerts.push(`<div class="p-3 rounded-lg bg-amber-50 border border-amber-300 text-xs text-amber-950 leading-relaxed">
+            <strong>&#9888;&#65039; Chylomicronemia Range (TG ${Math.round(tg)} mg/dL &gt; 880 mg/dL):</strong> Pathological chylomicrons are present; primary treatment goal is reducing TG below 500&ndash;880 mg/dL to prevent acute pancreatitis.
+        </div>`);
+    } else if (isFinite(tg) && tg >= 500) {
+        alerts.push(`<div class="p-3 rounded-lg bg-amber-50 border border-amber-300 text-xs text-amber-950 leading-relaxed">
+            <strong>&#8505;&#65039; Severe Hypertriglyceridemia (TG ${Math.round(tg)} mg/dL):</strong> Initiate TG-lowering therapy to bring TG &lt; 500 mg/dL and reduce pancreatitis risk.
+        </div>`);
+    }
+
+    if (ageGroup === 'infant') {
+        alerts.push(`<div class="p-3 rounded-lg bg-blue-50 border border-blue-200 text-xs text-blue-950 leading-relaxed">
+            <strong>&#128118; Infant (&lt; 1 Year) NAFCS Decision Rule:</strong> Numerical NAFCS scoring starts at age 1 year. In infants, consider FCS if there are <strong>no secondary factors</strong>, OR if there is &ge;1 secondary factor accompanied by <strong>at least two TG readings &gt; 880 mg/dL and unexplained failure to thrive</strong>.
+        </div>`);
+    }
+    el('alertsContainer').innerHTML = alerts.join('');
+
+    // Classification
+    let cat = {
+        short: 'Unlikely FCS',
+        label: 'Unlikely FCS (< 30 pts)',
+        style: 'bg-slate-50 border-2 border-slate-400 text-slate-900',
+        badge: 'bg-slate-700',
+        summary: 'Score is < 30 points. Severe hypertriglyceridemia is far more likely due to Multifactorial Chylomicronemia Syndrome (MCS—polygenic susceptibility combined with secondary metabolic/lifestyle drivers) than monogenic FCS.'
+    };
+
+    if (ageGroup === 'infant') {
+        cat = {
+            short: 'Infant Pathway',
+            label: 'Infant (< 1 yr) Clinical Evaluation',
+            style: 'bg-blue-50 border-2 border-blue-600 text-blue-950',
+            badge: 'bg-blue-900',
+            summary: 'Infants under 1 year are evaluated clinically rather than via the 100-point scale: suspect FCS if TG > 880 mg/dL without secondary causes, or with >= 2 TG > 880 mg/dL plus unexplained failure to thrive.'
+        };
+    } else if (total >= 60) {
+        cat = {
+            short: 'Definite FCS',
+            label: 'Definite FCS (≥ 60 pts)',
+            style: 'bg-red-50 border-2 border-red-600 text-red-950',
+            badge: 'bg-red-700',
+            summary: 'Score ≥ 60 points is strongly diagnostic of monogenic Familial Chylomicronemia Syndrome (biallelic loss-of-function in LPL, APOC2, APOA5, GPIHBP1, or LMF1). Conventional fibrates and omega-3s are usually ineffective.'
+        };
+    } else if (total >= 45) {
+        cat = {
+            short: 'Likely FCS',
+            label: 'Likely FCS (45 – 59 pts)',
+            style: 'bg-orange-50 border-2 border-orange-500 text-orange-950',
+            badge: 'bg-orange-600',
+            summary: 'Score of 45–59 points strongly favors monogenic FCS over MCS. Confirmatory genetic testing is recommended (and satisfies payer criteria for APOC3-targeted FCS therapy if genetics are inconclusive).'
+        };
+    } else if (total >= 30) {
+        cat = {
+            short: 'Possible FCS',
+            label: 'Possible FCS / Indeterminate (30 – 44 pts)',
+            style: 'bg-amber-50 border-2 border-amber-500 text-amber-950',
+            badge: 'bg-amber-600',
+            summary: 'Score of 30–44 points falls in the indeterminate zone between FCS and severe MCS. Order an FCS genetic panel to clarify diagnosis while aggressively addressing any secondary contributors.'
+        };
+    }
+
+    el('kpiTotalScore').textContent = ageGroup === 'infant' ? 'N/A' : `${total} pts`;
+    el('kpiCatShort').textContent = cat.short;
+    el('summarySubheader').textContent = `TG ${isFinite(tg) ? Math.round(tg) + ' mg/dL' : '--'}, TC ${isFinite(tc) ? Math.round(tc) + ' mg/dL' : '--'}, ApoB ${isFinite(apob) ? apob.toFixed(2) + ' g/L' : '--'} | ${cat.label}`;
+
+    // Gauge
+    el('gaugeSection').classList.toggle('hidden', ageGroup === 'infant');
+    const markerPct = Math.min(98, Math.max(2, total));
+    el('gaugeMarker').style.left = `${markerPct}%`;
+    el('gaugeReadout').textContent = `${total} points — ${cat.label}`;
+
+    // Diagnosis Card
+    el('diagnosisCard').innerHTML = `
+        <div class="p-4 rounded-xl ${cat.style} shadow-sm">
+            <div class="flex flex-wrap items-center justify-between gap-2 mb-1.5">
+                <span class="text-[11px] font-extrabold uppercase tracking-wider px-2.5 py-0.5 rounded-full ${cat.badge} text-white">${cat.label}</span>
+                ${ageGroup !== 'infant' ? `<span class="text-xs font-extrabold">Score: ${total} / 100 pts</span>` : ''}
+            </div>
+            <h3 class="text-base font-extrabold mb-1">${cat.short}</h3>
+            <p class="text-xs leading-relaxed opacity-95">${cat.summary}</p>
+        </div>`;
+
+    // Next Steps
+    const steps = [];
+    if (ageGroup === 'infant' || total >= 45) {
+        steps.push({
+            title: '1. Strict Very-Low-Fat Medical Nutrition Therapy (Immediate)',
+            body: 'Restrict total dietary fat to <10–15% of daily calories (15–20 g/day) with a registered lipid dietitian, eliminate all alcohol and simple sugars, supplement with Medium-Chain Triglyceride (MCT) oil, and monitor fat-soluble vitamins (A, D, E, K) and essential fatty acids.'
+        });
+        steps.push({
+            title: '2. Targeted APOC3-Inhibitor Therapy (FCS-Specific)',
+            body: 'Because traditional fibrates and omega-3s rely on functional LPL and fail in FCS, initiate APOC3-targeted therapy: olezarsen (Tryngolza) 80 mg SC monthly (reduces TG ~43–53% and acute pancreatitis by ~88%) or plozasiran (APOC3 siRNA).'
+        });
+        steps.push({
+            title: '3. Genetic Sequencing & Family Counseling',
+            body: 'Order an FCS gene panel (LPL, APOC2, APOA5, GPIHBP1, LMF1) to confirm biallelic variants. Counsel family on autosomal-recessive inheritance (25% risk in siblings; 50% heterozygous carrier rate in parents/children).'
+        });
+    } else if (total >= 30) {
+        steps.push({
+            title: '1. Diagnostic Genetic Panel (LPL, APOC2, APOA5, GPIHBP1, LMF1)',
+            body: 'Score is in the indeterminate 30–44 zone: order genetic testing to distinguish biallelic FCS from polygenic MCS, as management differs substantially.'
+        });
+        steps.push({
+            title: '2. Strict Dietary Fat & Alcohol Restriction + Secondary Control',
+            body: `Restrict dietary fat (<15–20% of calories while TG >880 mg/dL), stop alcohol, and ${secFactors.length ? 'address identified secondary drivers (' + secFactors.join('; ') + ').' : 'screen for occult secondary contributors (A1c, TSH, urinalysis, medication review).'}`
+        });
+        steps.push({
+            title: '3. Therapeutic Trial & Response Monitoring',
+            body: 'Trial fenofibrate 145–160 mg daily and/or prescription omega-3 fatty acids (4 g/day). A blunted response (<20% TG drop despite adherence) further supports FCS and warrants APOC3-targeted therapy.'
+        });
+    } else {
+        steps.push({
+            title: '1. Reverse Secondary Hypertriglyceridemia Drivers (Primary Lever)',
+            body: secFactors.length
+                ? `Address active secondary factors: ${secFactors.join('; ')}. Optimizing glycemic control (A1c), stopping alcohol, and substituting TG-raising medications often cuts TG by >50%.`
+                : 'Audit diet (refined carbohydrates, fructose, alcohol), glycemic control (A1c), thyroid status (TSH), renal function, and medications (oral estrogens, steroids, atypical antipsychotics, thiazides, beta-blockers).'
+        });
+        steps.push({
+            title: '2. Pharmacotherapy to Prevent Pancreatitis (Target TG < 500 mg/dL)',
+            body: isFinite(tg) && tg >= 500
+                ? 'Initiate fenofibrate 145–160 mg PO daily (renally dosed; avoid gemfibrozil with statins) and/or prescription omega-3 fatty acids (icosapent ethyl 2 g BID or omega-3-acid ethyl esters 2 g BID) until TG is safely < 500 mg/dL.'
+                : 'With TG < 500 mg/dL, acute pancreatitis risk is low; focus on lifestyle modification and ASCVD risk reduction.'
+        });
+        steps.push({
+            title: '3. Residual ASCVD Risk Reduction (Statin + Icosapent Ethyl)',
+            body: 'Unlike monogenic FCS, MCS patients carry high levels of atherogenic VLDL and remnant particles. Calculate 10-year PREVENT risk, start/optimize statin therapy for Non-HDL-C and ApoB goals, and consider icosapent ethyl 2 g BID if ASCVD or diabetes + risk factors are present with TG 150–499 mg/dL.'
+        });
+    }
+
+    el('nextStepsContainer').innerHTML = steps.map(s => `
+        <div class="p-3 rounded-lg border border-slate-200 bg-slate-50/70">
+            <div class="text-xs font-bold text-slate-900">${s.title}</div>
+            <p class="text-[11px] text-slate-700 mt-0.5 leading-relaxed">${s.body}</p>
+        </div>`).join('');
+
+    // EHR Clinical Note
+    el('clinicalNoteBox').textContent =
+        `Severe Hypertriglyceridemia / NAFCS Score Assessment: ` +
+        `Fasting TG ${isFinite(tg) ? Math.round(tg) + ' mg/dL' : '--'}, Total Cholesterol ${isFinite(tc) ? Math.round(tc) + ' mg/dL' : '--'} (TG/TC ratio ${isFinite(ratio) ? ratio.toFixed(1) : '--'}), ApoB ${isFinite(apob) ? apob.toFixed(2) + ' g/L' : '--'}. ` +
+        (ageGroup === 'infant'
+            ? `Infant (<1 year) clinical pathway applied. `
+            : `Total NAFCS Score = ${total}/100 points (${cat.label}). Contributing items: ${chips.length ? chips.join(', ') : 'none'}. `) +
+        `Secondary factors present: ${secFactors.length ? secFactors.join(', ') : 'none identified'}. ` +
+        `Plan: ${steps[0].body} ${steps[1].body}`;
+}
+
+function copyPlanNote() {
+    const textToCopy = el('clinicalNoteBox').textContent.trim();
+    if (!textToCopy || textToCopy === '--') return;
+    navigator.clipboard.writeText(textToCopy).then(() => {
+        const btn = el('copyPlanBtn');
+        const originalText = btn.innerHTML;
+        btn.innerHTML = '&#9989; Copied!';
+        btn.classList.remove('bg-blue-900', 'hover:bg-blue-950');
+        btn.classList.add('bg-green-600', 'hover:bg-green-700');
+        setTimeout(() => {
+            btn.innerHTML = originalText;
+            btn.classList.remove('bg-green-600', 'hover:bg-green-700');
+            btn.classList.add('bg-blue-900', 'hover:bg-blue-950');
+        }, 2000);
+    });
+}
+
+window.onload = () => {
+    ['fastingTg', 'totalChol', 'apob', 'allTgAbove880', 'ageGroup', 'htgOnset', 'bmiGroup']
+        .forEach(id => {
+            el(id).addEventListener('input', updateNafcs);
+            el(id).addEventListener('change', updateNafcs);
+        });
+    document.querySelectorAll('input[name="giHistory"], .sec-factor').forEach(node => {
+        node.addEventListener('change', updateNafcs);
+    });
+    updateNafcs();
+};
+</script>
+</body>
+</html>
