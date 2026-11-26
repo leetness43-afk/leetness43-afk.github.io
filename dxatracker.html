@@ -7,6 +7,8 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- SheetJS: creates and reads Excel files entirely inside the browser (no server involved) -->
     <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+    <!-- Tesseract.js: client-side WebAssembly OCR for pasted/uploaded DXA report screenshots (no server involved) -->
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
     <style>
         @media print {
             @page {
@@ -154,24 +156,37 @@
                 <div class="flex flex-wrap justify-between items-center gap-2 border-b pb-3 mb-4">
                     <div>
                         <h2 class="text-base font-bold text-blue-950">3. Bone Density Reports (By Scan / Year)</h2>
-                        <p class="text-[11px] text-slate-500">Extract into a scan card below, review or edit values, then update the output report.</p>
+                        <p class="text-[11px] text-slate-500">Extract from text or screenshot into a scan card below, review or edit values, then update the output report.</p>
                     </div>
                     <button type="button" onclick="addScan()" class="bg-slate-100 hover:bg-slate-200 text-blue-950 border border-blue-200 font-semibold px-3 py-1.5 rounded-lg text-xs transition">
                         &#10133; Add Follow-Up Scan
                     </button>
                 </div>
 
-                <!-- PASTE & AUTO-EXTRACT PANEL -->
-                <div class="mb-4 p-3.5 rounded-xl bg-blue-50/70 border border-blue-200">
+                <!-- PASTE & AUTO-EXTRACT PANEL (TEXT OR IMAGE) -->
+                <div id="pasteDropZone" class="mb-4 p-3.5 rounded-xl bg-blue-50/70 border border-blue-200 transition">
                     <div class="flex flex-wrap items-center justify-between gap-2 mb-1.5">
                         <label for="rawReportPaste" class="text-xs font-bold text-blue-950 flex items-center gap-1.5">
-                            <span>&#128203; Quick Paste DXA Report (Stage into Scan Below)</span>
+                            <span>&#128203; Quick Paste DXA Text or Image Screenshot</span>
                         </label>
-                        <span class="text-[10px] text-slate-500">Processed locally in your browser</span>
+                        <span class="text-[10px] text-slate-500">Text &amp; OCR processed locally in your browser</span>
                     </div>
+
                     <textarea id="rawReportPaste" rows="4"
-                        placeholder="Paste DXA text here (e.g.,&#10;Exam Date: 05/14/2025 | Hologic Horizon&#10;AP Spine (L1-L4)   0.854   -1.8&#10;Left Total Hip     0.762   -1.5&#10;Left Femoral Neck  0.641   -2.1)"
+                        placeholder="Paste DXA text OR press Ctrl+V / Cmd+V to paste a screenshot image directly here (e.g.,&#10;Anatomical Region     T-score *   Z-score **&#10;PA Spine ( L1-L4 )    -1.9        -0.3&#10;Left Hip (Femoral Neck) -0.8      0.6&#10;Left Arm (Radius 1/3)   -1.0      0.5)"
                         class="w-full p-2 border border-blue-200 rounded-lg bg-white text-xs text-slate-800 font-mono focus:ring-blue-900 focus:border-blue-900"></textarea>
+
+                    <!-- Optional Image Preview Strip when an image is pasted/uploaded -->
+                    <div id="pastedImagePreviewWrap" class="hidden mt-2 p-2 bg-white border border-blue-200 rounded-lg flex items-center justify-between gap-3">
+                        <div class="flex items-center gap-2.5 min-w-0">
+                            <img id="pastedImageThumb" alt="Pasted DXA snippet" class="h-12 w-auto rounded border border-slate-200 object-contain bg-slate-50">
+                            <div class="min-w-0">
+                                <p id="pastedImageMeta" class="text-[11px] font-semibold text-blue-950 truncate">Image loaded</p>
+                                <p class="text-[10px] text-slate-500">OCR text populated above &amp; auto-extracted below</p>
+                            </div>
+                        </div>
+                        <button type="button" onclick="clearImagePreview()" class="text-[11px] text-slate-500 hover:text-red-600 font-semibold px-2 py-1">Dismiss</button>
+                    </div>
 
                     <div class="flex flex-wrap items-center justify-between gap-2 mt-2.5">
                         <div class="flex flex-wrap items-center gap-2">
@@ -184,6 +199,10 @@
                             <button type="button" onclick="extractFromPastedReport()" class="bg-blue-900 hover:bg-blue-950 text-white font-semibold px-3 py-1.5 rounded-lg shadow-sm text-xs transition">
                                 &#10024; Extract into Form Below
                             </button>
+                            <label class="bg-white hover:bg-blue-50 text-blue-900 border border-blue-300 font-semibold px-2.5 py-1.5 rounded-lg text-xs transition cursor-pointer inline-flex items-center gap-1">
+                                <span>&#128247; Paste / Upload Image</span>
+                                <input id="dxaImageInput" type="file" accept="image/*" class="hidden" onchange="handleDxaImageUpload(event)">
+                            </label>
                             <button type="button" onclick="clearPasteBox()" class="bg-white hover:bg-slate-100 text-slate-600 border border-slate-300 font-medium px-2.5 py-1.5 rounded-lg text-xs transition">
                                 Clear
                             </button>
@@ -229,7 +248,7 @@
                     </button>
                 </div>
                 <div id="fileStatus" class="text-xs text-slate-600 mt-2.5"></div>
-                <p class="text-[11px] text-slate-500 mt-2">&#128274; Excel files and pasted report text are processed inside this browser tab only. Nothing entered or loaded on this page is transmitted to a server.</p>
+                <p class="text-[11px] text-slate-500 mt-2">&#128274; Excel files, pasted report text, and pasted screenshots are processed inside this browser tab only. Nothing entered or loaded on this page is transmitted to a server.</p>
             </div>
         </div>
 
@@ -316,10 +335,10 @@ function escapeHtml(str) {
 }
 
 function detectLaterality(str) {
-    if (/\b(?:left|lt\.?)\b/i.test(str) || /\(l\)/i.test(str) || /^l\s+(?:total|femoral|femur|hip|neck|radius|forearm)/i.test(str)) {
+    if (/\b(?:left|lt\.?)\b/i.test(str) || /\(l\)/i.test(str) || /^l\s+(?:total|femoral|femur|hip|neck|radius|forearm|arm)/i.test(str)) {
         return 'Left';
     }
-    if (/\b(?:right|rt\.?)\b/i.test(str) || /\(r\)/i.test(str) || /^r\s+(?:total|femoral|femur|hip|neck|radius|forearm)/i.test(str)) {
+    if (/\b(?:right|rt\.?)\b/i.test(str) || /\(r\)/i.test(str) || /^r\s+(?:total|femoral|femur|hip|neck|radius|forearm|arm)/i.test(str)) {
         return 'Right';
     }
     return '';
@@ -421,11 +440,105 @@ function refreshTargetScanDropdown() {
     }
 }
 
+/* ---------- Client-Side Image OCR (Tesseract.js) ---------- */
+function preprocessImageForOcr(imageSource) {
+    return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => {
+            // Upscale smaller screenshots to ~1600px wide & boost grayscale contrast for crisp digit/minus recognition
+            const scale = img.width < 1200 ? Math.min(2.5, 1600 / Math.max(img.width, 1)) : 1;
+            const canvas = document.createElement('canvas');
+            canvas.width = Math.round(img.width * scale);
+            canvas.height = Math.round(img.height * scale);
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+            const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            const d = imgData.data;
+            for (let i = 0; i < d.length; i += 4) {
+                const gray = 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
+                // High-contrast curve to sharpen faint minus signs and decimals
+                const contrasted = gray < 155 ? Math.max(0, gray * 0.75) : Math.min(255, gray * 1.15 + 20);
+                d[i] = d[i + 1] = d[i + 2] = contrasted;
+            }
+            ctx.putImageData(imgData, 0, 0);
+            resolve(canvas);
+        };
+        img.onerror = () => reject(new Error('Could not decode image'));
+        img.src = imageSource;
+    });
+}
+
+async function processDxaImageBlob(blob, label = 'Pasted image') {
+    const statusEl = document.getElementById('parseStatus');
+    const previewWrap = document.getElementById('pastedImagePreviewWrap');
+    const previewThumb = document.getElementById('pastedImageThumb');
+    const previewMeta = document.getElementById('pastedImageMeta');
+
+    if (typeof Tesseract === 'undefined') {
+        statusEl.textContent = '⚠️ OCR library did not load. Check your internet connection or paste text directly.';
+        statusEl.className = 'text-[11px] font-medium text-red-700 mt-2';
+        return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = async function (e) {
+        const dataUrl = e.target.result;
+        previewThumb.src = dataUrl;
+        previewMeta.textContent = `${label} (${Math.round(blob.size / 1024)} KB)`;
+        previewWrap.classList.remove('hidden');
+
+        statusEl.textContent = '⏳ Reading text from image locally in your browser (OCR)...';
+        statusEl.className = 'text-[11px] font-semibold text-blue-900 mt-2';
+
+        try {
+            const processedCanvas = await preprocessImageForOcr(dataUrl);
+            const result = await Tesseract.recognize(processedCanvas, 'eng', {
+                logger: m => {
+                    if (m.status === 'recognizing text' && typeof m.progress === 'number') {
+                        statusEl.textContent = `⏳ Reading image locally... ${Math.round(m.progress * 100)}%`;
+                    }
+                }
+            });
+
+            const ocrText = (result && result.data && result.data.text ? result.data.text : '').trim();
+            if (!ocrText) {
+                statusEl.textContent = '⚠️ No readable text detected in the image. Try cropping closer to the DXA results table.';
+                statusEl.className = 'text-[11px] font-medium text-amber-700 mt-2';
+                return;
+            }
+
+            document.getElementById('rawReportPaste').value = ocrText;
+            extractFromPastedReport();
+        } catch (err) {
+            statusEl.textContent = `⚠️ Image OCR failed: ${err.message}`;
+            statusEl.className = 'text-[11px] font-medium text-red-700 mt-2';
+        }
+    };
+    reader.readAsDataURL(blob);
+}
+
+function handleDxaImageUpload(evt) {
+    const file = evt.target.files && evt.target.files[0];
+    if (!file) return;
+    processDxaImageBlob(file, file.name);
+    evt.target.value = '';
+}
+
+function clearImagePreview() {
+    document.getElementById('pastedImagePreviewWrap').classList.add('hidden');
+    document.getElementById('pastedImageThumb').src = '';
+}
+
 /* ---------- Paste & Auto-Extract Parser ---------- */
 function normalizeText(raw) {
     return String(raw || '')
-        .replace(/[\u2212\u2013\u2014]/g, '-') // Unicode minus/dashes -> ASCII hyphen
-        .replace(/\u00A0/g, ' ');
+        .replace(/[\u2212\u2013\u2014~]/g, '-') // Unicode minus/dashes/tilde -> ASCII hyphen
+        .replace(/\u00A0/g, ' ')
+        .replace(/\bO\.(\d)/g, '0.$1')           // Common OCR 'O.854' -> '0.854'
+        .replace(/(\d),(\d{2,3})\b/g, '$1.$2');  // Common OCR '0,854' -> '0.854'
 }
 
 function extractDateFromText(text) {
@@ -474,48 +587,86 @@ function extractModelFromText(text) {
     return '';
 }
 
-function normalizeSiteName(rawLine, inheritedSide = '') {
-    // Ignore table header lines that contain multiple column headers
-    if (/\b(?:region|site|location)\b.*\bbmd\b.*\bt-?score\b/i.test(rawLine)) return null;
+function isTableHeaderLine(line) {
+    const hasSiteHeader = /\b(?:anatomical\s+region|region|site|location|roi)\b/i.test(line);
+    const hasMetricHeader = /\b(?:bmd|t-?score|z-?score|young\s+adult|age\s+matched)\b/i.test(line);
+    return hasSiteHeader && hasMetricHeader;
+}
 
-    const side = detectLaterality(rawLine) || inheritedSide;
+function detectTableColumnMap(line) {
+    if (!isTableHeaderLine(line)) return null;
+    // Split on tabs or 2+ spaces
+    const cols = line.split(/\t+|\s{2,}/).map(c => c.trim().toLowerCase()).filter(Boolean);
+    if (cols.length < 2) return null;
+
+    const map = { site: -1, bmd: -1, tscore: -1, zscore: -1 };
+    cols.forEach((col, idx) => {
+        if (map.site === -1 && /\b(?:region|site|location|roi)\b/.test(col)) map.site = idx;
+        else if (map.bmd === -1 && /\bbmd\b/.test(col)) map.bmd = idx;
+        else if (map.tscore === -1 && /\bt-?score\b/.test(col)) map.tscore = idx;
+        else if (map.zscore === -1 && /\bz-?score\b/.test(col)) map.zscore = idx;
+    });
+
+    if (map.site !== -1 && (map.bmd !== -1 || map.tscore !== -1)) {
+        return map;
+    }
+    return null;
+}
+
+function parseSingleCellNumber(cellStr, minVal, maxVal) {
+    if (!cellStr) return null;
+    const cleaned = cellStr
+        .replace(/([+-])\s+(\d)/g, '$1$2')
+        .replace(/[+-]?\s*\d+(?:\.\d+)?\s*%/g, ' ');
+    const m = cleaned.match(/([+-]?(?:\d+\.\d+|\.\d+|\d+))/);
+    if (!m) return null;
+    const val = parseFloat(m[1]);
+    return (isFinite(val) && val >= minVal && val <= maxVal) ? val : null;
+}
+
+function normalizeSiteName(rawLine, inheritedSide = '') {
+    if (isTableHeaderLine(rawLine)) return null;
+
+    // Normalize whitespace inside parentheses: "( L1-L4 )" -> "(L1-L4)"
+    const cleanedLine = rawLine.replace(/\(\s+/g, '(').replace(/\s+\)/g, ')');
+    const side = detectLaterality(cleanedLine) || inheritedSide;
     const sideSuffix = side ? ` (${side})` : '';
 
-    if (/\b(?:ap\s+spine|lumbar\s+spine|spine|l1\s*-\s*l4|l1\s*-\s*l3|l2\s*-\s*l4)\b/i.test(rawLine)) {
-        const spanMatch = rawLine.match(/\b(L[1-4]\s*-\s*L[1-4])\b/i);
+    if (/\b(?:ap\s+spine|pa\s+spine|lumbar\s+spine|spine|l1\s*-\s*l4|l1\s*-\s*l3|l2\s*-\s*l4)\b/i.test(cleanedLine)) {
+        const spanMatch = cleanedLine.match(/\b(L[1-4]\s*-\s*L[1-4])\b/i);
         const span = spanMatch ? spanMatch[1].replace(/\s+/g, '').toUpperCase() : 'L1-L4';
         return `Lumbar Spine (${span})`;
     }
-    if (/\b(?:femoral\s+neck|femur\s+neck|neck)\b/i.test(rawLine)) {
+    if (/\b(?:femoral\s+neck|femur\s+neck|neck)\b/i.test(cleanedLine)) {
         return `Femoral Neck${sideSuffix}`;
     }
-    if (/\b(?:total\s+hip|total\s+femur|hip\s+total|femur\s+total)\b/i.test(rawLine)) {
+    if (/\b(?:total\s+hip|total\s+femur|hip\s+total|femur\s+total)\b/i.test(cleanedLine)) {
         return `Total Hip${sideSuffix}`;
     }
-    if (/\b(?:1\/3\s*radius|one-third\s*radius|radius\s*33%|33%\s*radius|forearm|distal\s*radius)\b/i.test(rawLine)) {
+    if (/\b(?:1\/3\s*radius|radius\s*1\/3|one-third\s*radius|radius\s*33%|33%\s*radius|forearm|distal\s*radius|mid\s*radius)\b/i.test(cleanedLine)) {
         return `1/3 Radius${sideSuffix || ' (Forearm)'}`;
     }
     return null;
 }
 
 function extractNumbersFromSegment(seg) {
-    // Strip vertebral labels (L1-L4), 1/3 fraction, percentage values (e.g., 84% or 84.2%), and units
+    // Strip vertebral labels (L1-L4), 1/3 fraction (both "1/3 radius" and "radius 1/3"), percentage values, and units
     const cleaned = seg
         .replace(/\bL[1-4]\s*-\s*L[1-4]\b/gi, ' ')
         .replace(/\b1\/3\b/g, ' ')
         .replace(/\b33\s*%/g, ' ')
         .replace(/[+-]?\s*\d+(?:\.\d+)?\s*%/g, ' ')
         .replace(/\b(?:g\/cm2|g\/cm²|cm2|cm²|sd)\b/gi, ' ')
-        .replace(/([+-])\s+(\d)/g, '$1$2'); // normalize "- 1.8" -> "-1.8"
+        .replace(/([+-])\s+(\d)/g, '$1$2');
 
-    // 1. Explicit labels first (handles "T-score (SD) -0.5", "T-score: -1.8", "T = -2", "BMD of L1-L4 is 0.990")
+    // 1. Explicit labels first (e.g., "T-score: -1.9", "BMD of L1-L4 is 0.990")
     const explicitBmd = cleaned.match(/\bbmd\b[^0-9+-]{0,25}([0-2]?\.\d{2,4})(?![0-9])/i);
     const explicitT = cleaned.match(/\bt(?:[-\s]?score)?\b(?:\s*\([^)]*\))?[:=\s]*([+-]?(?:\d+\.\d+|\.\d+|\d+))(?![0-9]|\.\d)/i);
 
     let bmd = explicitBmd ? parseFloat(explicitBmd[1]) : null;
     let tscore = explicitT ? parseFloat(explicitT[1]) : null;
 
-    // 2. Positional fallback allowing trailing punctuation (e.g., "-0.5." at the end of a sentence)
+    // 2. Positional fallback
     const tokenMatches = [...cleaned.matchAll(/(?<![A-Za-z0-9.])([+-]?(?:\d+\.\d+|\.\d+|\d+))(?![A-Za-z0-9]|\.\d)/g)];
     const tokens = tokenMatches.map(m => {
         const raw = m[1];
@@ -548,6 +699,15 @@ function extractNumbersFromSegment(seg) {
                     }
                 }
             }
+        } else if (tscore === null) {
+            // No BMD present (e.g., T-score & Z-score only table): pick the first valid T-score candidate
+            for (let j = 0; j < tokens.length; j++) {
+                const cand = tokens[j];
+                if (cand.val >= -7.5 && cand.val <= 6.0) {
+                    tscore = cand.val;
+                    break;
+                }
+            }
         }
     } else if (tscore === null) {
         const bmdIdx = tokens.findIndex(t => Math.abs(t.val - bmd) < 0.0005);
@@ -574,35 +734,76 @@ function parseDxaReportText(rawText) {
 
     const rawLines = text.split(/\r?\n|;/).map(s => s.trim()).filter(Boolean);
     let currentSectionSide = '';
+    let activeColumnMap = null;
 
     for (let i = 0; i < rawLines.length; i++) {
         const line = rawLines[i];
 
+        // Check if this line is a table header defining columns (e.g., Anatomical Region | T-score * | Z-score **)
+        const headerMap = detectTableColumnMap(line);
+        if (headerMap) {
+            activeColumnMap = headerMap;
+            continue;
+        }
+
         // Track section headers like "Left Hip:" or "Right Hip:" so sub-lines inherit laterality if omitted
-        if (/^(?:left|lt\.?)\s+(?:hip|femur|forearm|radius)\s*:?\s*$/i.test(line)) {
+        if (/^(?:left|lt\.?)\s+(?:hip|femur|forearm|radius|arm)\s*:?\s*$/i.test(line)) {
             currentSectionSide = 'Left';
             continue;
         }
-        if (/^(?:right|rt\.?)\s+(?:hip|femur|forearm|radius)\s*:?\s*$/i.test(line)) {
+        if (/^(?:right|rt\.?)\s+(?:hip|femur|forearm|radius|arm)\s*:?\s*$/i.test(line)) {
             currentSectionSide = 'Right';
             continue;
         }
-        if (/^(?:lumbar\s+spine|ap\s+spine|spine)\s*:?\s*$/i.test(line)) {
+        if (/^(?:lumbar\s+spine|ap\s+spine|pa\s+spine|spine)\s*:?\s*$/i.test(line)) {
             currentSectionSide = '';
+        }
+
+        // Try column-mapped extraction first if a header row was seen and line has tabs or 2+ spaces
+        if (activeColumnMap) {
+            const cells = line.split(/\t+|\s{2,}/).map(c => c.trim()).filter(Boolean);
+            if (cells.length >= 2 && cells[activeColumnMap.site]) {
+                const mappedSite = normalizeSiteName(cells[activeColumnMap.site], currentSectionSide);
+                if (mappedSite) {
+                    const mappedBmd = activeColumnMap.bmd !== -1
+                        ? parseSingleCellNumber(cells[activeColumnMap.bmd], 0.1, 2.6)
+                        : null;
+                    const mappedT = activeColumnMap.tscore !== -1
+                        ? parseSingleCellNumber(cells[activeColumnMap.tscore], -7.5, 6.0)
+                        : null;
+
+                    const key = mappedSite.toLowerCase();
+                    if (!seenSites.has(key) && (mappedBmd !== null || mappedT !== null)) {
+                        seenSites.add(key);
+                        extractedRows.push({
+                            location: mappedSite,
+                            bmd: mappedBmd !== null ? +mappedBmd.toFixed(3) : '',
+                            tscore: mappedT !== null ? +mappedT.toFixed(1) : ''
+                        });
+                        continue;
+                    }
+                }
+            }
         }
 
         const siteName = normalizeSiteName(line, currentSectionSide);
         if (!siteName) continue;
 
-        let combined = line;
+        // Strip the matched site label prefix before parsing numbers so numbers inside site names don't interfere
+        let remainder = line;
+        const cols = line.split(/\t+|\s{2,}/);
+        if (cols.length >= 2 && normalizeSiteName(cols[0], currentSectionSide)) {
+            remainder = cols.slice(1).join('  ');
+        }
+
+        let combined = remainder;
         let check = extractNumbersFromSegment(combined);
 
-        // Look ahead up to 4 lines when numbers appear below a header (e.g., "Lumbar Spine:\nBMD of L1-L4 is 0.990...")
+        // Look ahead up to 4 lines when numbers appear below a header
         let lookahead = 1;
-        while ((check.bmd === null || check.tscore === null) && lookahead <= 4 && (i + lookahead) < rawLines.length) {
+        while ((check.bmd === null && check.tscore === null) && lookahead <= 4 && (i + lookahead) < rawLines.length) {
             const nextLine = rawLines[i + lookahead];
             const nextSite = normalizeSiteName(nextLine, currentSectionSide);
-            // Stop only if the next line introduces a DIFFERENT anatomical site
             if (nextSite && nextSite.toLowerCase() !== siteName.toLowerCase()) break;
             combined += ' ' + nextLine;
             check = extractNumbersFromSegment(combined);
@@ -661,7 +862,7 @@ function extractFromPastedReport() {
     const statusEl = document.getElementById('parseStatus');
 
     if (!raw) {
-        statusEl.textContent = '⚠️ Paste report text first.';
+        statusEl.textContent = '⚠️ Paste report text or a screenshot image first.';
         statusEl.className = 'text-[11px] font-medium text-amber-700 mt-2';
         return;
     }
@@ -669,7 +870,7 @@ function extractFromPastedReport() {
     const parsed = parseDxaReportText(raw);
 
     if (!parsed.date && !parsed.model && parsed.rows.length === 0) {
-        statusEl.textContent = '⚠️ Could not detect BMD or T-score values. Ensure site names (e.g., L1-L4, Hip, Neck) and numbers are included.';
+        statusEl.textContent = '⚠️ Could not detect BMD or T-score values. Ensure site names (e.g., L1-L4, Hip, Neck, Radius) and numbers are included.';
         statusEl.className = 'text-[11px] font-medium text-red-700 mt-2';
         return;
     }
@@ -716,11 +917,12 @@ function extractFromPastedReport() {
     refreshTargetScanDropdown();
 
     const effectiveDate = targetCard ? targetCard.querySelector('.scan-date').value : parsed.date;
+    const bmdCount = parsed.rows.filter(r => r.bmd !== '' && r.bmd !== null).length;
     const tScoreCount = parsed.rows.filter(r => r.tscore !== '' && r.tscore !== null).length;
     const parts = [`Loaded into ${targetLabel}`];
     if (effectiveDate) parts.push(`Date: ${effectiveDate}`);
     if (parsed.model) parts.push(`Model: ${parsed.model}`);
-    parts.push(`${parsed.rows.length} site(s), ${tScoreCount} T-score(s)`);
+    parts.push(`${parsed.rows.length} site(s), ${bmdCount} BMD, ${tScoreCount} T-score(s)`);
 
     if (document.getElementById('autoUpdateToggle').checked) {
         updateReport();
@@ -735,6 +937,7 @@ function extractFromPastedReport() {
 function clearPasteBox() {
     document.getElementById('rawReportPaste').value = '';
     document.getElementById('parseStatus').textContent = '';
+    clearImagePreview();
 }
 
 /* ---------- Input Form Management ---------- */
@@ -1464,6 +1667,38 @@ window.onload = () => {
     document.getElementById('autoUpdateToggle').addEventListener('change', e => {
         if (e.target.checked) {
             updateReport();
+        }
+    });
+
+    // Clipboard image paste support (Ctrl+V / Cmd+V screenshot anywhere in Quick Paste zone)
+    const pasteZone = document.getElementById('pasteDropZone');
+    pasteZone.addEventListener('paste', e => {
+        const items = e.clipboardData && e.clipboardData.items;
+        if (!items) return;
+        for (const item of items) {
+            if (item.type && item.type.startsWith('image/')) {
+                e.preventDefault();
+                const blob = item.getAsFile();
+                if (blob) processDxaImageBlob(blob, 'Pasted screenshot');
+                return;
+            }
+        }
+    });
+
+    // Drag-and-drop image support on Quick Paste zone
+    pasteZone.addEventListener('dragover', e => {
+        e.preventDefault();
+        pasteZone.classList.add('ring-2', 'ring-blue-500');
+    });
+    pasteZone.addEventListener('dragleave', () => {
+        pasteZone.classList.remove('ring-2', 'ring-blue-500');
+    });
+    pasteZone.addEventListener('drop', e => {
+        e.preventDefault();
+        pasteZone.classList.remove('ring-2', 'ring-blue-500');
+        const file = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+        if (file && file.type.startsWith('image/')) {
+            processDxaImageBlob(file, file.name);
         }
     });
 
