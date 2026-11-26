@@ -7,29 +7,13 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         @media print {
-            @page {
-                size: portrait;
-                margin: 0;
-            }
+            @page { size: portrait; margin: 0; }
             .no-print { display: none !important; }
-            html, body {
-                margin: 0 !important;
-                padding: 0 !important;
-                background: white !important;
-            }
-            .print-wrapper {
-                display: block !important;
-                max-width: 100% !important;
-                margin: 0 !important;
-                padding: 0 !important;
-            }
+            html, body { margin: 0 !important; padding: 0 !important; background: white !important; }
+            .print-wrapper { display: block !important; max-width: 100% !important; margin: 0 !important; padding: 0 !important; }
             .print-area {
-                width: 100% !important;
-                max-width: 100% !important;
-                margin: 0 auto !important;
-                padding: 1.2cm !important;
-                box-shadow: none !important;
-                border: none !important;
+                width: 100% !important; max-width: 100% !important; margin: 0 auto !important;
+                padding: 1.2cm !important; box-shadow: none !important; border: none !important;
             }
             table { border-collapse: collapse !important; }
             tr { page-break-inside: avoid !important; page-break-after: auto; }
@@ -46,16 +30,15 @@
 <div id="app" class="max-w-7xl mx-auto">
     <header class="text-center mb-6 no-print">
         <h1 class="text-3xl font-extrabold text-blue-950">Lipid-Lowering Therapy Stepwise Planner</h1>
-        <p class="text-slate-600 mt-2 text-sm">Calculate the minimal, insurance-aligned stepwise regimen (Statin first-line &rarr; add-on therapies) to reach your target LDL-C goal.</p>
+        <p class="text-slate-600 mt-2 text-sm">Enter the LDL-C measured on the current regimen. The planner suggests the fewest additional changes predicted to reach the goal (statin first &rarr; add-on therapies).</p>
     </header>
 
-    <!-- TWO-COLUMN WORKSPACE: LEFT = INPUTS, RIGHT = REGIMEN OUTPUT -->
     <div class="print-wrapper grid grid-cols-1 lg:grid-cols-12 gap-6 items-start mb-8">
 
-        <!-- LEFT SIDE: CLINICAL PARAMETERS & CURRENT THERAPY -->
+        <!-- LEFT SIDE: INPUTS -->
         <div class="no-print lg:col-span-5 space-y-6">
 
-            <!-- 1. Current Lipid Profile & LDL-C Target -->
+            <!-- 1. Lipids & goal -->
             <div class="bg-white p-5 rounded-xl shadow-lg border border-blue-200">
                 <div class="flex flex-wrap justify-between items-center gap-2 border-b pb-3 mb-4">
                     <h2 class="text-base font-bold text-blue-950">1. Current Lipids &amp; Target LDL-C Goal</h2>
@@ -68,8 +51,8 @@
                             <label for="currentLdl" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Current LDL-C (mg/dL)</label>
                             <input id="currentLdl" type="number" min="20" max="600" step="1" inputmode="numeric" value="165"
                                 class="w-full p-2 border border-slate-300 rounded-lg bg-white text-base font-bold text-blue-950 focus:ring-blue-900 focus:border-blue-900">
+                            <p class="text-[10px] italic text-slate-500 mt-0.5">(measured on the regimen entered in box 2)</p>
                         </div>
-
                         <div>
                             <label for="currentTg" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Triglycerides (Optional)</label>
                             <input id="currentTg" type="number" min="20" max="3000" step="1" inputmode="numeric" placeholder="e.g., 180 mg/dL"
@@ -77,168 +60,217 @@
                         </div>
                     </div>
 
-                    <!-- Target LDL-C Presets & Custom Input -->
                     <div>
                         <div class="flex items-center justify-between mb-1.5">
                             <label for="targetLdl" class="block text-xs font-bold text-slate-700 uppercase tracking-wider">Target LDL-C Goal (mg/dL)</label>
-                            <span id="requiredDropBadge" class="text-[11px] font-bold text-blue-900 bg-blue-50 border border-blue-200 px-2 py-0.5 rounded-full">
-                                --
-                            </span>
+                            <span id="requiredDropBadge" class="text-[11px] font-bold text-blue-900 bg-blue-50 border border-blue-200 px-2 py-0.5 rounded-full">--</span>
                         </div>
                         <div class="grid grid-cols-4 gap-1.5 mb-2">
-                            <button type="button" onclick="setGoalPreset(100)" data-goal="100" class="goal-preset-btn py-1.5 px-2 rounded-lg border border-slate-300 bg-slate-50 hover:bg-blue-50 text-xs font-bold text-slate-700 transition">
-                                &lt; 100
-                            </button>
-                            <button type="button" onclick="setGoalPreset(70)" data-goal="70" class="goal-preset-btn py-1.5 px-2 rounded-lg border border-blue-900 bg-blue-900 text-white text-xs font-bold transition">
-                                &lt; 70
-                            </button>
-                            <button type="button" onclick="setGoalPreset(55)" data-goal="55" class="goal-preset-btn py-1.5 px-2 rounded-lg border border-slate-300 bg-slate-50 hover:bg-blue-50 text-xs font-bold text-slate-700 transition">
-                                &lt; 55
-                            </button>
-                            <button type="button" onclick="setGoalPreset(40)" data-goal="40" class="goal-preset-btn py-1.5 px-2 rounded-lg border border-slate-300 bg-slate-50 hover:bg-blue-50 text-xs font-bold text-slate-700 transition">
-                                &lt; 40
-                            </button>
+                            <button type="button" onclick="setGoalPreset(100)" data-goal="100" class="goal-preset-btn py-1.5 px-2 rounded-lg border border-slate-300 bg-slate-50 hover:bg-blue-50 text-xs font-bold text-slate-700 transition">&lt; 100</button>
+                            <button type="button" onclick="setGoalPreset(70)" data-goal="70" class="goal-preset-btn py-1.5 px-2 rounded-lg border border-blue-900 bg-blue-900 text-white text-xs font-bold transition">&lt; 70</button>
+                            <button type="button" onclick="setGoalPreset(55)" data-goal="55" class="goal-preset-btn py-1.5 px-2 rounded-lg border border-slate-300 bg-slate-50 hover:bg-blue-50 text-xs font-bold text-slate-700 transition">&lt; 55</button>
+                            <button type="button" onclick="setGoalPreset(40)" data-goal="40" class="goal-preset-btn py-1.5 px-2 rounded-lg border border-slate-300 bg-slate-50 hover:bg-blue-50 text-xs font-bold text-slate-700 transition">&lt; 40</button>
                         </div>
                         <input id="targetLdl" type="number" min="10" max="250" step="1" inputmode="numeric" value="70"
                             class="w-full p-2 border border-slate-300 rounded-lg bg-white text-base font-bold text-blue-950 focus:ring-blue-900 focus:border-blue-900">
-                        <p id="goalClinicalContext" class="text-[11px] text-slate-500 mt-1">
-                            &lt; 70 mg/dL: Standard secondary prevention (ASCVD) or high-risk primary prevention target.
-                        </p>
+
+                        <!-- Brief goal-selection guide -->
+                        <div class="mt-2 border border-slate-200 rounded-lg overflow-hidden">
+                            <div class="bg-slate-100 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-600">Which goal? (brief guide &mdash; click a row to select)</div>
+                            <div id="goalGuide" class="divide-y divide-slate-200 text-[11px]"></div>
+                        </div>
+                        <p class="text-[10px] italic text-slate-500 mt-1">US = 2026 ACC/AHA multisociety dyslipidemia guideline; EU = ESC/EAS 2019 with 2025 focused update. Non-HDL-C goal = LDL-C goal + 30 mg/dL.</p>
                     </div>
                 </div>
             </div>
 
-            <!-- 2. Baseline Status & Clinical Constraints -->
+            <!-- 2. Current therapy -->
             <div class="bg-white p-5 rounded-xl shadow-lg border border-blue-200">
                 <div class="border-b pb-3 mb-4">
-                    <h2 class="text-base font-bold text-blue-950">2. Baseline Regimen &amp; Patient Considerations</h2>
-                    <p class="text-[11px] text-slate-500">Adjust if the patient is already taking a statin or has tolerability/formulary limits.</p>
+                    <h2 class="text-base font-bold text-blue-950">2. Current Lipid-Lowering Therapy</h2>
+                    <p class="text-[11px] text-slate-500">Select everything the patient is taking now. Suggestions are built on top of this regimen.</p>
                 </div>
 
                 <div class="space-y-3.5 text-xs">
                     <div>
-                        <label for="baselineTherapy" class="block font-bold text-slate-700 uppercase tracking-wider mb-1">Current Baseline Therapy</label>
-                        <select id="baselineTherapy" class="w-full p-2 border border-slate-300 rounded-lg bg-white text-xs font-semibold text-blue-950 focus:ring-blue-900 focus:border-blue-900">
-                            <option value="naive" selected>Treatment-Naive (Not currently on lipid therapy)</option>
-                            <option value="mod_statin">Already on Moderate-Intensity Statin (e.g., Atorva 10-20 / Rosuva 5-10)</option>
-                            <option value="high_statin">Already on High-Intensity Statin (Atorvastatin 40-80 / Rosuvastatin 20-40)</option>
-                            <option value="high_statin_eze">Already on High-Intensity Statin + Ezetimibe 10 mg</option>
-                            <option value="statin_intolerant">Documented Statin Intolerance (2+ statins failed)</option>
-                        </select>
+                        <label for="curStatin" class="block font-bold text-slate-700 uppercase tracking-wider mb-1">Current statin and dose</label>
+                        <select id="curStatin" class="w-full p-2 border border-slate-300 rounded-lg bg-white text-xs font-semibold text-blue-950 focus:ring-blue-900 focus:border-blue-900"></select>
+                        <p class="text-[10px] italic text-slate-500 mt-0.5">(percent shown = expected LDL-C lowering for that dose, used by the model)</p>
                     </div>
 
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
-                        <label class="flex items-start gap-2 p-2.5 rounded-lg border border-slate-200 bg-slate-50/70 cursor-pointer">
-                            <input id="preferOralToggle" type="checkbox" class="mt-0.5 rounded border-slate-300 text-blue-900 focus:ring-blue-900">
-                            <div>
-                                <span class="font-bold text-slate-800 block">Prefer Oral Agents First</span>
-                                <span class="text-[10px] text-slate-500">Prioritize oral add-ons (ezetimibe/bempedoic acid) before injectables</span>
-                            </div>
-                        </label>
+                    <div>
+                        <label for="statinStatus" class="block font-bold text-slate-700 uppercase tracking-wider mb-1">Statin tolerance</label>
+                        <select id="statinStatus" class="w-full p-2 border border-slate-300 rounded-lg bg-white text-xs font-semibold text-blue-950 focus:ring-blue-900 focus:border-blue-900">
+                            <option value="ok" selected>Statin can be started or uptitrated</option>
+                            <option value="max">Current statin dose is the maximum tolerated</option>
+                            <option value="none">Complete statin intolerance (no statin)</option>
+                        </select>
+                        <p class="text-[10px] italic text-slate-500 mt-0.5">(maximum tolerated = partial intolerance or an interaction/organ-function dose cap; complete = no statin tolerated at any dose after at least 2 statins, one at the lowest approved daily dose &mdash; NLA 2022)</p>
+                    </div>
 
-                        <label class="flex items-start gap-2 p-2.5 rounded-lg border border-slate-200 bg-slate-50/70 cursor-pointer">
-                            <input id="avoidBasToggle" type="checkbox" checked class="mt-0.5 rounded border-slate-300 text-blue-900 focus:ring-blue-900">
-                            <div>
-                                <span class="font-bold text-slate-800 block">Avoid Bile Acid Sequestrants</span>
-                                <span class="text-[10px] text-slate-500">Skip colesevelam if GI intolerance or TG &gt; 300 mg/dL</span>
+                    <div>
+                        <div class="font-bold text-slate-700 uppercase tracking-wider mb-1">Current non-statin therapy</div>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                            <label class="flex items-start gap-2 p-2 rounded-lg border border-slate-200 bg-slate-50/70 cursor-pointer">
+                                <input id="curEze" type="checkbox" class="mt-0.5 rounded border-slate-300 text-blue-900 focus:ring-blue-900">
+                                <span><span class="font-bold text-slate-800">Ezetimibe</span> <span class="text-[10px] italic text-slate-500">(10 mg daily)</span></span>
+                            </label>
+                            <label class="flex items-start gap-2 p-2 rounded-lg border border-slate-200 bg-slate-50/70 cursor-pointer">
+                                <input id="curBemp" type="checkbox" class="mt-0.5 rounded border-slate-300 text-blue-900 focus:ring-blue-900">
+                                <span><span class="font-bold text-slate-800">Bempedoic acid</span> <span class="text-[10px] italic text-slate-500">(180 mg daily; tick ezetimibe too if on the 180/10 mg combination tablet)</span></span>
+                            </label>
+                            <label class="flex items-start gap-2 p-2 rounded-lg border border-slate-200 bg-slate-50/70 cursor-pointer">
+                                <input id="curBas" type="checkbox" class="mt-0.5 rounded border-slate-300 text-blue-900 focus:ring-blue-900">
+                                <span><span class="font-bold text-slate-800">Bile acid sequestrant</span> <span class="text-[10px] italic text-slate-500">(colesevelam, cholestyramine or colestipol)</span></span>
+                            </label>
+                            <div class="p-2 rounded-lg border border-slate-200 bg-slate-50/70">
+                                <label for="curPcsk9" class="font-bold text-slate-800 block mb-1">PCSK9-targeted agent</label>
+                                <select id="curPcsk9" class="w-full p-1.5 border border-slate-300 rounded bg-white text-xs font-semibold text-blue-950">
+                                    <option value="none" selected>None</option>
+                                    <option value="mab">Evolocumab or alirocumab</option>
+                                    <option value="incl">Inclisiran</option>
+                                    <option value="enl">Enlicitide (oral)</option>
+                                </select>
                             </div>
-                        </label>
+                        </div>
                     </div>
                 </div>
             </div>
 
-            <!-- How Multiplicative LDL Reduction Works -->
-            <div class="bg-blue-950 text-white p-4 rounded-xl shadow-lg text-xs space-y-1.5">
-                <div class="font-extrabold uppercase tracking-wider text-blue-200 text-[11px]">Multiplicative Efficacy Formula</div>
+            <!-- 3. Patient considerations -->
+            <div class="bg-white p-5 rounded-xl shadow-lg border border-blue-200">
+                <div class="border-b pb-3 mb-4">
+                    <h2 class="text-base font-bold text-blue-950">3. Patient Considerations</h2>
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-xs">
+                    <label class="flex items-start gap-2 p-2.5 rounded-lg border border-blue-200 bg-blue-50/60 cursor-pointer sm:col-span-2">
+                        <input id="asianToggle" type="checkbox" class="mt-0.5 rounded border-slate-300 text-blue-900 focus:ring-blue-900">
+                        <div>
+                            <span class="font-bold text-slate-800 block">Asian ancestry &mdash; start statin low and titrate</span>
+                            <span class="text-[10px] italic text-slate-500">(FDA rosuvastatin labeling: about 2-fold higher exposure in Asian patients, start 5 mg; data are strongest for Chinese, Japanese and Korean ancestry. The LDL-C goal is unchanged.)</span>
+                        </div>
+                    </label>
+                    <label class="flex items-start gap-2 p-2.5 rounded-lg border border-slate-200 bg-slate-50/70 cursor-pointer sm:col-span-2">
+                        <input id="dualTargetToggle" type="checkbox" checked class="mt-0.5 rounded border-slate-300 text-blue-900 focus:ring-blue-900">
+                        <div>
+                            <span class="font-bold text-slate-800 block">Also require a percent LDL-C reduction</span>
+                            <span class="text-[10px] italic text-slate-500">(at least 50% from the estimated untreated level for goals of 70 or lower; at least 30% for a goal of 100 &mdash; ACC/AHA 2026, ESC/EAS)</span>
+                        </div>
+                    </label>
+                    <label class="flex items-start gap-2 p-2.5 rounded-lg border border-slate-200 bg-slate-50/70 cursor-pointer">
+                        <input id="preferOralToggle" type="checkbox" class="mt-0.5 rounded border-slate-300 text-blue-900 focus:ring-blue-900">
+                        <div>
+                            <span class="font-bold text-slate-800 block">Prefer oral agents first</span>
+                            <span class="text-[10px] italic text-slate-500">(ezetimibe, bempedoic acid, enlicitide ranked before injectables)</span>
+                        </div>
+                    </label>
+                    <label class="flex items-start gap-2 p-2.5 rounded-lg border border-slate-200 bg-slate-50/70 cursor-pointer">
+                        <input id="avoidBasToggle" type="checkbox" checked class="mt-0.5 rounded border-slate-300 text-blue-900 focus:ring-blue-900">
+                        <div>
+                            <span class="font-bold text-slate-800 block">Avoid bile acid sequestrants</span>
+                            <span class="text-[10px] italic text-slate-500">(GI intolerance; set automatically when triglycerides are 300 mg/dL or higher)</span>
+                        </div>
+                    </label>
+                </div>
+            </div>
+
+            <!-- Model assumptions -->
+            <div class="bg-blue-950 text-white p-4 rounded-xl shadow-lg text-xs space-y-2">
+                <div class="font-extrabold uppercase tracking-wider text-blue-200 text-[11px]">How the estimate is made</div>
                 <p class="text-slate-200 leading-relaxed">
-                    Combination lipid therapies compound multiplicatively rather than additively:
-                    <span class="font-mono text-white block mt-1 bg-blue-900/80 px-2.5 py-1.5 rounded">
-                        Predicted LDL = Baseline &times; (1 &minus; %Drop&#8321;) &times; (1 &minus; %Drop&#8322;)
-                    </span>
+                    Percent reductions are multiplied, not added:
+                    <span class="font-mono text-white block mt-1 bg-blue-900/80 px-2.5 py-1.5 rounded">Predicted LDL = Current &times; (1 &minus; %Drop&#8321;) &times; (1 &minus; %Drop&#8322;) &hellip;</span>
+                </p>
+                <p class="text-slate-200 leading-relaxed">
+                    Estimated untreated LDL-C = current LDL-C &divide; the fraction remaining on current therapy.
+                </p>
+                <p class="text-slate-300 leading-relaxed">
+                    Values used: statin by drug and dose (see box 2); ezetimibe 22% on a statin, 18% alone; bempedoic acid 17% on a statin, 22% alone; PCSK9 antibody 58%; inclisiran 50%; enlicitide 50%; colesevelam 15%.
+                </p>
+                <p class="text-blue-200 leading-relaxed italic">
+                    This is an approximation that has not been formally validated, and individual response varies widely. Confirm every step with a lipid panel at 4&ndash;12 weeks.
                 </p>
             </div>
         </div>
 
-        <!-- RIGHT SIDE: RECOMMENDED STEPWISE THERAPY PLAN -->
+        <!-- RIGHT SIDE: OUTPUT -->
         <div id="report" class="print-area lg:col-span-7 bg-white p-6 rounded-xl shadow-2xl border border-slate-300">
             <div class="border-b pb-3 mb-4 flex flex-wrap justify-between items-start gap-2">
                 <div>
-                    <h2 class="text-xl font-bold text-slate-800">Minimal-Medication Stepwise Strategy</h2>
-                    <p id="summarySubheader" class="text-xs text-slate-500 mt-0.5">Insurance-first stepwise pathway ranked by lowest pill/injection burden.</p>
+                    <h2 class="text-xl font-bold text-slate-800">Suggested Next Steps to Reach Goal</h2>
+                    <p id="summarySubheader" class="text-xs text-slate-500 mt-0.5">--</p>
                 </div>
                 <div class="flex items-center gap-2 no-print">
-                    <button type="button" onclick="window.print()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 font-semibold px-3 py-1.5 rounded-lg text-xs transition">
-                        &#128424;&#65039; Print
-                    </button>
+                    <button type="button" onclick="window.print()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 font-semibold px-3 py-1.5 rounded-lg text-xs transition">&#128424;&#65039; Print</button>
                 </div>
             </div>
 
-            <!-- Top KPI Strip -->
-            <div class="grid grid-cols-3 gap-3 mb-5">
+            <!-- KPI strip -->
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5">
                 <div class="p-3 rounded-lg bg-slate-50 border border-slate-200 text-center">
-                    <div class="text-[10px] font-bold uppercase tracking-wider text-slate-500">Starting LDL-C</div>
-                    <div id="kpiStartLdl" class="text-lg font-extrabold text-slate-800 mt-0.5">165 mg/dL</div>
+                    <div class="text-[10px] font-bold uppercase tracking-wider text-slate-500">Current LDL-C</div>
+                    <div id="kpiStartLdl" class="text-lg font-extrabold text-slate-800 mt-0.5">--</div>
+                    <div class="text-[10px] text-slate-500">on current regimen</div>
+                </div>
+                <div class="p-3 rounded-lg bg-slate-50 border border-slate-200 text-center">
+                    <div class="text-[10px] font-bold uppercase tracking-wider text-slate-500">Est. Untreated LDL-C</div>
+                    <div id="kpiUntreated" class="text-lg font-extrabold text-slate-800 mt-0.5">--</div>
+                    <div class="text-[10px] text-slate-500">back-calculated</div>
                 </div>
                 <div class="p-3 rounded-lg bg-blue-50 border border-blue-200 text-center">
                     <div class="text-[10px] font-bold uppercase tracking-wider text-blue-900">Target LDL-C</div>
-                    <div id="kpiTargetLdl" class="text-lg font-extrabold text-blue-950 mt-0.5">&lt; 70 mg/dL</div>
+                    <div id="kpiTargetLdl" class="text-lg font-extrabold text-blue-950 mt-0.5">--</div>
+                    <div id="kpiTargetSub" class="text-[10px] text-slate-500">--</div>
                 </div>
                 <div class="p-3 rounded-lg bg-slate-50 border border-slate-200 text-center">
-                    <div class="text-[10px] font-bold uppercase tracking-wider text-slate-500">Required Reduction</div>
-                    <div id="kpiReqDrop" class="text-lg font-extrabold text-blue-900 mt-0.5">57.6%</div>
+                    <div class="text-[10px] font-bold uppercase tracking-wider text-slate-500">Further Reduction Needed</div>
+                    <div id="kpiReqDrop" class="text-lg font-extrabold text-blue-900 mt-0.5">--</div>
+                    <div id="kpiReqSub" class="text-[10px] text-slate-500">--</div>
                 </div>
             </div>
 
-            <!-- Hypertriglyceridemia Clinical Alert (auto-shown if TG >= 500 or >= 150) -->
-            <div id="tgAlertBox" class="hidden mb-4 p-3 rounded-lg text-xs"></div>
+            <!-- Clinical alerts -->
+            <div id="alertsContainer" class="space-y-2 mb-4"></div>
 
-            <!-- Primary Optimal Minimal-Medication Regimen Card -->
+            <!-- Recommended plan -->
             <div id="optimalPlanContainer" class="mb-5"></div>
 
-            <!-- Stepwise Escalation Ladder -->
-            <div class="mb-5">
-                <h3 class="text-xs font-extrabold text-blue-950 uppercase tracking-wider mb-2.5">
-                    Insurance &amp; Clinical Escalation Pathway (Step-by-Step)
-                </h3>
+            <!-- Step ladder -->
+            <div id="ladderSection" class="mb-5">
+                <h3 class="text-xs font-extrabold text-blue-950 uppercase tracking-wider mb-2.5">Step-by-Step Pathway (estimated LDL-C after each step)</h3>
                 <div id="stepLadderContainer" class="space-y-2.5"></div>
             </div>
 
-            <!-- Alternative Regimen Options That Also Achieve Goal -->
+            <!-- Alternatives -->
             <div id="alternativesSection" class="mb-5">
-                <h3 class="text-xs font-extrabold text-slate-600 uppercase tracking-wider mb-2">
-                    Alternative Goal-Achieving Combinations
-                </h3>
+                <h3 class="text-xs font-extrabold text-slate-600 uppercase tracking-wider mb-2">Other Options Predicted to Reach Goal</h3>
                 <div id="alternativesContainer" class="space-y-2"></div>
             </div>
 
-            <!-- Clinical Chart Note / Sig -->
+            <!-- Chart note -->
             <div class="border-t pt-4">
                 <h4 class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Clinical Plan Note (Copy to EHR)</h4>
                 <div class="flex items-stretch gap-2">
-                    <div id="clinicalNoteBox" class="flex-1 p-3.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-semibold text-slate-800 leading-relaxed">
-                        --
-                    </div>
-                    <button id="copyPlanBtn" type="button" onclick="copyPlanNote()" class="no-print bg-blue-900 hover:bg-blue-950 text-white font-semibold px-3.5 py-2 rounded-lg shadow transition flex items-center gap-1.5 text-xs whitespace-nowrap">
-                        &#128203; Copy
-                    </button>
+                    <div id="clinicalNoteBox" class="flex-1 p-3.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-semibold text-slate-800 leading-relaxed">--</div>
+                    <button id="copyPlanBtn" type="button" onclick="copyPlanNote()" class="no-print bg-blue-900 hover:bg-blue-950 text-white font-semibold px-3.5 py-2 rounded-lg shadow transition flex items-center gap-1.5 text-xs whitespace-nowrap">&#128203; Copy</button>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- BOTTOM FULL-WIDTH REFERENCE TABLE: ALL AVAILABLE LDL-LOWERING DRUGS -->
-    <div class="bg-white p-6 rounded-xl shadow-xl border border-blue-200">
+    <!-- REFERENCE TABLE -->
+    <div class="bg-white p-6 rounded-xl shadow-xl border border-blue-200 mb-8">
         <div class="flex flex-wrap justify-between items-center gap-3 border-b pb-4 mb-4">
             <div>
-                <h2 class="text-lg font-extrabold text-blue-950">Comprehensive Reference: LDL-Lowering Medications</h2>
-                <p class="text-xs text-slate-500 mt-0.5">Expected LDL-C and Triglyceride (TG) reductions, typical insurance tiering, and common side effects.</p>
+                <h2 class="text-lg font-extrabold text-blue-950">Reference: LDL-Lowering Medications</h2>
+                <p class="text-xs text-slate-500 mt-0.5">Expected LDL-C reduction, cardiovascular outcome evidence, typical coverage step, and key precautions.</p>
             </div>
             <div class="flex flex-wrap items-center gap-2 no-print">
                 <label for="drugCategoryFilter" class="text-xs font-bold text-slate-600">Filter Class:</label>
                 <select id="drugCategoryFilter" onchange="renderDrugReferenceTable()" class="p-1.5 border border-slate-300 rounded-lg bg-slate-50 text-xs font-semibold text-blue-950 focus:ring-blue-900 focus:border-blue-900">
                     <option value="all">All Classes (11 Agents / Tiers)</option>
                     <option value="statin">Statins (1st Line)</option>
-                    <option value="oral_nonstatin">Oral Non-Statins (2nd / 3rd Line)</option>
+                    <option value="oral_nonstatin">Oral Non-Statins</option>
                     <option value="pcsk9">PCSK9-Targeted Therapies</option>
                     <option value="specialty">Specialty / HoFH Agents</option>
                 </select>
@@ -250,11 +282,12 @@
                 <thead class="bg-blue-900 text-white">
                     <tr>
                         <th class="border border-slate-300 p-2.5 text-left">Drug / Class</th>
-                        <th class="border border-slate-300 p-2.5 text-left">Standard Dosing &amp; Route</th>
+                        <th class="border border-slate-300 p-2.5 text-left">Dosing &amp; Route</th>
                         <th class="border border-slate-300 p-2.5 text-center w-32">Expected LDL-C Drop</th>
-                        <th class="border border-slate-300 p-2.5 text-center w-32">Expected TG Drop</th>
-                        <th class="border border-slate-300 p-2.5 text-left w-36">Typical Coverage Step</th>
-                        <th class="border border-slate-300 p-2.5 text-left">Common Side Effects &amp; Key Precautions</th>
+                        <th class="border border-slate-300 p-2.5 text-center w-24">Expected TG Effect</th>
+                        <th class="border border-slate-300 p-2.5 text-left">CV Outcome Evidence</th>
+                        <th class="border border-slate-300 p-2.5 text-left w-32">Typical Coverage Step</th>
+                        <th class="border border-slate-300 p-2.5 text-left">Side Effects &amp; Key Precautions</th>
                     </tr>
                 </thead>
                 <tbody id="drugReferenceBody"></tbody>
@@ -262,7 +295,53 @@
         </div>
 
         <p class="text-[11px] text-slate-500 mt-3 italic">
-            <strong>Clinical Pearl:</strong> Doubling a statin dose yields only an additional ~6% LDL-C reduction (&ldquo;Rule of 6&rdquo;), whereas adding ezetimibe 10 mg to a statin provides an incremental ~18&ndash;25% LDL-C reduction with minimal added toxicity.
+            <strong>Clinical Pearl:</strong> Each doubling of a statin dose adds only about 4&ndash;6% more LDL-C reduction (&ldquo;Rule of 6&rdquo;), whereas adding ezetimibe 10 mg to a statin adds about 21&ndash;27%. Coverage steps are typical patterns only; payer rules vary.
+        </p>
+    </div>
+
+    <!-- EVIDENCE NOTES -->
+    <div class="bg-white p-6 rounded-xl shadow-xl border border-blue-200">
+        <h2 class="text-lg font-extrabold text-blue-950 border-b pb-3 mb-4">Evidence Notes</h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs text-slate-700 leading-relaxed">
+            <div class="p-3 rounded-lg bg-blue-50/60 border border-blue-200">
+                <div class="font-bold text-blue-950 mb-1">Statin dosing in Asian patients</div>
+                <ul class="list-disc pl-4 space-y-1">
+                    <li>Rosuvastatin: about 2-fold higher exposure in Asian patients; FDA labeling says start 5 mg once daily and weigh risk and benefit if not controlled at doses up to 20 mg. This is not an absolute 20 mg maximum.</li>
+                    <li>2026 ACC/AHA: start with lower doses, especially in East Asian (Chinese, Japanese, Korean) ancestry.</li>
+                    <li>RACING (Korea): rosuvastatin 10 mg + ezetimibe 10 mg was non-inferior to rosuvastatin 20 mg for 3-year cardiovascular outcomes, with more patients at LDL-C under 70 mg/dL and less intolerance.</li>
+                    <li>Simvastatin: do not combine with lipid-modifying niacin in Chinese patients (myopathy in HPS2-THRIVE).</li>
+                    <li>No FDA Asian-specific starting dose exists for atorvastatin, pitavastatin or pravastatin. South Asian ancestry is an ASCVD risk enhancer; do not undertreat.</li>
+                </ul>
+            </div>
+            <div class="p-3 rounded-lg bg-slate-50 border border-slate-200">
+                <div class="font-bold text-blue-950 mb-1">Goals and monitoring</div>
+                <ul class="list-disc pl-4 space-y-1">
+                    <li>Judge response on both the absolute goal and the percent reduction (at least 50% for goals of 70 or lower).</li>
+                    <li>Secondary targets once LDL-C is at goal: non-HDL-C under 130 / 100 / 85; apoB under 90 / 70 / 55 mg/dL (ACC/AHA 2026) for LDL-C goals of 100 / 70 / 55. apoB is preferred when triglycerides are 200 mg/dL or higher.</li>
+                    <li>Measure Lp(a) once in all adults; 125 nmol/L (50 mg/dL) or higher is elevated.</li>
+                    <li>Lipid panel 4&ndash;12 weeks after each change, then every 6&ndash;12 months.</li>
+                    <li>LDL-C 190 mg/dL or higher: exclude secondary causes, evaluate for familial hypercholesterolemia, cascade-screen relatives.</li>
+                </ul>
+            </div>
+            <div class="p-3 rounded-lg bg-slate-50 border border-slate-200">
+                <div class="font-bold text-blue-950 mb-1">Statin intolerance</div>
+                <ul class="list-disc pl-4 space-y-1">
+                    <li>NLA 2022: complete intolerance requires failure of at least 2 statins, one at the lowest approved daily dose.</li>
+                    <li>In blinded trials the statin-attributable excess of muscle symptoms is small (CTT: relative risk 1.03). In SAMSON, about 90% of the symptom burden on statin was also present on placebo, and half of participants restarted a statin.</li>
+                    <li>Rechallenge (different statin, lower dose, or non-daily dosing) before labelling a patient completely intolerant.</li>
+                </ul>
+            </div>
+            <div class="p-3 rounded-lg bg-slate-50 border border-slate-200">
+                <div class="font-bold text-blue-950 mb-1">Pregnancy and model limits</div>
+                <ul class="list-disc pl-4 space-y-1">
+                    <li>Pregnancy: stop statins 1&ndash;2 months before conception or when pregnancy is recognized unless very high risk (for example homozygous FH or established ASCVD). Bile acid sequestrants are the usual option. Avoid ezetimibe, bempedoic acid and PCSK9-targeted agents.</li>
+                    <li>PCSK9 antibodies give a similar relative reduction on any statin background; bempedoic acid is weaker on a statin and has not been studied on full-dose high-intensity statins.</li>
+                    <li>About 1 in 5 patients on a high-intensity statin achieve less than a 30% reduction; predicted values are averages.</li>
+                </ul>
+            </div>
+        </div>
+        <p class="text-[10px] text-slate-500 mt-4 italic">
+            Key sources: 2026 ACC/AHA Multisociety Guideline on the Management of Dyslipidemia; 2019 ESC/EAS Dyslipidaemia Guidelines and 2025 Focused Update; ADA Standards of Care in Diabetes 2026; 2022 ACC Expert Consensus Decision Pathway on Nonstatin Therapies; FDA labeling for rosuvastatin, simvastatin, ezetimibe, bempedoic acid, colesevelam and enlicitide; STELLAR and VOYAGER; IMPROVE-IT; CLEAR Outcomes; FOURIER; ODYSSEY OUTCOMES; VESALIUS-CV; ORION-10/11; CORALreef Lipids; RACING; HPS2-THRIVE; SAMSON; CTT Collaboration; NLA 2022 Statin Intolerance Statement. For clinician decision support only; not a substitute for clinical judgment.
         </p>
     </div>
 </div>
@@ -271,714 +350,704 @@
 // Fetch dynamic navbar
 fetch('nav.html')
     .then(res => res.text())
-    .then(data => {
-        document.getElementById('site-header').innerHTML = data;
-    })
+    .then(data => { document.getElementById('site-header').innerHTML = data; })
     .catch(err => console.error('Error loading navigation:', err));
 
-/* ---------- Reference Database of All Available LDL-Lowering Therapies ---------- */
+const el = id => document.getElementById(id);
+const r0 = n => Math.round(n);
+
+/* ---------- Statin dose-specific LDL-C reductions (STELLAR / VOYAGER / FDA labels / Cochrane) ---------- */
+const STATINS = [
+    { id: 'none',     label: 'No statin',             red: 0 },
+    { id: 'atorva10', label: 'Atorvastatin 10 mg',    red: 0.37 },
+    { id: 'atorva20', label: 'Atorvastatin 20 mg',    red: 0.43 },
+    { id: 'atorva40', label: 'Atorvastatin 40 mg',    red: 0.48 },
+    { id: 'atorva80', label: 'Atorvastatin 80 mg',    red: 0.51 },
+    { id: 'rosuva5',  label: 'Rosuvastatin 5 mg',     red: 0.39 },
+    { id: 'rosuva10', label: 'Rosuvastatin 10 mg',    red: 0.44 },
+    { id: 'rosuva20', label: 'Rosuvastatin 20 mg',    red: 0.50 },
+    { id: 'rosuva40', label: 'Rosuvastatin 40 mg',    red: 0.55 },
+    { id: 'simva10',  label: 'Simvastatin 10 mg',     red: 0.28 },
+    { id: 'simva20',  label: 'Simvastatin 20 mg',     red: 0.35 },
+    { id: 'simva40',  label: 'Simvastatin 40 mg',     red: 0.39 },
+    { id: 'prava10',  label: 'Pravastatin 10 mg',     red: 0.20 },
+    { id: 'prava20',  label: 'Pravastatin 20 mg',     red: 0.24 },
+    { id: 'prava40',  label: 'Pravastatin 40 mg',     red: 0.30 },
+    { id: 'prava80',  label: 'Pravastatin 80 mg',     red: 0.37 },
+    { id: 'pitava1',  label: 'Pitavastatin 1 mg',     red: 0.33 },
+    { id: 'pitava2',  label: 'Pitavastatin 2 mg',     red: 0.38 },
+    { id: 'pitava4',  label: 'Pitavastatin 4 mg',     red: 0.45 },
+    { id: 'lova20',   label: 'Lovastatin 20 mg',      red: 0.24 },
+    { id: 'lova40',   label: 'Lovastatin 40 mg',      red: 0.32 },
+    { id: 'lova80',   label: 'Lovastatin 80 mg',      red: 0.40 },
+    { id: 'fluva80',  label: 'Fluvastatin 80 mg/day', red: 0.33 }
+];
+const STATIN_BY_ID = {};
+STATINS.forEach(s => { STATIN_BY_ID[s.id] = s; });
+
+/* ---------- Non-statin LDL-C reductions used by the model ---------- */
+const EFF = { ezeOnStatin: 0.22, ezeMono: 0.18, bempOnStatin: 0.17, bempMono: 0.22, mab: 0.58, incl: 0.50, enl: 0.50, bas: 0.15 };
+
+const PCSK9_CURRENT = {
+    mab: 'PCSK9 antibody (evolocumab or alirocumab)',
+    incl: 'Inclisiran 284 mg SC every 6 months',
+    enl: 'Enlicitide 20 mg PO daily'
+};
+
+/* ---------- Brief goal-selection guide ---------- */
+const GOAL_GUIDE = [
+    { goal: 100, pct: 'with at least 30% reduction',
+      who: 'Primary prevention at borderline&ndash;intermediate 10-year risk (PREVENT 3% to under 10%); diabetes age 40&ndash;75 without other risk factors; CAC 1&ndash;99; LDL-C &ge;190 with no other risk features. EU: moderate risk.' },
+    { goal: 70, pct: 'with at least 50% reduction',
+      who: 'Primary prevention at high risk (PREVENT &ge;10%); diabetes with multiple risk factors; CAC &ge;100 or &ge;75th percentile; LDL-C &ge;190 with HeFH or other risk factors; ASCVD not at very high risk. EU: high risk.' },
+    { goal: 55, pct: 'with at least 50% reduction',
+      who: 'ASCVD at very high risk (2 or more major events, or 1 major event plus 2 or more high-risk conditions); ASCVD with LDL-C &ge;190 or FH; CAC &ge;1000; diabetes with ASCVD (ADA). EU: very high risk, which includes all documented ASCVD.' },
+    { goal: 40, pct: 'optional goal',
+      who: 'EU only (ESC/EAS, Class IIb): recurrent vascular events despite maximally tolerated therapy (2019 wording: second event within 2 years) or polyvascular disease. Not a goal in US guidelines.' }
+];
+
+/* ---------- Reference table data ---------- */
 const LIPID_DRUGS = [
     {
-        category: 'statin',
-        name: 'High-Intensity Statin',
-        examples: 'Rosuvastatin 20–40 mg, Atorvastatin 40–80 mg',
-        dosing: 'Once daily (PO)',
-        ldlDropRange: '50% – 60%',
-        ldlMid: 0.53,
-        tgDropRange: '15% – 30%',
-        stepBadge: '1st Line (Generic $)',
-        badgeClass: 'bg-green-100 text-green-900 border-green-300',
-        sideEffects: 'Myalgias (5–10%), mild transaminase elevation, slight increase in new-onset diabetes risk; rare rhabdomyolysis.'
+        category: 'statin', name: 'High-Intensity Statin',
+        examples: 'Atorvastatin 40&ndash;80 mg (48&ndash;51%), rosuvastatin 20&ndash;40 mg (50&ndash;55%)',
+        dosing: 'Once daily (PO)', ldl: '&ge; 50%', tg: '&minus;15% to &minus;30%',
+        outcome: 'About 22% fewer major vascular events per 38.7 mg/dL (1 mmol/L) LDL-C lowering (CTT).',
+        stepBadge: '1st Line (Generic $)', badgeClass: 'bg-green-100 text-green-900 border-green-300',
+        sideEffects: 'Muscle symptoms (excess over placebo in blinded trials is small, relative risk 1.03), transaminase elevation, small increase in new-onset diabetes, rare rhabdomyolysis. Reserve rosuvastatin 40 mg for patients not at goal on 20 mg. Asian patients: start rosuvastatin at 5 mg.'
     },
     {
-        category: 'statin',
-        name: 'Moderate-Intensity Statin',
-        examples: 'Atorvastatin 10–20 mg, Rosuvastatin 5–10 mg, Simvastatin 20–40 mg, Pravastatin 40–80 mg, Pitavastatin 1–4 mg',
-        dosing: 'Once daily (PO)',
-        ldlDropRange: '30% – 49%',
-        ldlMid: 0.40,
-        tgDropRange: '10% – 20%',
-        stepBadge: '1st Line (Generic $)',
-        badgeClass: 'bg-green-100 text-green-900 border-green-300',
-        sideEffects: 'Myalgias, mild GI upset, transient LFT elevation. Pitavastatin/pravastatin have fewer CYP3A4 interactions.'
+        category: 'statin', name: 'Moderate-Intensity Statin',
+        examples: 'Atorvastatin 10&ndash;20 mg (37&ndash;43%), rosuvastatin 5&ndash;10 mg (39&ndash;44%), simvastatin 20&ndash;40 mg (35&ndash;39%), pravastatin 40&ndash;80 mg (30&ndash;37%), pitavastatin 1&ndash;4 mg (33&ndash;45%), lovastatin 40&ndash;80 mg, fluvastatin 80 mg/day',
+        dosing: 'Once daily (PO)', ldl: '30% &ndash; 49%', tg: '&minus;10% to &minus;20%',
+        outcome: 'Same CTT relationship; benefit is proportional to absolute LDL-C lowering.',
+        stepBadge: '1st Line (Generic $)', badgeClass: 'bg-green-100 text-green-900 border-green-300',
+        sideEffects: 'As above, less dose-related toxicity. Simvastatin 80 mg is not recommended. Chinese patients: do not combine simvastatin with lipid-modifying niacin.'
     },
     {
-        category: 'statin',
-        name: 'Low-Intensity Statin',
-        examples: 'Pravastatin 10–20 mg, Simvastatin 10 mg, Lovastatin 20 mg, Fluvastatin 20–40 mg',
-        dosing: 'Once daily (PO)',
-        ldlDropRange: '< 30% (~20–28%)',
-        ldlMid: 0.25,
-        tgDropRange: '5% – 15%',
-        stepBadge: '1st Line / Intolerance',
-        badgeClass: 'bg-green-100 text-green-900 border-green-300',
-        sideEffects: 'Lower incidence of myalgias than high-intensity regimens; generally well tolerated.'
+        category: 'statin', name: 'Low-Intensity Statin',
+        examples: 'Pravastatin 10&ndash;20 mg (20&ndash;24%), simvastatin 10 mg (28%), lovastatin 20 mg (24%), fluvastatin 20&ndash;40 mg',
+        dosing: 'Once daily (PO)', ldl: '&lt; 30%', tg: '&minus;5% to &minus;15%',
+        outcome: 'MEGA (Japan): pravastatin 10&ndash;20 mg lowered LDL-C 18% and CHD events by 33% in primary prevention.',
+        stepBadge: '1st Line / Intolerance', badgeClass: 'bg-green-100 text-green-900 border-green-300',
+        sideEffects: 'Generally well tolerated; an option for rechallenge in partial statin intolerance.'
     },
     {
-        category: 'oral_nonstatin',
-        name: 'Ezetimibe (Zetia)',
+        category: 'oral_nonstatin', name: 'Ezetimibe (Zetia)',
         examples: 'Cholesterol absorption inhibitor (NPC1L1 blocker)',
-        dosing: '10 mg once daily (PO)',
-        ldlDropRange: '18% – 25% (add-on)',
-        ldlMid: 0.22,
-        tgDropRange: '5% – 10%',
-        stepBadge: '2nd Line (Generic $)',
-        badgeClass: 'bg-blue-100 text-blue-900 border-blue-300',
-        sideEffects: 'Very well tolerated (placebo-like); occasional diarrhea, upper respiratory symptoms, or arthralgias.'
+        dosing: '10 mg once daily (PO)', ldl: '18% alone; about 25% added to a statin (range 21&ndash;27%)', tg: '&minus;5% to &minus;10%',
+        outcome: 'IMPROVE-IT (post-ACS, on simvastatin): hazard ratio 0.936; absolute risk reduction 2.0% at 7 years.',
+        stepBadge: '2nd Line (Generic $)', badgeClass: 'bg-blue-100 text-blue-900 border-blue-300',
+        sideEffects: 'Very well tolerated. Avoid in pregnancy (no human data). Give at least 2 hours before or 4 hours after a bile acid sequestrant.'
     },
     {
-        category: 'oral_nonstatin',
-        name: 'Bempedoic Acid (Nexletol)',
-        examples: 'ATP citrate lyase (ACL) inhibitor (prodrug activated only in liver)',
-        dosing: '180 mg once daily (PO)',
-        ldlDropRange: '17% – 24% (monotherapy ~21–24%; on statin ~17–18%)',
-        ldlMid: 0.20,
-        tgDropRange: 'Neutral (0% – 3%)',
-        stepBadge: '2nd / 3rd Line (PA)',
-        badgeClass: 'bg-amber-100 text-amber-900 border-amber-300',
-        sideEffects: 'Hyperuricemia / gout flares (~1.5%), mild creatinine/BUN rise, rare tendon rupture; no skeletal muscle activation (low myalgia).'
+        category: 'oral_nonstatin', name: 'Bempedoic Acid (Nexletol)',
+        examples: 'ATP citrate lyase inhibitor (prodrug activated in the liver)',
+        dosing: '180 mg once daily (PO)', ldl: '21&ndash;24% alone; 17&ndash;18% on a statin', tg: 'Neutral',
+        outcome: 'CLEAR Outcomes (statin-intolerant): 4-point MACE hazard ratio 0.87; no significant effect on stroke or death.',
+        stepBadge: '2nd / 3rd Line (PA)', badgeClass: 'bg-amber-100 text-amber-900 border-amber-300',
+        sideEffects: 'Gout 3.1% vs 2.1% and gallstones 2.2% vs 1.2% in CLEAR Outcomes; uric acid and creatinine rise; tendon rupture 0.5% vs 0% in earlier trials. Avoid simvastatin above 20 mg and pravastatin above 40 mg. Not studied on full-dose high-intensity statins.'
     },
     {
-        category: 'oral_nonstatin',
-        name: 'Bempedoic Acid / Ezetimibe (Nexlizet)',
-        examples: 'Fixed-dose oral combination pill (1 tablet)',
-        dosing: '180 mg / 10 mg once daily (PO)',
-        ldlDropRange: '36% – 40%',
-        ldlMid: 0.38,
-        tgDropRange: '5% – 10%',
-        stepBadge: '2nd / 3rd Line (PA)',
-        badgeClass: 'bg-amber-100 text-amber-900 border-amber-300',
-        sideEffects: 'Combined profile: hyperuricemia/gout, mild GI symptoms, URI; avoids adding extra pill count.'
+        category: 'oral_nonstatin', name: 'Bempedoic Acid / Ezetimibe (Nexlizet)',
+        examples: 'Fixed-dose combination (1 tablet); do not add separate ezetimibe or bempedoic acid',
+        dosing: '180 mg / 10 mg once daily (PO)', ldl: '36% &ndash; 38%', tg: '&minus;5% to &minus;10%',
+        outcome: 'Via its components (CLEAR Outcomes, IMPROVE-IT).',
+        stepBadge: '2nd / 3rd Line (PA)', badgeClass: 'bg-amber-100 text-amber-900 border-amber-300',
+        sideEffects: 'Combined profile of both components: gout, gallstones, tendon rupture, mild GI symptoms.'
     },
     {
-        category: 'oral_nonstatin',
-        name: 'Bile Acid Sequestrants',
-        examples: 'Colesevelam (Welchol) 3.75 g/d, Cholestyramine, Colestipol',
-        dosing: 'Once or twice daily with meals (PO)',
-        ldlDropRange: '15% – 20%',
-        ldlMid: 0.16,
-        tgDropRange: 'Can INCREASE TG (+10% to +20%)',
-        stepBadge: '3rd Line / Pregnancy',
-        badgeClass: 'bg-slate-200 text-slate-800 border-slate-300',
-        sideEffects: 'Constipation, bloating, dyspepsia, impairs absorption of fat-soluble vitamins & other drugs (space by 4 hrs). Contraindicated if TG > 300–500 mg/dL.'
+        category: 'oral_nonstatin', name: 'Bile Acid Sequestrants',
+        examples: 'Colesevelam (Welchol) 3.75 g/day, cholestyramine, colestipol',
+        dosing: 'Once or twice daily with meals (PO)', ldl: 'Colesevelam 15% alone; 10&ndash;16% added to a statin', tg: 'Can INCREASE TG', tgUp: true,
+        outcome: 'LRC-CPPT (cholestyramine): 19% reduction in CHD death or nonfatal MI.',
+        stepBadge: 'Later Line / Pregnancy', badgeClass: 'bg-slate-200 text-slate-800 border-slate-300',
+        sideEffects: 'Constipation, bloating, binding of other drugs and fat-soluble vitamins. Contraindicated when TG exceed 500 mg/dL or with prior TG-induced pancreatitis or bowel obstruction; ACC/AHA 2026 advises avoiding at TG 300 mg/dL or higher.'
     },
     {
-        category: 'pcsk9',
-        name: 'PCSK9 Monoclonal Antibodies',
-        examples: 'Evolocumab (Repatha) 140 mg q2wk, Alirocumab (Praluent) 75–150 mg q2wk',
-        dosing: 'Subcutaneous injection every 2 weeks (or monthly)',
-        ldlDropRange: '55% – 62%',
-        ldlMid: 0.58,
-        tgDropRange: '10% – 18%',
-        stepBadge: '3rd Line (PA Required)',
-        badgeClass: 'bg-purple-100 text-purple-900 border-purple-300',
-        sideEffects: 'Injection-site erythema/pain (~3–5%), nasopharyngitis, flu-like symptoms; also lowers Lp(a) by ~25%.'
+        category: 'pcsk9', name: 'PCSK9 Monoclonal Antibodies',
+        examples: 'Evolocumab (Repatha) 140 mg every 2 weeks; alirocumab (Praluent) 75&ndash;150 mg every 2 weeks',
+        dosing: 'Subcutaneous every 2 weeks (or monthly)', ldl: '55% &ndash; 63% (similar on any statin background)', tg: '&minus;10% to &minus;18%',
+        outcome: 'FOURIER hazard ratio 0.85; ODYSSEY OUTCOMES hazard ratio 0.85; VESALIUS-CV (no prior MI or stroke) 3-point MACE hazard ratio 0.75.',
+        stepBadge: '2nd / 3rd Line (PA)', badgeClass: 'bg-purple-100 text-purple-900 border-purple-300',
+        sideEffects: 'Injection-site reactions, nasopharyngitis. ACC/AHA 2026 no longer requires an ezetimibe trial first; payer rules vary. Avoid in pregnancy (insufficient data).'
     },
     {
-        category: 'pcsk9',
-        name: 'Inclisiran (Leqvio)',
-        examples: 'Small interfering RNA (siRNA) targeting hepatic PCSK9 synthesis',
-        dosing: '284 mg SubQ at Day 1, Month 3, then every 6 months (HCP-administered)',
-        ldlDropRange: '48% – 52%',
-        ldlMid: 0.50,
-        tgDropRange: '8% – 12%',
-        stepBadge: '3rd Line (Medical Benefit PA)',
-        badgeClass: 'bg-purple-100 text-purple-900 border-purple-300',
-        sideEffects: 'Injection-site reaction (~5–8%), arthralgia, bronchitis; ideal when adherence to daily pills/biweekly shots is challenging.'
+        category: 'pcsk9', name: 'Inclisiran (Leqvio)',
+        examples: 'Small interfering RNA against hepatic PCSK9 synthesis',
+        dosing: '284 mg SC at day 1, month 3, then every 6 months (clinician-administered)', ldl: 'About 50%', tg: '&minus;8% to &minus;12%',
+        outcome: 'No completed outcome trial (ORION-4 and VICTORION-2P pending). ACC/AHA 2026 prefers evolocumab or alirocumab until these report.',
+        stepBadge: '3rd Line (Medical Benefit PA)', badgeClass: 'bg-purple-100 text-purple-900 border-purple-300',
+        sideEffects: 'Injection-site reactions. Useful when adherence to daily or biweekly dosing is a barrier, or a PCSK9 antibody cannot be tolerated or obtained.'
     },
     {
-        category: 'pcsk9',
-        name: 'Oral PCSK9 Inhibitor (Enlicitide / Lipfendra)',
-        examples: 'Macrocyclic peptide PCSK9 inhibitor (FDA-approved 2026)',
-        dosing: 'Once daily on empty stomach (PO)',
-        ldlDropRange: '52% – 58%',
-        ldlMid: 0.55,
-        tgDropRange: '10% – 15%',
-        stepBadge: '3rd Line (PA Required)',
-        badgeClass: 'bg-purple-100 text-purple-900 border-purple-300',
-        sideEffects: 'Mild GI symptoms, nasopharyngitis; requires fasting administration window for oral bioavailability.'
+        category: 'pcsk9', name: 'Enlicitide (Lipfendra) &mdash; oral PCSK9 inhibitor',
+        examples: 'Macrocyclic peptide; FDA-approved July 2026 for LDL-C lowering, including HeFH',
+        dosing: '20 mg once daily in the morning on an empty stomach; wait at least 30 minutes before food or other drinks', ldl: 'About 56% at 24 weeks; 48&ndash;50% at 52 weeks', tg: '&minus;10% to &minus;15%',
+        outcome: 'No outcome data yet (CORALreef Outcomes ongoing). Not addressed by the 2026 ACC/AHA guideline.',
+        stepBadge: '3rd Line (PA likely)', badgeClass: 'bg-purple-100 text-purple-900 border-purple-300',
+        sideEffects: 'Diarrhea, dizziness. Food before the dose roughly halves drug exposure; check adherence to the fasting rule before judging non-response. One tablet per day only.'
     },
     {
-        category: 'specialty',
-        name: 'Evinacumab (Evkeeza) / Lomitapide (Juxtapid)',
-        examples: 'ANGPTL3 mAb (IV monthly) / MTP inhibitor (PO daily)',
-        dosing: 'Specialty restricted (HoFH only)',
-        ldlDropRange: '45% – 50% (in HoFH)',
-        ldlMid: 0.48,
-        tgDropRange: '35% – 50%',
-        stepBadge: 'REMS / HoFH Only',
-        badgeClass: 'bg-red-100 text-red-900 border-red-300',
-        sideEffects: 'Evinacumab: infusion reactions, flu-like symptoms. Lomitapide: hepatotoxicity/steatosis, severe diarrhea (requires strict low-fat diet & REMS).'
+        category: 'specialty', name: 'Evinacumab (Evkeeza) / Lomitapide (Juxtapid)',
+        examples: 'ANGPTL3 antibody (15 mg/kg IV every 4 weeks) / MTP inhibitor (PO daily)',
+        dosing: 'Specialty restricted (HoFH only)', ldl: 'Evinacumab 49 points vs placebo; lomitapide 38&ndash;50%', tg: '&minus;35% to &minus;50%',
+        outcome: 'LDL-C lowering only; no outcome trials.',
+        stepBadge: 'REMS / HoFH Only', badgeClass: 'bg-red-100 text-red-900 border-red-300',
+        sideEffects: 'Evinacumab: infusion reactions; fetal toxicity (contraception for 5 months after last dose). Lomitapide: boxed hepatotoxicity warning, REMS, GI effects, contraindicated in pregnancy and with moderate or strong CYP3A4 inhibitors.'
     }
 ];
 
-/* ---------- Candidate Stepwise Regimens (Ordered by Insurance Priority & Minimal Agent Count) ---------- */
-function buildCandidateRegimens(baselineMode, preferOral, avoidBas) {
-    // Each candidate defines: id, title, pillCount, tierRank (insurance order), steps[], drops[], notes
-    if (baselineMode === 'statin_intolerant') {
-        const list = [
-            {
-                id: 'eze_mono',
-                title: 'Ezetimibe 10 mg Monotherapy',
-                agentCount: 1,
-                tier: 1,
-                meds: ['Ezetimibe 10 mg PO daily'],
-                drops: [0.22],
-                insuranceNote: 'Generic 1st-line non-statin; no prior authorization required.',
-                steps: [
-                    { step: 1, label: 'Start Ezetimibe 10 mg PO daily', detail: 'Best-tolerated generic oral agent for statin-intolerant patients (~22% LDL-C drop).' }
-                ]
-            },
-            {
-                id: 'bempedoic_mono',
-                title: 'Bempedoic Acid 180 mg Monotherapy',
-                agentCount: 1,
-                tier: 2,
-                meds: ['Bempedoic acid 180 mg PO daily'],
-                drops: [0.23],
-                insuranceNote: 'Requires documented intolerance to ≥2 statins for PA approval.',
-                steps: [
-                    { step: 1, label: 'Start Bempedoic acid 180 mg PO daily', detail: 'Liver-selective prodrug; avoids skeletal muscle myalgias (~23% LDL-C drop).' }
-                ]
-            },
-            {
-                id: 'nexlizet_combo',
-                title: 'Bempedoic Acid 180 mg / Ezetimibe 10 mg (Single Combo Pill)',
-                agentCount: 1,
-                tier: 2,
-                meds: ['Bempedoic acid / Ezetimibe 180/10 mg PO daily (1 tablet)'],
-                drops: [0.38],
-                insuranceNote: 'Single combination tablet minimizes pill burden; PA typically requires statin intolerance.',
-                steps: [
-                    { step: 1, label: 'Start Ezetimibe 10 mg PO daily', detail: 'Immediate generic start (~22% LDL-C drop).' },
-                    { step: 2, label: 'Transition to Bempedoic acid / Ezetimibe 180/10 mg (1 pill daily)', detail: 'Consolidates into a single tablet for ~38% total LDL-C reduction.' }
-                ]
-            },
-            {
-                id: 'pcsk9_mono',
-                title: 'PCSK9 Inhibitor Monotherapy (Evolocumab or Alirocumab)',
-                agentCount: 1,
-                tier: 3,
-                meds: ['Evolocumab 140 mg SubQ q2wk (or Alirocumab 75–150 mg q2wk)'],
-                drops: [0.58],
-                insuranceNote: 'Single biweekly injection; PA requires documented statin intolerance (± ezetimibe trial).',
-                steps: [
-                    { step: 1, label: 'Trial Ezetimibe 10 mg PO daily (formulary step)', detail: 'Often required by payers prior to PCSK9i authorization.' },
-                    { step: 2, label: 'Initiate PCSK9 mAb (Evolocumab 140 mg q2wk or Alirocumab q2wk)', detail: 'Achieves ~58% LDL-C reduction as a single agent.' }
-                ]
-            },
-            {
-                id: 'pcsk9_eze',
-                title: 'PCSK9 Inhibitor + Ezetimibe 10 mg',
-                agentCount: 2,
-                tier: 4,
-                meds: ['Evolocumab 140 mg SubQ q2wk', 'Ezetimibe 10 mg PO daily'],
-                drops: [0.58, 0.22],
-                insuranceNote: 'Two-agent non-statin combination yielding ~67% cumulative LDL-C reduction.',
-                steps: [
-                    { step: 1, label: 'Start Ezetimibe 10 mg PO daily', detail: 'First-step generic non-statin (~22% LDL-C drop).' },
-                    { step: 2, label: 'Add PCSK9 mAb (Evolocumab 140 mg SubQ q2wk)', detail: 'Compounds to ~67% total LDL-C reduction.' }
-                ]
-            },
-            {
-                id: 'pcsk9_nexlizet',
-                title: 'PCSK9 Inhibitor + Bempedoic Acid / Ezetimibe (180/10 mg)',
-                agentCount: 2,
-                tier: 5,
-                meds: ['Evolocumab 140 mg SubQ q2wk', 'Bempedoic acid / Ezetimibe 180/10 mg PO daily'],
-                drops: [0.58, 0.38],
-                insuranceNote: 'Maximal non-statin regimen (~74% LDL-C reduction using 1 pill + 1 biweekly injection).',
-                steps: [
-                    { step: 1, label: 'Start Bempedoic acid / Ezetimibe 180/10 mg PO daily', detail: 'Oral dual-pathway blockade (~38% LDL-C drop).' },
-                    { step: 2, label: 'Add PCSK9 mAb (Evolocumab 140 mg SubQ q2wk)', detail: 'Compounds to ~74% total LDL-C reduction.' }
-                ]
-            }
-        ];
-        return list;
-    }
-
-    // Standard Statin-Eligible Pathways (1st-line Statin -> Ezetimibe -> PCSK9i / Bempedoic Acid)
-    const regimens = [];
-
-    if (baselineMode === 'naive') {
-        regimens.push(
-            {
-                id: 'mod_statin',
-                title: 'Moderate-Intensity Statin Monotherapy',
-                agentCount: 1,
-                tier: 1,
-                meds: ['Atorvastatin 10–20 mg (or Rosuvastatin 5–10 mg) PO daily'],
-                drops: [0.40],
-                insuranceNote: 'Preferred generic 1st-line coverage; zero prior authorization.',
-                steps: [
-                    { step: 1, label: 'Initiate Moderate-Intensity Statin (e.g., Atorvastatin 20 mg or Rosuvastatin 10 mg daily)', detail: 'Single generic tablet; achieves ~40% LDL-C reduction.' }
-                ]
-            },
-            {
-                id: 'high_statin',
-                title: 'High-Intensity Statin Monotherapy',
-                agentCount: 1,
-                tier: 1,
-                meds: ['Rosuvastatin 20–40 mg (or Atorvastatin 40–80 mg) PO daily'],
-                drops: [0.53],
-                insuranceNote: 'Single generic tablet (1st-line coverage); maximizes monotherapy potency before adding a 2nd drug.',
-                steps: [
-                    { step: 1, label: 'Initiate High-Intensity Statin (Rosuvastatin 20–40 mg or Atorvastatin 40–80 mg daily)', detail: 'Single daily generic pill achieving ~50–55% LDL-C reduction.' }
-                ]
-            }
-        );
-    }
-
-    if (baselineMode === 'naive' || baselineMode === 'mod_statin') {
-        regimens.push({
-            id: 'high_statin_from_mod',
-            title: 'Titrate to High-Intensity Statin Monotherapy',
-            agentCount: 1,
-            tier: 1,
-            meds: ['Rosuvastatin 20–40 mg (or Atorvastatin 40–80 mg) PO daily'],
-            drops: baselineMode === 'mod_statin' ? [0.22] : [0.53], // incremental ~22% moving from mod (40%) to high (53%)
-            insuranceNote: 'Single generic tablet; avoids adding a second medication.',
-            steps: baselineMode === 'mod_statin'
-                ? [{ step: 1, label: 'Titrate current statin to High-Intensity (Rosuvastatin 20–40 mg or Atorvastatin 40–80 mg)', detail: 'Provides an incremental ~15–22% LDL-C drop while remaining on 1 generic pill.' }]
-                : [{ step: 1, label: 'Start High-Intensity Statin', detail: 'Single daily pill (~53% LDL-C drop).' }]
-        });
-    }
-
-    // Helper to adjust incremental drop when patient is already on high-intensity statin or high-intensity statin + ezetimibe
-    const baseMultiplier = baselineMode === 'mod_statin'
-        ? (0.47 / 0.60) // incremental factor going from 40% statin to 53% high-intensity statin (~21.7% incremental drop)
-        : (baselineMode === 'high_statin' || baselineMode === 'high_statin_eze' ? 1.0 : 0.47); // 0.47 remaining = 53% drop from naive
-
-    const highStatinStep = baselineMode === 'naive'
-        ? [{ step: 1, label: 'Start High-Intensity Statin (Rosuvastatin 20–40 mg or Atorvastatin 40–80 mg daily)', detail: 'Generic 1st-line foundation (~53% LDL-C reduction).' }]
-        : baselineMode === 'mod_statin'
-            ? [{ step: 1, label: 'Titrate to High-Intensity Statin (Rosuvastatin 20–40 mg or Atorvastatin 40–80 mg)', detail: 'Maximizes 1st-line statin foundation before adding non-statin therapy.' }]
-            : [];
-
-    if (baselineMode !== 'high_statin_eze') {
-        // 2-Drug: High-Intensity Statin + Ezetimibe
-        regimens.push({
-            id: 'high_statin_eze',
-            title: 'High-Intensity Statin + Ezetimibe 10 mg',
-            agentCount: 2,
-            tier: 2,
-            meds: ['Rosuvastatin 20–40 mg (or Atorvastatin 40–80 mg) PO daily', 'Ezetimibe 10 mg PO daily'],
-            drops: [1 - baseMultiplier, 0.22],
-            insuranceNote: 'Both agents are inexpensive generics; standard ACC/AHA 2nd-step regimen (also available as fixed-dose Rosuvastatin/Ezetimibe).',
-            steps: [
-                ...highStatinStep,
-                { step: highStatinStep.length + 1, label: 'Add Ezetimibe 10 mg PO daily', detail: 'Generic NPC1L1 inhibitor; adds ~22% incremental LDL-C reduction (total ~63% from untreated baseline).' }
-            ]
-        });
-
-        // 2-Drug: High-Intensity Statin + Bempedoic Acid
-        regimens.push({
-            id: 'high_statin_bemp',
-            title: 'High-Intensity Statin + Bempedoic Acid 180 mg',
-            agentCount: 2,
-            tier: preferOral ? 3 : 4,
-            meds: ['Rosuvastatin 20–40 mg (or Atorvastatin 40–80 mg) PO daily', 'Bempedoic acid 180 mg PO daily'],
-            drops: [1 - baseMultiplier, 0.18],
-            insuranceNote: 'Requires PA; note simvastatin >20 mg and pravastatin >40 mg are contraindicated with bempedoic acid.',
-            steps: [
-                ...highStatinStep,
-                { step: highStatinStep.length + 1, label: 'Add Bempedoic acid 180 mg PO daily', detail: 'Adds ~18% incremental LDL-C drop on top of statin.' }
-            ]
-        });
-    }
-
-    // 2-Drug: High-Intensity Statin + PCSK9 Inhibitor (skips ezetimibe when large drop needed, though PA often prefers ezetimibe trial)
-    if (baselineMode !== 'high_statin_eze') {
-        regimens.push({
-            id: 'high_statin_pcsk9',
-            title: 'High-Intensity Statin + PCSK9 Inhibitor (Evolocumab or Alirocumab)',
-            agentCount: 2,
-            tier: preferOral ? 4 : 3,
-            meds: ['Rosuvastatin 20–40 mg (or Atorvastatin 40–80 mg) PO daily', 'Evolocumab 140 mg SubQ q2wk (or Alirocumab 75–150 mg q2wk)'],
-            drops: [1 - baseMultiplier, 0.58],
-            insuranceNote: '2 total medications (~80% total drop from untreated baseline); many insurers require an ezetimibe trial first.',
-            steps: [
-                ...highStatinStep,
-                { step: highStatinStep.length + 1, label: 'Add PCSK9 mAb (Evolocumab 140 mg SubQ q2wk or Alirocumab q2wk)', detail: 'Adds ~58% incremental LDL-C reduction; achieves goal with only 2 drugs.' }
-            ]
-        });
-    }
-
-    // 3-Drug: High-Intensity Statin + Ezetimibe + Bempedoic Acid (All-Oral Triple)
-    const ezeStep = baselineMode === 'high_statin_eze'
-        ? []
-        : [{ step: highStatinStep.length + 1, label: 'Add Ezetimibe 10 mg PO daily', detail: 'Generic 2nd-line add-on (~22% incremental drop).' }];
-
-    regimens.push({
-        id: 'triple_oral',
-        title: 'High-Intensity Statin + Bempedoic Acid / Ezetimibe (180/10 mg Combo)',
-        agentCount: 2, // 2 physical pills (statin + Nexlizet fixed-dose combo)
-        tier: preferOral ? 3 : 4,
-        meds: ['Rosuvastatin 20–40 mg (or Atorvastatin 40–80 mg) PO daily', 'Bempedoic acid / Ezetimibe 180/10 mg PO daily (1 combo pill)'],
-        drops: baselineMode === 'high_statin_eze' ? [0.18] : [1 - baseMultiplier, 0.36],
-        insuranceNote: 'All-oral regimen using 2 daily pills (high-intensity statin + fixed-dose Nexlizet); PA required.',
-        steps: [
-            ...highStatinStep,
-            { step: highStatinStep.length + 1, label: 'Add Bempedoic acid / Ezetimibe 180/10 mg PO daily (single combo tablet)', detail: 'Provides ~36% incremental LDL-C reduction over statin alone without injections.' }
-        ]
-    });
-
-    // 3-Drug Standard Guideline Escalation: High-Intensity Statin + Ezetimibe + PCSK9 Inhibitor
-    regimens.push({
-        id: 'triple_pcsk9',
-        title: 'High-Intensity Statin + Ezetimibe 10 mg + PCSK9 Inhibitor',
-        agentCount: 3,
-        tier: 4,
-        meds: [
-            'Rosuvastatin 20–40 mg (or Atorvastatin 40–80 mg) PO daily',
-            'Ezetimibe 10 mg PO daily',
-            'Evolocumab 140 mg SubQ q2wk (or Alirocumab / Inclisiran)'
-        ],
-        drops: baselineMode === 'high_statin_eze' ? [0.58] : [1 - baseMultiplier, 0.22, 0.58],
-        insuranceNote: 'Gold-standard ACC/AHA stepwise escalation (~85% cumulative reduction from untreated baseline); satisfies payer step-therapy rules.',
-        steps: [
-            ...highStatinStep,
-            ...ezeStep,
-            { step: highStatinStep.length + ezeStep.length + 1, label: 'Add PCSK9 Inhibitor (Evolocumab 140 mg q2wk, Alirocumab q2wk, or Inclisiran q6mo)', detail: 'Adds ~58% incremental LDL-C reduction on top of statin + ezetimibe.' }
-        ]
-    });
-
-    // 4-Drug Intensive Regimen: High-Intensity Statin + Bempedoic Acid/Ezetimibe + PCSK9 Inhibitor
-    regimens.push({
-        id: 'quad_maximal',
-        title: 'High-Intensity Statin + Bempedoic Acid / Ezetimibe + PCSK9 Inhibitor',
-        agentCount: 3, // 2 pills + 1 injectable
-        tier: 5,
-        meds: [
-            'Rosuvastatin 20–40 mg (or Atorvastatin 40–80 mg) PO daily',
-            'Bempedoic acid / Ezetimibe 180/10 mg PO daily',
-            'Evolocumab 140 mg SubQ q2wk (or Alirocumab 150 mg q2wk)'
-        ],
-        drops: baselineMode === 'high_statin_eze' ? [0.18, 0.58] : [1 - baseMultiplier, 0.36, 0.58],
-        insuranceNote: 'Maximal four-pathway LDL-C lowering (~87% reduction from untreated baseline) in 2 daily pills + 1 biweekly injection.',
-        steps: [
-            ...highStatinStep,
-            ...ezeStep,
-            { step: highStatinStep.length + ezeStep.length + 1, label: 'Add PCSK9 Inhibitor (Evolocumab 140 mg q2wk or Alirocumab 150 mg q2wk)', detail: 'Adds ~58% incremental LDL-C reduction.' },
-            { step: highStatinStep.length + ezeStep.length + 2, label: 'Add Bempedoic acid 180 mg (or switch ezetimibe to Nexlizet 180/10 mg)', detail: 'Provides an extra ~18% incremental LDL-C drop if still above target.' }
-        ]
-    });
-
-    if (!avoidBas) {
-        regimens.push({
-            id: 'quad_plus_bas',
-            title: 'Maximal Regimen + Colesevelam 3.75 g/day',
-            agentCount: 4,
-            tier: 6,
-            meds: [
-                'High-Intensity Statin PO daily',
-                'Bempedoic acid / Ezetimibe 180/10 mg PO daily',
-                'PCSK9 Inhibitor SubQ',
-                'Colesevelam 3.75 g PO daily (spaced 4 hrs from ezetimibe)'
-            ],
-            drops: baselineMode === 'high_statin_eze' ? [0.18, 0.58, 0.15] : [1 - baseMultiplier, 0.36, 0.58, 0.15],
-            insuranceNote: 'Reserved for severe refractory hypercholesterolemia / heterozygous FH; avoid if TG > 300 mg/dL.',
-            steps: [
-                ...highStatinStep,
-                ...ezeStep,
-                { step: highStatinStep.length + ezeStep.length + 1, label: 'Add PCSK9 Inhibitor + Bempedoic Acid', detail: 'Four-pathway hepatic/intestinal LDL clearance.' },
-                { step: highStatinStep.length + ezeStep.length + 2, label: 'Add Colesevelam 3.75 g PO daily', detail: 'Adds ~15% incremental LDL-C drop (administer ≥4 hours apart from ezetimibe).' }
-            ]
-        });
-    }
-
-    // Deduplicate identical ids when naive vs mod_statin
-    const seen = new Set();
-    return regimens.filter(r => {
-        if (seen.has(r.id)) return false;
-        seen.add(r.id);
-        return true;
-    });
+/* ---------- Inputs ---------- */
+function readCtx() {
+    const statinStatus = el('statinStatus').value;
+    const statin = STATIN_BY_ID[el('curStatin').value] || STATIN_BY_ID.none;
+    const tg = parseFloat(el('currentTg').value);
+    return {
+        ldl: parseFloat(el('currentLdl').value),
+        target: parseFloat(el('targetLdl').value),
+        tg: tg,
+        statin: statin,
+        statinStatus: statinStatus,
+        eze: el('curEze').checked,
+        bemp: el('curBemp').checked,
+        bas: el('curBas').checked,
+        pcsk9: el('curPcsk9').value,
+        asian: el('asianToggle').checked,
+        dual: el('dualTargetToggle').checked,
+        preferOral: el('preferOralToggle').checked,
+        avoidBas: (isFinite(tg) && tg >= 300) || el('avoidBasToggle').checked
+    };
 }
 
-function computePredictedLdl(startLdl, drops) {
-    let ldl = startLdl;
-    for (const d of drops) {
-        ldl = ldl * (1 - d);
-    }
-    return ldl;
+function currentRemainingFraction(ctx) {
+    const onStatin = ctx.statin.red > 0;
+    let f = 1 - ctx.statin.red;
+    if (ctx.eze) f *= 1 - (onStatin ? EFF.ezeOnStatin : EFF.ezeMono);
+    if (ctx.bemp) f *= 1 - (onStatin ? EFF.bempOnStatin : EFF.bempMono);
+    if (ctx.pcsk9 !== 'none') f *= 1 - EFF[ctx.pcsk9];
+    if (ctx.bas) f *= 1 - EFF.bas;
+    return f;
 }
 
-/* ---------- Goal Presets & UI Updates ---------- */
+function currentRegimenList(ctx) {
+    const list = [];
+    if (ctx.statin.red > 0) list.push(ctx.statin.label + ' daily');
+    if (ctx.eze) list.push('ezetimibe 10 mg daily');
+    if (ctx.bemp) list.push('bempedoic acid 180 mg daily');
+    if (ctx.pcsk9 !== 'none') list.push(PCSK9_CURRENT[ctx.pcsk9]);
+    if (ctx.bas) list.push('bile acid sequestrant');
+    return list;
+}
+
+/* ---------- Statin start / titration options ---------- */
+function statinOptions(ctx) {
+    const cur = ctx.statin.red;
+    const naive = cur === 0;
+    const fac = (to, from) => (1 - to) / (1 - from);
+    const opts = [{
+        id: 'keep', finalRed: cur, weight: 0, steps: [], short: null,
+        finalLabel: naive ? null : ctx.statin.label + ' PO daily (continue)'
+    }];
+    if (ctx.statinStatus !== 'ok') return opts;
+
+    const highWeight = (ctx.asian || ctx.target > 70) ? 1.5 : 1.0;
+    const modLabel = 'Rosuvastatin 10 mg (or atorvastatin 20 mg) PO daily';
+    const highLabel = ctx.asian
+        ? 'Rosuvastatin 20 mg (or atorvastatin 40 mg) PO daily'
+        : 'Rosuvastatin 20 mg (or atorvastatin 40-80 mg) PO daily';
+
+    if (naive && ctx.asian) {
+        const startStep = {
+            label: 'Start low: rosuvastatin 5 mg (or atorvastatin 10 mg) PO daily',
+            detail: 'FDA-labelled rosuvastatin starting dose in Asian patients; about 38% LDL-C lowering expected. Recheck lipids at 4-12 weeks.',
+            factor: fac(0.38, 0)
+        };
+        opts.push({
+            id: 'START', finalRed: 0.38, weight: 1.0, short: 'Low-dose statin start',
+            finalLabel: 'Rosuvastatin 5 mg (or atorvastatin 10 mg) PO daily', steps: [startStep]
+        });
+        opts.push({
+            id: 'MOD', finalRed: 0.43, weight: 1.2, short: 'Statin started low, titrated to moderate intensity',
+            finalLabel: modLabel,
+            steps: [startStep, {
+                label: 'If above goal and tolerated, uptitrate to rosuvastatin 10 mg (or atorvastatin 20 mg) PO daily',
+                detail: 'Moderate intensity (about 43-44%). Titrate on the measured LDL-C, not on ancestry alone.',
+                factor: fac(0.43, 0.38)
+            }]
+        });
+        opts.push({
+            id: 'HIGH', finalRed: 0.50, weight: highWeight, short: 'Statin started low, titrated to high intensity',
+            finalLabel: highLabel,
+            steps: [startStep, {
+                label: 'If above goal and tolerated, uptitrate one dose step at a time to rosuvastatin 20 mg (or atorvastatin 40 mg) PO daily',
+                detail: 'High intensity (about 50%). FDA labeling: weigh risk and benefit before going above rosuvastatin 20 mg in Asian patients.',
+                factor: fac(0.50, 0.38)
+            }]
+        });
+        return opts;
+    }
+
+    const asianTitrationNote = ctx.asian ? ' Increase one dose step at a time; weigh risk and benefit before rosuvastatin above 20 mg.' : '';
+    if (cur < 0.42) {
+        opts.push({
+            id: 'MOD', finalRed: 0.43, weight: 1.2,
+            short: naive ? 'Start moderate-intensity statin' : 'Statin to moderate intensity',
+            finalLabel: modLabel,
+            steps: [{
+                label: (naive ? 'Start moderate-intensity statin: ' : 'Switch or titrate statin to moderate intensity: ') + 'rosuvastatin 10 mg (or atorvastatin 20 mg) PO daily',
+                detail: 'About 43-44% LDL-C lowering from untreated; generic.' + asianTitrationNote,
+                factor: fac(0.43, cur)
+            }]
+        });
+    }
+    if (cur < 0.48) {
+        opts.push({
+            id: 'HIGH', finalRed: 0.50, weight: highWeight,
+            short: naive ? 'Start high-intensity statin' : 'Statin to high intensity',
+            finalLabel: highLabel,
+            steps: [{
+                label: (naive ? 'Start high-intensity statin: ' : 'Switch or titrate statin to high intensity: ') + (ctx.asian ? 'rosuvastatin 20 mg (or atorvastatin 40 mg) PO daily' : 'rosuvastatin 20 mg (or atorvastatin 40-80 mg) PO daily'),
+                detail: 'About 50% LDL-C lowering from untreated (rosuvastatin 40 mg about 55%); generic.' + asianTitrationNote,
+                factor: fac(0.50, cur)
+            }]
+        });
+    }
+    return opts;
+}
+
+/* ---------- Build every candidate plan on top of the current regimen ---------- */
+function buildPlans(ctx) {
+    const W = ctx.preferOral
+        ? { eze: 2, bemp: 3, enl: 4, mab: 5, incl: 5.5, bas: 6 }
+        : { eze: 2, mab: 3, bemp: 4, incl: 5, enl: 5, bas: 7 };
+    const pcskOpts = ctx.pcsk9 === 'none' ? ['none', 'mab', 'incl', 'enl'] : ['none'];
+    const ezeOpts = ctx.eze ? [false] : [false, true];
+    const bempOpts = ctx.bemp ? [false] : [false, true];
+    const basOpts = (ctx.bas || ctx.avoidBas) ? [false] : [false, true];
+    const plans = [];
+
+    statinOptions(ctx).forEach(s => {
+        const onStatin = s.finalRed > 0;
+        // Add-ons other than ezetimibe require a maximally tolerated (high-intensity or dose-limited) statin
+        const maximized = ctx.statinStatus !== 'ok' || s.finalRed >= 0.48;
+        const atLeastMod = ctx.statinStatus !== 'ok' || s.finalRed >= 0.42;
+
+        ezeOpts.forEach(addEze => {
+            if (addEze && !atLeastMod) return;
+            bempOpts.forEach(addBemp => {
+                if (addBemp && !maximized) return;
+                pcskOpts.forEach(p => {
+                    if (p !== 'none' && !maximized) return;
+                    basOpts.forEach(addBas => {
+                        if (addBas && !maximized) return;
+
+                        const adds = [];
+                        if (addEze) adds.push({
+                            id: 'eze', short: 'add ezetimibe', w: W.eze, injectable: false, noOutcome: false,
+                            factor: 1 - (onStatin ? EFF.ezeOnStatin : EFF.ezeMono),
+                            label: 'Add ezetimibe 10 mg PO daily', med: 'Ezetimibe 10 mg PO daily',
+                            detail: onStatin
+                                ? 'About 22% further lowering on a statin; outcome benefit in IMPROVE-IT. Generic.'
+                                : 'About 18% as monotherapy. Generic.'
+                        });
+                        if (addBemp) adds.push({
+                            id: 'bemp', short: 'add bempedoic acid', w: W.bemp, injectable: false, noOutcome: false,
+                            factor: 1 - (onStatin ? EFF.bempOnStatin : EFF.bempMono),
+                            label: 'Add bempedoic acid 180 mg PO daily', med: 'Bempedoic acid 180 mg PO daily',
+                            detail: (onStatin ? 'About 17% further lowering on a statin' : 'About 22% without a statin')
+                                + '; MACE reduction in CLEAR Outcomes (statin-intolerant patients). Check uric acid, gout and tendon history.'
+                                + ((addEze || ctx.eze) ? ' A single 180/10 mg tablet with ezetimibe can replace the two separate tablets.' : '')
+                        });
+                        if (p === 'mab') adds.push({
+                            id: 'mab', short: 'add PCSK9 antibody', w: W.mab, injectable: true, noOutcome: false,
+                            factor: 1 - EFF.mab,
+                            label: 'Add PCSK9 antibody: evolocumab 140 mg SC every 2 weeks (or alirocumab 75-150 mg SC every 2 weeks)',
+                            med: 'Evolocumab 140 mg SC every 2 weeks (or alirocumab 75-150 mg SC every 2 weeks)',
+                            detail: 'About 58% further lowering on any statin background; outcome benefit in FOURIER, ODYSSEY OUTCOMES and VESALIUS-CV.'
+                        });
+                        if (p === 'incl') adds.push({
+                            id: 'incl', short: 'add inclisiran', w: W.incl, injectable: true, noOutcome: true,
+                            factor: 1 - EFF.incl,
+                            label: 'Add inclisiran 284 mg SC (day 1, month 3, then every 6 months)',
+                            med: 'Inclisiran 284 mg SC every 6 months',
+                            detail: 'About 50% further lowering. Outcome trials not yet reported; ACC/AHA 2026 prefers a PCSK9 antibody when it can be obtained and tolerated.'
+                        });
+                        if (p === 'enl') adds.push({
+                            id: 'enl', short: 'add enlicitide', w: W.enl, injectable: false, noOutcome: true,
+                            factor: 1 - EFF.enl,
+                            label: 'Add enlicitide (Lipfendra) 20 mg PO each morning on an empty stomach, 30 minutes before food',
+                            med: 'Enlicitide 20 mg PO daily (fasting)',
+                            detail: 'About 50% at 52 weeks (56% at 24 weeks). No outcome data yet; fasting adherence determines response.'
+                        });
+                        if (addBas) adds.push({
+                            id: 'bas', short: 'add colesevelam', w: W.bas, injectable: false, noOutcome: false,
+                            factor: 1 - EFF.bas,
+                            label: 'Add colesevelam 3.75 g/day PO with meals', med: 'Colesevelam 3.75 g/day PO',
+                            detail: 'About 15% further lowering. Give ezetimibe at least 2 hours before or 4 hours after. Avoid if triglycerides are 300 mg/dL or higher.'
+                        });
+                        adds.sort((a, b) => a.w - b.w);
+
+                        const steps = s.steps.concat(adds);
+                        if (steps.length === 0) return;
+
+                        let predicted = ctx.ldl;
+                        steps.forEach(st => { predicted *= st.factor; });
+
+                        const actionIds = (s.id === 'keep' ? [] : ['S:' + s.id]).concat(adds.map(a => a.id));
+                        const weight = s.weight + adds.reduce((sum, a) => sum + a.w, 0);
+                        const usesInjectable = adds.some(a => a.injectable);
+                        const noOutcome = adds.some(a => a.noOutcome);
+
+                        const finalMeds = [];
+                        if (s.finalRed > 0) finalMeds.push(s.id === 'keep' ? s.finalLabel : s.finalLabel + ' (new or changed)');
+                        if (ctx.eze) finalMeds.push('Ezetimibe 10 mg PO daily (continue)');
+                        if (ctx.bemp) finalMeds.push('Bempedoic acid 180 mg PO daily (continue)');
+                        if (ctx.pcsk9 !== 'none') finalMeds.push(PCSK9_CURRENT[ctx.pcsk9] + ' (continue)');
+                        if (ctx.bas) finalMeds.push('Bile acid sequestrant (continue)');
+                        adds.forEach(a => finalMeds.push(a.med + ' (new)'));
+
+                        const notes = [];
+                        if (adds.some(a => a.id === 'mab')) notes.push('ACC/AHA 2026 no longer requires an ezetimibe trial before a PCSK9 antibody; payer step-therapy rules vary.');
+                        if (noOutcome) notes.push('Includes an agent without reported cardiovascular outcome data.');
+                        if ((addBemp || ctx.bemp) && s.id === 'keep' && (ctx.statin.id === 'simva40' || ctx.statin.id === 'prava80')) {
+                            notes.push('Bempedoic acid: avoid simvastatin above 20 mg and pravastatin above 40 mg (myopathy); change the statin first.');
+                        }
+                        if (addBemp && onStatin && s.finalRed >= 0.50) notes.push('Bempedoic acid has not been studied on full-dose high-intensity statins; the 17% estimate may be optimistic.');
+                        const isModPlusEze = adds.length === 1 && adds[0].id === 'eze' && s.finalRed >= 0.42 && s.finalRed < 0.48;
+                        if (isModPlusEze) notes.push('Moderate-intensity statin plus ezetimibe was non-inferior to high-intensity statin monotherapy for 3-year outcomes in RACING (Korea), with less intolerance.');
+
+                        let title = (s.short ? [s.short] : []).concat(adds.map(a => a.short)).join(' + ');
+                        title = title.charAt(0).toUpperCase() + title.slice(1);
+
+                        plans.push({
+                            title: title, steps: steps, predicted: predicted, actionIds: actionIds,
+                            changeCount: actionIds.length, finalMeds: finalMeds, notes: notes,
+                            noOutcome: noOutcome, isModPlusEze: isModPlusEze,
+                            sortKey: [
+                                (ctx.preferOral && usesInjectable) ? 1 : 0,
+                                noOutcome ? 1 : 0,
+                                (ctx.asian && s.id === 'HIGH') ? 1 : 0,
+                                actionIds.length,
+                                weight,
+                                -predicted
+                            ]
+                        });
+                    });
+                });
+            });
+        });
+    });
+    return plans;
+}
+
+function comparePlans(a, b) {
+    for (let i = 0; i < a.sortKey.length; i++) {
+        if (a.sortKey[i] !== b.sortKey[i]) return a.sortKey[i] - b.sortKey[i];
+    }
+    return 0;
+}
+
+/* ---------- Goal presets & guide ---------- */
 function setGoalPreset(val) {
-    document.getElementById('targetLdl').value = val;
-    updatePresetButtons(val);
+    el('targetLdl').value = val;
     updatePlanner();
 }
 
 function updatePresetButtons(activeGoal) {
     document.querySelectorAll('.goal-preset-btn').forEach(btn => {
         const g = Number(btn.dataset.goal);
-        if (g === activeGoal) {
-            btn.className = 'goal-preset-btn py-1.5 px-2 rounded-lg border border-blue-900 bg-blue-900 text-white text-xs font-bold transition';
-        } else {
-            btn.className = 'goal-preset-btn py-1.5 px-2 rounded-lg border border-slate-300 bg-slate-50 hover:bg-blue-50 text-xs font-bold text-slate-700 transition';
-        }
+        btn.className = g === activeGoal
+            ? 'goal-preset-btn py-1.5 px-2 rounded-lg border border-blue-900 bg-blue-900 text-white text-xs font-bold transition'
+            : 'goal-preset-btn py-1.5 px-2 rounded-lg border border-slate-300 bg-slate-50 hover:bg-blue-50 text-xs font-bold text-slate-700 transition';
     });
-
-    const contextEl = document.getElementById('goalClinicalContext');
-    if (activeGoal <= 40) {
-        contextEl.textContent = '< 40 mg/dL: Extreme-risk / recurrent ASCVD events despite maximally tolerated therapy (ESC/EAS).';
-    } else if (activeGoal <= 55) {
-        contextEl.textContent = '< 55 mg/dL: Very-high-risk ASCVD (multiple major events or 1 major event + multiple high-risk conditions).';
-    } else if (activeGoal <= 70) {
-        contextEl.textContent = '< 70 mg/dL: Standard clinical ASCVD secondary prevention or diabetes with multiple risk factors.';
-    } else if (activeGoal <= 100) {
-        contextEl.textContent = '< 100 mg/dL: Primary prevention threshold for elevated 10-year ASCVD risk or diabetes without ASCVD.';
-    } else {
-        contextEl.textContent = `Custom LDL-C threshold (< ${activeGoal} mg/dL).`;
-    }
+    el('goalGuide').innerHTML = GOAL_GUIDE.map(g => {
+        const on = g.goal === activeGoal;
+        return `<button type="button" onclick="setGoalPreset(${g.goal})" class="w-full text-left px-2.5 py-1.5 flex gap-2 items-start transition ${on ? 'bg-blue-50' : 'bg-white hover:bg-slate-50'}">
+            <span class="shrink-0 w-12 font-extrabold ${on ? 'text-blue-900' : 'text-slate-700'}">&lt; ${g.goal}</span>
+            <span class="text-slate-600 leading-snug">${g.who} <span class="italic text-slate-500">(${g.pct})</span></span>
+        </button>`;
+    }).join('');
 }
 
 function resetPlanner() {
-    document.getElementById('currentLdl').value = 165;
-    document.getElementById('currentTg').value = '';
-    document.getElementById('targetLdl').value = 70;
-    document.getElementById('baselineTherapy').value = 'naive';
-    document.getElementById('preferOralToggle').checked = false;
-    document.getElementById('avoidBasToggle').checked = true;
-    updatePresetButtons(70);
+    el('currentLdl').value = 165;
+    el('currentTg').value = '';
+    el('targetLdl').value = 70;
+    el('curStatin').value = 'none';
+    el('statinStatus').value = 'ok';
+    el('curEze').checked = false;
+    el('curBemp').checked = false;
+    el('curBas').checked = false;
+    el('curPcsk9').value = 'none';
+    el('asianToggle').checked = false;
+    el('dualTargetToggle').checked = true;
+    el('preferOralToggle').checked = false;
+    el('avoidBasToggle').checked = true;
     updatePlanner();
 }
 
+/* ---------- Clinical alerts ---------- */
+const TONES = {
+    red: 'bg-red-50 border border-red-300 text-red-900',
+    amber: 'bg-amber-50 border border-amber-300 text-amber-900',
+    blue: 'bg-blue-50 border border-blue-200 text-blue-950',
+    slate: 'bg-slate-50 border border-slate-300 text-slate-800'
+};
+
+function renderAlerts(ctx, untreated) {
+    const boxes = [];
+    const box = (tone, html) => boxes.push(`<div class="p-3 rounded-lg text-xs leading-relaxed ${TONES[tone]}">${html}</div>`);
+
+    if (isFinite(ctx.tg) && ctx.tg >= 500) {
+        box('red', `<strong>&#9888;&#65039; Severe hypertriglyceridemia (TG ${r0(ctx.tg)} mg/dL):</strong> prioritize pancreatitis prevention (fibrate, prescription omega-3 fatty acids, glycemic and alcohol control). Bile acid sequestrants are contraindicated above 500 mg/dL. Calculated LDL-C is unreliable at this level.`);
+    } else if (isFinite(ctx.tg) && ctx.tg >= 150) {
+        box('amber', `<strong>&#8505;&#65039; Elevated triglycerides (TG ${r0(ctx.tg)} mg/dL):</strong> if ASCVD (or diabetes with additional risk factors) and TG remain 150&ndash;499 mg/dL on a statin with LDL-C 41&ndash;100 mg/dL, icosapent ethyl 2 g BID reduced events in REDUCE-IT; it does not lower LDL-C.${ctx.tg >= 200 ? ' At TG 200 mg/dL or higher, use non-HDL-C or apoB as the secondary target.' : ''}${ctx.tg >= 300 ? ' Bile acid sequestrants are excluded (TG 300 mg/dL or higher).' : ''}`);
+    }
+
+    if (untreated >= 190) {
+        box('blue', `<strong>Estimated untreated LDL-C about ${r0(untreated)} mg/dL (190 or higher):</strong> exclude secondary causes (hypothyroidism, nephrotic syndrome, cholestasis, drugs), evaluate for familial hypercholesterolemia (genetic testing, cascade screening of relatives) and use a maximally tolerated statin.`);
+    }
+
+    if (ctx.asian) {
+        box('blue', `<strong>Asian ancestry &mdash; statin dosing:</strong> rosuvastatin exposure is about 2-fold higher in Asian patients; FDA labeling starts at 5 mg once daily and advises weighing risk and benefit if not controlled at doses up to 20 mg. The 2026 ACC/AHA guideline advises lower initial doses, especially in East Asian ancestry. The LDL-C goal is unchanged: start low, recheck at 4&ndash;12 weeks, then titrate or add ezetimibe. In this mode, plans that avoid a high-intensity statin are ranked first (RACING: rosuvastatin 10 mg + ezetimibe non-inferior to rosuvastatin 20 mg). Avoid simvastatin with lipid-modifying niacin in Chinese patients.`);
+        if (ctx.statin.id === 'rosuva40') {
+            box('amber', `<strong>Rosuvastatin 40 mg in an Asian patient:</strong> above the dose at which FDA labeling asks for a risk&ndash;benefit reassessment (20 mg). Review for muscle symptoms and consider rosuvastatin 10&ndash;20 mg plus ezetimibe.`);
+        }
+    }
+
+    if (ctx.statinStatus !== 'ok') {
+        box('slate', `<strong>Statin intolerance:</strong> NLA 2022 defines complete intolerance as no statin tolerated after at least 2 statins, one at the lowest approved daily dose. In blinded rechallenge trials most muscle symptoms were not statin-specific (SAMSON: about 90% of the symptom burden also occurred on placebo). Consider rechallenge with a different statin, a lower dose, or non-daily dosing before relying on non-statin therapy alone.`);
+    }
+
+    if (isFinite(ctx.target) && ctx.target <= 40) {
+        box('slate', `<strong>Goal under 40 mg/dL:</strong> an optional ESC/EAS goal (Class IIb) for recurrent events or polyvascular disease; US guidelines stop at under 55 mg/dL.`);
+    }
+
+    el('alertsContainer').innerHTML = boxes.join('');
+}
+
+/* ---------- Main update ---------- */
 function updatePlanner() {
-    const startLdl = parseFloat(document.getElementById('currentLdl').value);
-    const targetLdl = parseFloat(document.getElementById('targetLdl').value);
-    const tgVal = parseFloat(document.getElementById('currentTg').value);
-    const baselineMode = document.getElementById('baselineTherapy').value;
-    const preferOral = document.getElementById('preferOralToggle').checked;
-    const avoidBas = isFinite(tgVal) && tgVal >= 300 ? true : document.getElementById('avoidBasToggle').checked;
+    // Complete intolerance means no statin
+    const statinEl = el('curStatin');
+    if (el('statinStatus').value === 'none') { statinEl.value = 'none'; statinEl.disabled = true; }
+    else { statinEl.disabled = false; }
 
-    if (isFinite(tgVal) && tgVal >= 300) {
-        document.getElementById('avoidBasToggle').checked = true;
-    }
+    const tgRaw = parseFloat(el('currentTg').value);
+    if (isFinite(tgRaw) && tgRaw >= 300) el('avoidBasToggle').checked = true;
 
-    updatePresetButtons(targetLdl);
+    const ctx = readCtx();
+    updatePresetButtons(ctx.target);
 
-    const validInputs = isFinite(startLdl) && isFinite(targetLdl) && startLdl > 0 && targetLdl > 0;
-    document.getElementById('kpiStartLdl').textContent = isFinite(startLdl) ? `${Math.round(startLdl)} mg/dL` : '--';
-    document.getElementById('kpiTargetLdl').textContent = isFinite(targetLdl) ? `< ${Math.round(targetLdl)} mg/dL` : '--';
+    const regimen = currentRegimenList(ctx);
+    const regimenText = regimen.length ? regimen.join(' + ') : 'no lipid-lowering therapy';
+    el('summarySubheader').textContent = 'Current regimen: ' + regimenText + '.';
 
-    // Triglyceride alert banner
-    const tgAlertBox = document.getElementById('tgAlertBox');
-    if (isFinite(tgVal) && tgVal >= 500) {
-        tgAlertBox.className = 'mb-4 p-3 rounded-lg bg-red-50 border border-red-300 text-xs text-red-900';
-        tgAlertBox.innerHTML = `<strong>&#9888;&#65039; Severe Hypertriglyceridemia (TG ${Math.round(tgVal)} mg/dL):</strong> Prioritize pancreatitis prevention first (fibrates, prescription omega-3 fatty acids, glycemic/alcohol control). Bile acid sequestrants are contraindicated.`;
-    } else if (isFinite(tgVal) && tgVal >= 150) {
-        tgAlertBox.className = 'mb-4 p-3 rounded-lg bg-amber-50 border border-amber-300 text-xs text-amber-900';
-        tgAlertBox.innerHTML = `<strong>&#8505;&#65039; Elevated Triglycerides (TG ${Math.round(tgVal)} mg/dL):</strong> High-intensity statins lower TG by ~15–30%. If ASCVD/diabetes is present and TG remains 150–499 mg/dL on statin, consider adding icosapent ethyl 2 g BID.`;
-    } else {
-        tgAlertBox.className = 'hidden';
-    }
+    el('kpiStartLdl').textContent = isFinite(ctx.ldl) ? `${r0(ctx.ldl)} mg/dL` : '--';
+    el('kpiTargetLdl').textContent = isFinite(ctx.target) ? `< ${r0(ctx.target)} mg/dL` : '--';
 
-    if (!validInputs) return;
+    const valid = isFinite(ctx.ldl) && isFinite(ctx.target) && ctx.ldl > 0 && ctx.target > 0;
+    if (!valid) return;
 
-    if (startLdl < targetLdl) {
-        document.getElementById('kpiReqDrop').textContent = '0% (At Goal)';
-        document.getElementById('requiredDropBadge').textContent = 'Already at goal';
-        document.getElementById('optimalPlanContainer').innerHTML = `
+    const apoBGoal = { 100: 90, 70: 70, 55: 55 }[ctx.target];
+    el('kpiTargetSub').textContent = `non-HDL-C < ${r0(ctx.target + 30)}` + (apoBGoal ? `; apoB < ${apoBGoal}` : '');
+
+    const untreated = ctx.ldl / currentRemainingFraction(ctx);
+    el('kpiUntreated').textContent = `~${r0(untreated)} mg/dL`;
+
+    const reqRed = !ctx.dual ? 0 : (ctx.target <= 70 ? 0.50 : (ctx.target <= 100 ? 0.30 : 0));
+    const pctCeiling = untreated * (1 - reqRed);
+    const meets = ldl => ldl < ctx.target && ldl <= pctCeiling * (1 + 1e-9);
+    const effectiveCeiling = Math.min(ctx.target, pctCeiling);
+    const needPct = Math.max(0, (ctx.ldl - effectiveCeiling) / ctx.ldl * 100);
+    const pctDriven = pctCeiling < ctx.target;
+    const currentRedPct = (1 - ctx.ldl / untreated) * 100;
+    const goalText = `< ${r0(ctx.target)} mg/dL` + (reqRed > 0 ? ` and at least ${r0(reqRed * 100)}% reduction from the estimated untreated level` : '');
+
+    renderAlerts(ctx, untreated);
+
+    /* ----- Already at goal ----- */
+    if (meets(ctx.ldl)) {
+        el('kpiReqDrop').textContent = '0%';
+        el('kpiReqSub').textContent = 'at goal';
+        el('requiredDropBadge').textContent = 'Already at goal';
+        el('optimalPlanContainer').innerHTML = `
             <div class="p-4 rounded-xl bg-green-50 border border-green-300 text-xs text-green-950">
-                <div class="font-extrabold text-sm text-green-900 mb-1">&#9989; Current LDL-C (${Math.round(startLdl)} mg/dL) Already Meets Target (&lt; ${Math.round(targetLdl)} mg/dL)</div>
-                <p>Maintain current lifestyle measures and existing baseline therapy without adding new lipid-lowering agents.</p>
-            </div>
-        `;
-        document.getElementById('stepLadderContainer').innerHTML = '';
-        document.getElementById('alternativesSection').classList.add('hidden');
-        document.getElementById('clinicalNoteBox').textContent = `Current LDL-C is ${Math.round(startLdl)} mg/dL, which is already below the target goal of < ${Math.round(targetLdl)} mg/dL. Continue current regimen and monitor fasting lipids periodically.`;
+                <div class="font-extrabold text-sm text-green-900 mb-1">&#9989; Current LDL-C (${r0(ctx.ldl)} mg/dL) meets the goal (${goalText.replace('<', '&lt;')})</div>
+                <p>Continue the current regimen (${regimenText}) and lifestyle measures. Current reduction from the estimated untreated level: about ${r0(currentRedPct)}%.</p>
+            </div>`;
+        el('stepLadderContainer').innerHTML = '';
+        el('ladderSection').classList.add('hidden');
+        el('alternativesSection').classList.add('hidden');
+        el('clinicalNoteBox').textContent =
+            `LDL-C ${r0(ctx.ldl)} mg/dL on ${regimenText} (estimated untreated ~${r0(untreated)} mg/dL; ~${r0(currentRedPct)}% reduction). ` +
+            `Goal ${goalText}: met. Continue current regimen; repeat lipid panel every 6-12 months.`;
         return;
     }
 
-    // Target is "< targetLdl", so aim for <= targetLdl - 1 (or targetLdl)
-    const effectiveCeiling = targetLdl;
-    const reqPct = ((startLdl - effectiveCeiling) / startLdl) * 100;
-    document.getElementById('kpiReqDrop').textContent = `${reqPct.toFixed(1)}%`;
-    document.getElementById('requiredDropBadge').textContent = `Need ≥ ${reqPct.toFixed(1)}% drop`;
+    el('ladderSection').classList.remove('hidden');
+    el('kpiReqDrop').textContent = `${needPct.toFixed(1)}%`;
+    el('kpiReqSub').textContent = pctDriven ? `set by the ${r0(reqRed * 100)}% reduction rule` : 'from current LDL-C';
+    el('requiredDropBadge').textContent = `Need ≥ ${needPct.toFixed(1)}% more`;
 
-    const candidates = buildCandidateRegimens(baselineMode, preferOral, avoidBas).map(reg => {
-        const predictedLdl = computePredictedLdl(startLdl, reg.drops);
-        const totalPctDrop = ((startLdl - predictedLdl) / startLdl) * 100;
-        const meetsGoal = predictedLdl < effectiveCeiling;
-        return {
-            ...reg,
-            predictedLdl,
-            totalPctDrop,
-            meetsGoal
-        };
-    });
+    /* ----- Candidate plans ----- */
+    const plans = buildPlans(ctx);
+    const achievers = plans.filter(p => meets(p.predicted));
+    const isStrictSubset = (a, b) => a.length < b.length && a.every(x => b.includes(x));
+    // Drop plans that contain an unnecessary extra change
+    const minimal = achievers.filter(p => !achievers.some(q => q !== p && isStrictSubset(q.actionIds, p.actionIds)));
+    minimal.sort(comparePlans);
 
-    const goalAchievers = candidates
-        .filter(c => c.meetsGoal)
-        .sort((a, b) => {
-            // 1. Fewest medications possible first
-            if (a.agentCount !== b.agentCount) return a.agentCount - b.agentCount;
-            // 2. Insurance / guideline tier order next
-            if (a.tier !== b.tier) return a.tier - b.tier;
-            // 3. Least aggressive intensity that still safely clears goal
-            return b.predictedLdl - a.predictedLdl;
-        });
-
-    const optimal = goalAchievers[0] || candidates[candidates.length - 1];
-    const optimalContainer = document.getElementById('optimalPlanContainer');
-
-    if (optimal.meetsGoal) {
-        optimalContainer.innerHTML = `
-            <div class="p-4 rounded-xl bg-green-50/90 border-2 border-green-600 shadow-sm">
-                <div class="flex flex-wrap items-center justify-between gap-2 mb-2">
-                    <span class="text-[11px] font-extrabold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-green-700 text-white">
-                        Recommended Minimal Regimen (${optimal.agentCount} ${optimal.agentCount === 1 ? 'Medication' : 'Medications'})
-                    </span>
-                    <span class="text-xs font-extrabold text-green-900">
-                        Predicted LDL-C: ~${Math.round(optimal.predictedLdl)} mg/dL (&minus;${optimal.totalPctDrop.toFixed(0)}%)
-                    </span>
-                </div>
-                <h3 class="text-base font-extrabold text-slate-900 mb-2">${optimal.title}</h3>
-                <ul class="space-y-1 text-xs text-slate-800 mb-2.5">
-                    ${optimal.meds.map(m => `<li class="flex items-center gap-2"><span class="text-green-700 font-bold">&#10003;</span><span class="font-semibold">${m}</span></li>`).join('')}
-                </ul>
-                <div class="text-[11px] text-green-900 bg-white/80 border border-green-200 rounded-lg px-2.5 py-1.5">
-                    <strong>Coverage &amp; Rationale:</strong> ${optimal.insuranceNote}
-                </div>
-            </div>
-        `;
-    } else {
-        optimalContainer.innerHTML = `
-            <div class="p-4 rounded-xl bg-amber-50 border-2 border-amber-500">
-                <div class="flex flex-wrap items-center justify-between gap-2 mb-1.5">
-                    <span class="text-[11px] font-extrabold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-amber-600 text-white">
-                        Maximal Combination Regimen
-                    </span>
-                    <span class="text-xs font-extrabold text-amber-950">
-                        Predicted LDL-C: ~${Math.round(optimal.predictedLdl)} mg/dL (&minus;${optimal.totalPctDrop.toFixed(0)}%)
-                    </span>
-                </div>
-                <h3 class="text-base font-extrabold text-slate-900 mb-1.5">${optimal.title}</h3>
-                <p class="text-xs text-amber-900 mb-2">
-                    Starting LDL-C (${Math.round(startLdl)} mg/dL) requires &ge; ${reqPct.toFixed(1)}% lowering; maximal standard therapy brings LDL-C to ~${Math.round(optimal.predictedLdl)} mg/dL. Evaluate for Homozygous FH / specialty therapy (evinacumab or LDL apheresis) if goal &lt; ${Math.round(targetLdl)} mg/dL is unmet.
-                </p>
-                <ul class="space-y-1 text-xs text-slate-800">
-                    ${optimal.meds.map(m => `<li class="flex items-center gap-2"><span class="text-amber-700 font-bold">&#10003;</span><span class="font-semibold">${m}</span></li>`).join('')}
-                </ul>
-            </div>
-        `;
+    let optimal = minimal[0] || null;
+    const achieved = !!optimal;
+    if (!optimal && plans.length) {
+        optimal = plans.slice().sort((a, b) => a.predicted - b.predicted)[0];
     }
 
-    // Render Stepwise Escalation Ladder
-    const ladderContainer = document.getElementById('stepLadderContainer');
-    let runningLdl = startLdl;
-    ladderContainer.innerHTML = optimal.steps.map((s, idx) => {
-        const dropFrac = optimal.drops[idx] || 0;
-        runningLdl = runningLdl * (1 - dropFrac);
-        const isLast = idx === optimal.steps.length - 1;
-        return `
-            <div class="p-3 rounded-lg border ${isLast ? 'border-blue-300 bg-blue-50/50' : 'border-slate-200 bg-slate-50/60'} flex items-start justify-between gap-3">
-                <div class="flex items-start gap-2.5">
-                    <span class="w-6 h-6 rounded-full bg-blue-900 text-white font-extrabold text-xs flex items-center justify-center shrink-0 mt-0.5">
-                        ${s.step}
-                    </span>
-                    <div>
-                        <div class="text-xs font-bold text-slate-900">${s.label}</div>
-                        <p class="text-[11px] text-slate-600 mt-0.5">${s.detail}</p>
-                    </div>
-                </div>
-                <div class="text-right shrink-0">
-                    <div class="text-[10px] font-bold uppercase text-slate-400">Est. LDL-C</div>
-                    <div class="text-xs font-extrabold ${runningLdl < effectiveCeiling ? 'text-green-700' : 'text-blue-950'}">
-                        ~${Math.round(runningLdl)} mg/dL
-                    </div>
+    const container = el('optimalPlanContainer');
+    if (!optimal) {
+        container.innerHTML = `
+            <div class="p-4 rounded-xl bg-amber-50 border-2 border-amber-500 text-xs text-amber-950">
+                <div class="font-extrabold text-sm mb-1">No further options in this model</div>
+                <p>Every modelled option is already in use or excluded by the selections on the left. Review adherence and secondary causes, and consider lipid-specialist referral (homozygous FH therapies, lipoprotein apheresis).</p>
+            </div>`;
+        el('stepLadderContainer').innerHTML = '';
+        el('alternativesSection').classList.add('hidden');
+        el('clinicalNoteBox').textContent =
+            `LDL-C ${r0(ctx.ldl)} mg/dL on ${regimenText} (estimated untreated ~${r0(untreated)} mg/dL). Goal ${goalText} not met; no further standard options identified. Review adherence and secondary causes; refer to lipid specialist.`;
+        return;
+    }
+
+    const totalRedPct = (1 - optimal.predicted / untreated) * 100;
+    const tone = achieved
+        ? { wrap: 'bg-green-50/90 border-2 border-green-600', badge: 'bg-green-700', text: 'text-green-900', tick: 'text-green-700', note: 'text-green-900 border-green-200' }
+        : { wrap: 'bg-amber-50 border-2 border-amber-500', badge: 'bg-amber-600', text: 'text-amber-950', tick: 'text-amber-700', note: 'text-amber-900 border-amber-200' };
+    const rationale = [achieved
+        ? `Fewest changes predicted to reach ${goalText.replace('<', '&lt;')}.`
+        : `Maximal modelled regimen; predicted LDL-C stays above goal. Check adherence and secondary causes, and evaluate for familial hypercholesterolemia or lipid-specialist referral (evinacumab or lipoprotein apheresis for homozygous FH).`
+    ].concat(optimal.notes);
+
+    container.innerHTML = `
+        <div class="p-4 rounded-xl ${tone.wrap} shadow-sm">
+            <div class="flex flex-wrap items-center justify-between gap-2 mb-2">
+                <span class="text-[11px] font-extrabold uppercase tracking-wider px-2.5 py-0.5 rounded-full ${tone.badge} text-white">
+                    ${achieved ? `Suggested plan (${optimal.changeCount} ${optimal.changeCount === 1 ? 'change' : 'changes'})` : 'Maximal regimen &mdash; goal not reached'}
+                </span>
+                <span class="text-xs font-extrabold ${tone.text}">
+                    Predicted LDL-C: ~${r0(optimal.predicted)} mg/dL (&minus;${r0(totalRedPct)}% from est. untreated)
+                </span>
+            </div>
+            <h3 class="text-base font-extrabold text-slate-900 mb-2">${optimal.title}</h3>
+            <div class="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1">Resulting regimen (${optimal.finalMeds.length} ${optimal.finalMeds.length === 1 ? 'medication' : 'medications'})</div>
+            <ul class="space-y-1 text-xs text-slate-800 mb-2.5">
+                ${optimal.finalMeds.map(m => `<li class="flex items-start gap-2"><span class="${tone.tick} font-bold">&#10003;</span><span class="font-semibold">${m}</span></li>`).join('')}
+            </ul>
+            <div class="text-[11px] ${tone.note} bg-white/80 border rounded-lg px-2.5 py-1.5 leading-relaxed">
+                <strong>Rationale:</strong> ${rationale.join(' ')}
+            </div>
+        </div>`;
+
+    /* ----- Step ladder (factors are stored on each step, so rows always match) ----- */
+    let running = ctx.ldl;
+    const ladderRows = [`
+        <div class="p-3 rounded-lg border border-slate-200 bg-white flex items-start justify-between gap-3">
+            <div class="flex items-start gap-2.5">
+                <span class="px-1.5 h-6 rounded-full bg-slate-500 text-white font-extrabold text-[10px] flex items-center justify-center shrink-0 mt-0.5">NOW</span>
+                <div>
+                    <div class="text-xs font-bold text-slate-900">Current regimen: ${regimenText}</div>
+                    <p class="text-[11px] text-slate-600 mt-0.5">About ${r0(currentRedPct)}% below the estimated untreated LDL-C of ~${r0(untreated)} mg/dL.</p>
                 </div>
             </div>
-        `;
-    }).join('');
-
-    // Render Alternative Goal-Achieving Options
-    const altSection = document.getElementById('alternativesSection');
-    const altContainer = document.getElementById('alternativesContainer');
-    const alternatives = goalAchievers.filter(c => c.id !== optimal.id);
-
-    if (alternatives.length > 0) {
-        altSection.classList.remove('hidden');
-        altContainer.innerHTML = alternatives.map(alt => `
-            <div class="p-2.5 rounded-lg border border-slate-200 bg-white flex flex-wrap items-center justify-between gap-2 text-xs">
+            <div class="text-right shrink-0">
+                <div class="text-[10px] font-bold uppercase text-slate-400">LDL-C</div>
+                <div class="text-xs font-extrabold text-blue-950">${r0(ctx.ldl)} mg/dL</div>
+            </div>
+        </div>`];
+    optimal.steps.forEach((s, idx) => {
+        running *= s.factor;
+        const isLast = idx === optimal.steps.length - 1;
+        ladderRows.push(`
+        <div class="p-3 rounded-lg border ${isLast ? 'border-blue-300 bg-blue-50/50' : 'border-slate-200 bg-slate-50/60'} flex items-start justify-between gap-3">
+            <div class="flex items-start gap-2.5">
+                <span class="w-6 h-6 rounded-full bg-blue-900 text-white font-extrabold text-xs flex items-center justify-center shrink-0 mt-0.5">${idx + 1}</span>
                 <div>
+                    <div class="text-xs font-bold text-slate-900">${s.label}</div>
+                    <p class="text-[11px] text-slate-600 mt-0.5">${s.detail}</p>
+                </div>
+            </div>
+            <div class="text-right shrink-0">
+                <div class="text-[10px] font-bold uppercase text-slate-400">Est. LDL-C</div>
+                <div class="text-xs font-extrabold ${meets(running) ? 'text-green-700' : 'text-blue-950'}">~${r0(running)} mg/dL</div>
+            </div>
+        </div>`);
+    });
+    el('stepLadderContainer').innerHTML = ladderRows.join('');
+
+    /* ----- Alternatives ----- */
+    const alternatives = minimal.filter(p => p !== optimal).slice(0, 6);
+    if (achieved && alternatives.length > 0) {
+        el('alternativesSection').classList.remove('hidden');
+        el('alternativesContainer').innerHTML = alternatives.map(alt => `
+            <div class="p-2.5 rounded-lg border border-slate-200 bg-white flex flex-wrap items-center justify-between gap-2 text-xs">
+                <div class="max-w-[75%]">
                     <span class="font-bold text-slate-800">${alt.title}</span>
-                    <span class="ml-1.5 text-[10px] font-semibold px-2 py-0.5 rounded bg-slate-100 text-slate-600 border border-slate-200">
-                        ${alt.agentCount} ${alt.agentCount === 1 ? 'agent' : 'agents'}
-                    </span>
-                    <div class="text-[11px] text-slate-500 mt-0.5">${alt.insuranceNote}</div>
+                    <span class="ml-1.5 text-[10px] font-semibold px-2 py-0.5 rounded bg-slate-100 text-slate-600 border border-slate-200">${alt.changeCount} ${alt.changeCount === 1 ? 'change' : 'changes'}</span>
+                    ${alt.isModPlusEze ? '<span class="ml-1 text-[10px] font-semibold px-2 py-0.5 rounded bg-blue-100 text-blue-900 border border-blue-200">RACING-supported</span>' : ''}
+                    ${alt.noOutcome ? '<span class="ml-1 text-[10px] font-semibold px-2 py-0.5 rounded bg-amber-100 text-amber-900 border border-amber-200">no outcome data yet</span>' : ''}
+                    ${alt.notes.length ? `<div class="text-[11px] text-slate-500 mt-0.5">${alt.notes.join(' ')}</div>` : ''}
                 </div>
                 <div class="text-right">
-                    <span class="font-extrabold text-blue-950">~${Math.round(alt.predictedLdl)} mg/dL</span>
-                    <span class="text-[11px] text-slate-500 block">(&minus;${alt.totalPctDrop.toFixed(0)}%)</span>
+                    <span class="font-extrabold text-blue-950">~${r0(alt.predicted)} mg/dL</span>
+                    <span class="text-[11px] text-slate-500 block">(&minus;${r0((1 - alt.predicted / untreated) * 100)}% from untreated)</span>
                 </div>
-            </div>
-        `).join('');
+            </div>`).join('');
     } else {
-        altSection.classList.add('hidden');
+        el('alternativesSection').classList.add('hidden');
     }
 
-    // Generate Clinical Chart Note
-    const stepText = optimal.steps.map(s => `Step ${s.step}: ${s.label}`).join(' -> ');
-    document.getElementById('clinicalNoteBox').textContent =
-        `Baseline LDL-C ${Math.round(startLdl)} mg/dL; target goal < ${Math.round(targetLdl)} mg/dL (requires >= ${reqPct.toFixed(1)}% reduction). ` +
-        `Minimal recommended regimen (${optimal.agentCount} ${optimal.agentCount === 1 ? 'medication' : 'medications'}): ${optimal.title} ` +
-        `[predicted LDL-C ~${Math.round(optimal.predictedLdl)} mg/dL, -${optimal.totalPctDrop.toFixed(0)}%]. ` +
-        `Stepwise sequence: ${stepText}. Recheck fasting lipid panel in 4–12 weeks after initiation/titration.`;
+    /* ----- Chart note ----- */
+    const stepText = optimal.steps.map((s, i) => `Step ${i + 1}: ${s.label}`).join(' -> ');
+    el('clinicalNoteBox').textContent =
+        `LDL-C ${r0(ctx.ldl)} mg/dL on ${regimenText} (estimated untreated ~${r0(untreated)} mg/dL). ` +
+        `Goal ${goalText}; needs >= ${needPct.toFixed(1)}% further lowering. ` +
+        `Plan: ${stepText}. Predicted LDL-C ~${r0(optimal.predicted)} mg/dL (-${r0(totalRedPct)}% from estimated untreated)` +
+        (achieved ? '. ' : '; goal not predicted to be reached on maximal modelled therapy - evaluate for FH / lipid-specialist referral. ') +
+        (ctx.asian ? 'Asian ancestry: statin started at low dose and titrated by measured LDL-C and tolerance (FDA rosuvastatin labeling: start 5 mg). ' : '') +
+        `Recheck lipid panel 4-12 weeks after each change, then every 6-12 months. Predictions are model estimates; individual response varies.`;
 }
 
-/* ---------- Bottom Reference Table Rendering ---------- */
+/* ---------- Reference table ---------- */
 function renderDrugReferenceTable() {
-    const filter = document.getElementById('drugCategoryFilter').value;
-    const tbody = document.getElementById('drugReferenceBody');
+    const filter = el('drugCategoryFilter').value;
     const filtered = filter === 'all' ? LIPID_DRUGS : LIPID_DRUGS.filter(d => d.category === filter);
-
-    tbody.innerHTML = filtered.map((d, idx) => {
-        const shade = idx % 2 ? 'bg-slate-50' : 'bg-white';
-        const isTgIncrease = d.tgDropRange.includes('INCREASE');
-        return `
-            <tr class="${shade} hover:bg-blue-50/40 transition">
-                <td class="border border-slate-300 p-2.5 align-top">
-                    <div class="font-bold text-blue-950">${d.name}</div>
-                    <div class="text-[11px] text-slate-500 mt-0.5">${d.examples}</div>
-                </td>
-                <td class="border border-slate-300 p-2.5 align-top text-slate-700 font-medium">
-                    ${d.dosing}
-                </td>
-                <td class="border border-slate-300 p-2.5 align-top text-center font-extrabold text-blue-950">
-                    &minus;${d.ldlDropRange}
-                </td>
-                <td class="border border-slate-300 p-2.5 align-top text-center font-bold ${isTgIncrease ? 'text-red-700' : 'text-slate-800'}">
-                    ${isTgIncrease ? d.tgDropRange : `&minus;${d.tgDropRange}`}
-                </td>
-                <td class="border border-slate-300 p-2.5 align-top">
-                    <span class="inline-block px-2 py-0.5 rounded-full text-[10px] font-bold border ${d.badgeClass}">
-                        ${d.stepBadge}
-                    </span>
-                </td>
-                <td class="border border-slate-300 p-2.5 align-top text-slate-700 leading-relaxed">
-                    ${d.sideEffects}
-                </td>
-            </tr>
-        `;
-    }).join('');
+    el('drugReferenceBody').innerHTML = filtered.map((d, idx) => `
+        <tr class="${idx % 2 ? 'bg-slate-50' : 'bg-white'} hover:bg-blue-50/40 transition">
+            <td class="border border-slate-300 p-2.5 align-top">
+                <div class="font-bold text-blue-950">${d.name}</div>
+                <div class="text-[11px] text-slate-500 mt-0.5">${d.examples}</div>
+            </td>
+            <td class="border border-slate-300 p-2.5 align-top text-slate-700 font-medium">${d.dosing}</td>
+            <td class="border border-slate-300 p-2.5 align-top text-center font-extrabold text-blue-950">${d.ldl}</td>
+            <td class="border border-slate-300 p-2.5 align-top text-center font-bold ${d.tgUp ? 'text-red-700' : 'text-slate-800'}">${d.tg}</td>
+            <td class="border border-slate-300 p-2.5 align-top text-slate-700 leading-relaxed">${d.outcome}</td>
+            <td class="border border-slate-300 p-2.5 align-top">
+                <span class="inline-block px-2 py-0.5 rounded-full text-[10px] font-bold border ${d.badgeClass}">${d.stepBadge}</span>
+            </td>
+            <td class="border border-slate-300 p-2.5 align-top text-slate-700 leading-relaxed">${d.sideEffects}</td>
+        </tr>`).join('');
 }
 
-/* ---------- Clipboard Copy ---------- */
+/* ---------- Clipboard ---------- */
 function copyPlanNote() {
-    const textToCopy = document.getElementById('clinicalNoteBox').textContent.trim();
+    const textToCopy = el('clinicalNoteBox').textContent.trim();
     if (!textToCopy || textToCopy === '--') return;
-
     navigator.clipboard.writeText(textToCopy).then(() => {
-        const btn = document.getElementById('copyPlanBtn');
+        const btn = el('copyPlanBtn');
         const originalText = btn.innerHTML;
         btn.innerHTML = '&#9989; Copied!';
         btn.classList.remove('bg-blue-900', 'hover:bg-blue-950');
         btn.classList.add('bg-green-600', 'hover:bg-green-700');
-
         setTimeout(() => {
             btn.innerHTML = originalText;
             btn.classList.remove('bg-green-600', 'hover:bg-green-700');
@@ -988,10 +1057,16 @@ function copyPlanNote() {
 }
 
 window.onload = () => {
-    ['currentLdl', 'currentTg', 'targetLdl', 'baselineTherapy', 'preferOralToggle', 'avoidBasToggle']
+    // Populate the statin list
+    el('curStatin').innerHTML = STATINS.map(s =>
+        `<option value="${s.id}">${s.label}${s.red > 0 ? ` (~${Math.round(s.red * 100)}%)` : ''}</option>`
+    ).join('');
+
+    ['currentLdl', 'currentTg', 'targetLdl', 'curStatin', 'statinStatus', 'curEze', 'curBemp', 'curBas', 'curPcsk9',
+     'asianToggle', 'dualTargetToggle', 'preferOralToggle', 'avoidBasToggle']
         .forEach(id => {
-            document.getElementById(id).addEventListener('input', updatePlanner);
-            document.getElementById(id).addEventListener('change', updatePlanner);
+            el(id).addEventListener('input', updatePlanner);
+            el(id).addEventListener('change', updatePlanner);
         });
 
     renderDrugReferenceTable();
