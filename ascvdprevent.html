@@ -1,0 +1,799 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ASCVD &amp; AHA PREVENT™ Risk Calculator &amp; Clinical Next Steps</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @media print {
+            @page { size: portrait; margin: 0; }
+            .no-print { display: none !important; }
+            html, body { margin: 0 !important; padding: 0 !important; background: white !important; }
+            .print-wrapper { display: block !important; max-width: 100% !important; margin: 0 !important; padding: 0 !important; }
+            .print-area {
+                width: 100% !important; max-width: 100% !important; margin: 0 auto !important;
+                padding: 1.2cm !important; box-shadow: none !important; border: none !important;
+            }
+            table { border-collapse: collapse !important; }
+            tr { page-break-inside: avoid !important; page-break-after: auto; }
+            th, td { border: 1px solid #000 !important; padding: 4px 6px !important; }
+        }
+        body { font-family: 'Inter', sans-serif; }
+    </style>
+</head>
+<body class="bg-slate-100 min-h-screen p-4 sm:p-8">
+
+<!-- Header container populated via fetch (matching site theme) -->
+<header id="site-header" class="no-print sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b border-blue-200 shadow-sm -mx-4 -mt-4 sm:-mx-8 sm:-mt-8 mb-8 px-4 py-3"></header>
+
+<div id="app" class="max-w-7xl mx-auto">
+    <header class="text-center mb-6 no-print">
+        <h1 class="text-3xl font-extrabold text-blue-950">ASCVD &amp; AHA PREVENT&trade; Risk Calculator</h1>
+        <p class="text-slate-600 mt-2 text-sm">Estimate 10-year cardiovascular risk using the 2026 ACC/AHA-preferred <strong>PREVENT&trade; base equations</strong> alongside the <strong>2013 Pooled Cohort Equations (PCE)</strong>, with personalized next steps for lipids, blood pressure, and cardiometabolic care.</p>
+    </header>
+
+    <div class="print-wrapper grid grid-cols-1 lg:grid-cols-12 gap-6 items-start mb-8">
+
+        <!-- LEFT SIDE: INPUTS -->
+        <div class="no-print lg:col-span-5 space-y-6">
+
+            <!-- 1. Demographics & Clinical History -->
+            <div class="bg-white p-5 rounded-xl shadow-lg border border-blue-200">
+                <div class="flex flex-wrap justify-between items-center gap-2 border-b pb-3 mb-4">
+                    <h2 class="text-base font-bold text-blue-950">1. Demographics &amp; Clinical Baseline</h2>
+                    <button type="button" onclick="resetCalc()" class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-600 px-2.5 py-1 rounded transition">Reset</button>
+                </div>
+
+                <div class="space-y-4">
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label for="age" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Age (Years)</label>
+                            <input id="age" type="number" min="20" max="90" step="1" inputmode="numeric" value="56"
+                                class="w-full p-2 border border-slate-300 rounded-lg bg-white text-base font-bold text-blue-950 focus:ring-blue-900 focus:border-blue-900">
+                            <p class="text-[10px] italic text-slate-500 mt-0.5">(PREVENT: 30&ndash;79 yr; PCE: 40&ndash;79 yr)</p>
+                        </div>
+                        <div>
+                            <label for="sex" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Biological Sex</label>
+                            <select id="sex" class="w-full p-2.5 border border-slate-300 rounded-lg bg-white text-sm font-bold text-blue-950 focus:ring-blue-900 focus:border-blue-900">
+                                <option value="F">Female</option>
+                                <option value="M" selected>Male</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label for="pceRace" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Race Group (for Legacy PCE Comparison Only)</label>
+                        <select id="pceRace" class="w-full p-2 border border-slate-300 rounded-lg bg-white text-xs font-semibold text-blue-950 focus:ring-blue-900 focus:border-blue-900">
+                            <option value="white" selected>White / Other (PREVENT is race-free)</option>
+                            <option value="black">African American / Black (used only in 2013 PCE)</option>
+                        </select>
+                        <p class="text-[10px] italic text-slate-500 mt-0.5">(AHA PREVENT&trade; removes race; shown solely to compute the side-by-side 2013 PCE score)</p>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs pt-1">
+                        <label class="flex items-start gap-2 p-2.5 rounded-lg border border-red-200 bg-red-50/60 cursor-pointer sm:col-span-2">
+                            <input id="knownAscvd" type="checkbox" class="mt-0.5 rounded border-slate-300 text-red-700 focus:ring-red-700">
+                            <div>
+                                <span class="font-bold text-red-950 block">Known Clinical ASCVD (Prior MI, ACS, PCI/CABG, Stroke/TIA, PAD)</span>
+                                <span class="text-[10px] italic text-red-800">(Bypasses primary-prevention calculators &rarr; direct secondary prevention pathway)</span>
+                            </div>
+                        </label>
+
+                        <label class="flex items-start gap-2 p-2 rounded-lg border border-slate-200 bg-slate-50/70 cursor-pointer">
+                            <input id="diabetes" type="checkbox" class="mt-0.5 rounded border-slate-300 text-blue-900 focus:ring-blue-900">
+                            <span class="font-bold text-slate-800">Diabetes Mellitus</span>
+                        </label>
+
+                        <label class="flex items-start gap-2 p-2 rounded-lg border border-slate-200 bg-slate-50/70 cursor-pointer">
+                            <input id="smoker" type="checkbox" class="mt-0.5 rounded border-slate-300 text-blue-900 focus:ring-blue-900">
+                            <span class="font-bold text-slate-800">Current Smoker</span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 2. Labs & Vitals -->
+            <div class="bg-white p-5 rounded-xl shadow-lg border border-blue-200">
+                <div class="border-b pb-3 mb-4">
+                    <h2 class="text-base font-bold text-blue-950">2. Lipids, Blood Pressure &amp; Kidney / Metabolic Inputs</h2>
+                </div>
+
+                <div class="space-y-4">
+                    <div class="grid grid-cols-3 gap-2.5">
+                        <div>
+                            <label for="tc" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Total Chol</label>
+                            <input id="tc" type="number" min="80" max="500" step="1" inputmode="numeric" value="215"
+                                class="w-full p-2 border border-slate-300 rounded-lg bg-white text-sm font-bold text-blue-950">
+                            <p class="text-[10px] text-slate-500 mt-0.5">mg/dL</p>
+                        </div>
+                        <div>
+                            <label for="hdl" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">HDL-C</label>
+                            <input id="hdl" type="number" min="15" max="130" step="1" inputmode="numeric" value="46"
+                                class="w-full p-2 border border-slate-300 rounded-lg bg-white text-sm font-bold text-blue-950">
+                            <p class="text-[10px] text-slate-500 mt-0.5">mg/dL</p>
+                        </div>
+                        <div>
+                            <label for="ldl" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">LDL-C</label>
+                            <input id="ldl" type="number" min="20" max="500" step="1" inputmode="numeric" value="142"
+                                class="w-full p-2 border border-slate-300 rounded-lg bg-white text-sm font-bold text-blue-950">
+                            <p class="text-[10px] text-slate-500 mt-0.5">mg/dL</p>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label for="sbp" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Systolic BP (mmHg)</label>
+                            <input id="sbp" type="number" min="80" max="230" step="1" inputmode="numeric" value="134"
+                                class="w-full p-2 border border-slate-300 rounded-lg bg-white text-sm font-bold text-blue-950">
+                        </div>
+                        <div>
+                            <label for="egfr" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">eGFR (mL/min/1.73m&sup2;)</label>
+                            <input id="egfr" type="number" min="10" max="150" step="1" inputmode="numeric" value="82"
+                                class="w-full p-2 border border-slate-300 rounded-lg bg-white text-sm font-bold text-blue-950">
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                        <label class="flex items-start gap-2 p-2.5 rounded-lg border border-slate-200 bg-slate-50/70 cursor-pointer">
+                            <input id="bpMed" type="checkbox" class="mt-0.5 rounded border-slate-300 text-blue-900 focus:ring-blue-900">
+                            <div>
+                                <span class="font-bold text-slate-800 block">On Antihypertensive Rx</span>
+                                <span class="text-[10px] italic text-slate-500">(Included in PREVENT &amp; PCE)</span>
+                            </div>
+                        </label>
+                        <label class="flex items-start gap-2 p-2.5 rounded-lg border border-slate-200 bg-slate-50/70 cursor-pointer">
+                            <input id="onStatin" type="checkbox" class="mt-0.5 rounded border-slate-300 text-blue-900 focus:ring-blue-900">
+                            <div>
+                                <span class="font-bold text-slate-800 block">Currently on a Statin</span>
+                                <span class="text-[10px] italic text-slate-500">(Adjusts PREVENT non-HDL term)</span>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 3. Risk-Enhancing Factors & CAC -->
+            <div class="bg-white p-5 rounded-xl shadow-lg border border-blue-200">
+                <div class="border-b pb-3 mb-3">
+                    <h2 class="text-base font-bold text-blue-950">3. Risk Enhancers, HIV &amp; Coronary Calcium (CAC)</h2>
+                    <p class="text-[11px] text-slate-500">Personalize borderline/intermediate risk decisions (CPR Model).</p>
+                </div>
+
+                <div class="space-y-3 text-xs">
+                    <div>
+                        <label for="cacScore" class="block font-bold text-slate-700 uppercase tracking-wider mb-1">Coronary Artery Calcium (CAC) Score</label>
+                        <select id="cacScore" class="w-full p-2 border border-slate-300 rounded-lg bg-white text-xs font-semibold text-blue-950">
+                            <option value="unknown" selected>Not performed / Unknown</option>
+                            <option value="0">CAC = 0 Agatston units</option>
+                            <option value="1_99">CAC 1 &ndash; 99 AU (and &lt; 75th percentile)</option>
+                            <option value="100_999">CAC 100 &ndash; 999 AU (or &ge; 75th percentile)</option>
+                            <option value="1000plus">CAC &ge; 1,000 AU (very high-risk equivalent)</option>
+                        </select>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        <label class="flex items-start gap-2 p-2 rounded-lg border border-slate-200 bg-slate-50/70 cursor-pointer">
+                            <input id="enhFamHx" type="checkbox" class="mt-0.5 rounded border-slate-300 text-blue-900">
+                            <span class="text-slate-800"><strong>Premature ASCVD family Hx</strong> <span class="text-[10px] text-slate-500">(M &lt;55, F &lt;65)</span></span>
+                        </label>
+                        <label class="flex items-start gap-2 p-2 rounded-lg border border-slate-200 bg-slate-50/70 cursor-pointer">
+                            <input id="enhLpa" type="checkbox" class="mt-0.5 rounded border-slate-300 text-blue-900">
+                            <span class="text-slate-800"><strong>Elevated Lp(a)</strong> <span class="text-[10px] text-slate-500">(&ge;125 nmol/L or &ge;50 mg/dL)</span></span>
+                        </label>
+                        <label class="flex items-start gap-2 p-2 rounded-lg border border-slate-200 bg-slate-50/70 cursor-pointer">
+                            <input id="enhSouthAsian" type="checkbox" class="mt-0.5 rounded border-slate-300 text-blue-900">
+                            <span class="text-slate-800"><strong>South Asian ancestry</strong></span>
+                        </label>
+                        <label class="flex items-start gap-2 p-2 rounded-lg border border-slate-200 bg-slate-50/70 cursor-pointer">
+                            <input id="enhInflam" type="checkbox" class="mt-0.5 rounded border-slate-300 text-blue-900">
+                            <span class="text-slate-800"><strong>Chronic inflammatory / HIV</strong> <span class="text-[10px] text-slate-500">(RA, psoriasis, lupus, HIV)</span></span>
+                        </label>
+                        <label class="flex items-start gap-2 p-2 rounded-lg border border-slate-200 bg-slate-50/70 cursor-pointer sm:col-span-2">
+                            <input id="enhMetabolic" type="checkbox" class="mt-0.5 rounded border-slate-300 text-blue-900">
+                            <span class="text-slate-800"><strong>Metabolic syndrome, persistent TG &ge;175 mg/dL, hsCRP &ge;2.0 mg/L, preeclampsia or premature menopause</strong></span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Model Info Box -->
+            <div class="bg-blue-950 text-white p-4 rounded-xl shadow-lg text-xs space-y-1.5">
+                <div class="font-extrabold uppercase tracking-wider text-blue-200 text-[11px]">PREVENT&trade; vs. Pooled Cohort Equations</div>
+                <p class="text-slate-200 leading-relaxed">
+                    The <strong>2026 ACC/AHA Dyslipidemia Guideline</strong> replaces the 2013 PCE with the race-free <strong>AHA PREVENT&trade; equations</strong> (ages 30&ndash;79, incorporating eGFR and statin use). Because PREVENT is better calibrated and yields lower percentages than PCE, treatment cutoffs shifted from 5% / 7.5% / 20% (PCE) to <strong>3% / 5% / 10% (PREVENT-ASCVD)</strong>.
+                </p>
+            </div>
+        </div>
+
+        <!-- RIGHT SIDE: RESULTS & CLINICAL NEXT STEPS -->
+        <div id="report" class="print-area lg:col-span-7 bg-white p-6 rounded-xl shadow-2xl border border-slate-300">
+            <div class="border-b pb-3 mb-4 flex flex-wrap justify-between items-start gap-2">
+                <div>
+                    <h2 class="text-xl font-bold text-slate-800">10-Year Risk Assessment &amp; Action Plan</h2>
+                    <p id="summarySubheader" class="text-xs text-slate-500 mt-0.5">--</p>
+                </div>
+                <div class="flex items-center gap-2 no-print">
+                    <button type="button" onclick="window.print()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 font-semibold px-3 py-1.5 rounded-lg text-xs transition">&#128424;&#65039; Print</button>
+                </div>
+            </div>
+
+            <!-- 4-Card Risk KPI Strip -->
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5">
+                <div class="p-3 rounded-lg bg-blue-50 border-2 border-blue-900 text-center">
+                    <div class="text-[10px] font-bold uppercase tracking-wider text-blue-900">PREVENT 10-Yr ASCVD</div>
+                    <div id="kpiPreventAscvd" class="text-xl font-extrabold text-blue-950 mt-0.5">--</div>
+                    <div id="kpiPreventAscvdCat" class="text-[10px] font-bold text-blue-800">--</div>
+                </div>
+                <div class="p-3 rounded-lg bg-slate-50 border border-slate-200 text-center">
+                    <div class="text-[10px] font-bold uppercase tracking-wider text-slate-500">PREVENT Total CVD</div>
+                    <div id="kpiPreventCvd" class="text-xl font-extrabold text-slate-800 mt-0.5">--</div>
+                    <div class="text-[10px] text-slate-500">ASCVD + Heart Failure</div>
+                </div>
+                <div class="p-3 rounded-lg bg-slate-50 border border-slate-200 text-center">
+                    <div class="text-[10px] font-bold uppercase tracking-wider text-slate-500">2013 PCE 10-Yr ASCVD</div>
+                    <div id="kpiPce" class="text-xl font-extrabold text-slate-700 mt-0.5">--</div>
+                    <div id="kpiPceCat" class="text-[10px] text-slate-500">Legacy comparator</div>
+                </div>
+                <div class="p-3 rounded-lg bg-slate-50 border border-slate-200 text-center">
+                    <div class="text-[10px] font-bold uppercase tracking-wider text-slate-500">Non-HDL-C</div>
+                    <div id="kpiNonHdl" class="text-xl font-extrabold text-slate-800 mt-0.5">--</div>
+                    <div id="kpiLdlSub" class="text-[10px] text-slate-500">--</div>
+                </div>
+            </div>
+
+            <!-- Visual Risk Spectrum Gauge (PREVENT-ASCVD 2026 Cutoffs) -->
+            <div id="gaugeSection" class="mb-5 p-3.5 rounded-xl bg-slate-50 border border-slate-200">
+                <div class="flex justify-between items-center text-[11px] font-bold text-slate-700 mb-1.5">
+                    <span>2026 ACC/AHA PREVENT-ASCVD Risk Spectrum</span>
+                    <span id="gaugeReadout" class="text-blue-950">--</span>
+                </div>
+                <div class="relative h-3 rounded-full overflow-hidden flex bg-slate-200">
+                    <div class="bg-green-500 h-full" style="width: 20%" title="Low: <3%"></div>
+                    <div class="bg-amber-400 h-full" style="width: 13.3%" title="Borderline: 3% to <5%"></div>
+                    <div class="bg-orange-500 h-full" style="width: 33.3%" title="Intermediate: 5% to <10%"></div>
+                    <div class="bg-red-600 h-full" style="width: 33.4%" title="High: >=10%"></div>
+                </div>
+                <div class="relative h-4 mt-0.5">
+                    <div id="gaugeMarker" class="absolute -top-1 -translate-x-1/2 transition-all duration-300 flex flex-col items-center" style="left: 0%;">
+                        <div class="w-0 h-0 border-l-[5px] border-l-transparent border-r-[5px] border-r-transparent border-b-[6px] border-b-blue-950"></div>
+                    </div>
+                </div>
+                <div class="flex justify-between text-[10px] font-semibold text-slate-500">
+                    <span>0% (Low &lt;3%)</span>
+                    <span>3% (Borderline)</span>
+                    <span>5% (Intermediate)</span>
+                    <span>10% (High &ge;10%)</span>
+                    <span>15%+</span>
+                </div>
+            </div>
+
+            <!-- Clinical Banners / Alerts -->
+            <div id="alertsContainer" class="space-y-2 mb-4"></div>
+
+            <!-- Primary Recommended Action Card -->
+            <div id="primaryActionCard" class="mb-5"></div>
+
+            <!-- Domain-by-Domain Next Steps -->
+            <div class="mb-5">
+                <h3 class="text-xs font-extrabold text-blue-950 uppercase tracking-wider mb-2.5">What to Do Next (Clinical Action Checklist)</h3>
+                <div id="nextStepsContainer" class="space-y-2.5"></div>
+            </div>
+
+            <!-- Direct link to LDL Therapy Stepwise Planner -->
+            <div class="mb-5 p-3.5 rounded-xl bg-blue-50 border border-blue-200 flex flex-wrap items-center justify-between gap-3 no-print">
+                <div class="text-xs text-blue-950">
+                    <strong class="block">Need to pick exact lipid medications to hit your LDL-C target?</strong>
+                    <span class="text-slate-600">Open the Stepwise Lipid-Lowering Therapy Planner to find the fewest medications needed.</span>
+                </div>
+                <a href="https://www.endocrineinfo.org/ldlgoal.html" class="bg-blue-900 hover:bg-blue-950 text-white font-bold px-3.5 py-2 rounded-lg text-xs shadow transition whitespace-nowrap">
+                    Open LDL Therapy Calculator &rarr;
+                </a>
+            </div>
+
+            <!-- EHR Chart Note -->
+            <div class="border-t pt-4">
+                <h4 class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Clinical Assessment Note (Copy to EHR)</h4>
+                <div class="flex items-stretch gap-2">
+                    <div id="clinicalNoteBox" class="flex-1 p-3.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-semibold text-slate-800 leading-relaxed">--</div>
+                    <button id="copyPlanBtn" type="button" onclick="copyPlanNote()" class="no-print bg-blue-900 hover:bg-blue-950 text-white font-semibold px-3.5 py-2 rounded-lg shadow transition flex items-center gap-1.5 text-xs whitespace-nowrap">&#128203; Copy</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- BOTTOM REFERENCE TABLE: 2026 ACC/AHA RISK TIERS & THRESHOLDS -->
+    <div class="bg-white p-6 rounded-xl shadow-xl border border-blue-200">
+        <div class="border-b pb-3 mb-4">
+            <h2 class="text-lg font-extrabold text-blue-950">Reference: 2026 ACC/AHA Primary Prevention Risk Tiers &amp; Treatment Thresholds</h2>
+            <p class="text-xs text-slate-500 mt-0.5">Comparison of 2026 PREVENT-ASCVD cutoffs vs. legacy 2013 PCE cutoffs, lipid goals, CAC role, and blood pressure thresholds.</p>
+        </div>
+
+        <div class="overflow-x-auto">
+            <table class="min-w-full border-collapse border border-slate-300 text-xs">
+                <thead class="bg-blue-900 text-white">
+                    <tr>
+                        <th class="border border-slate-300 p-2.5 text-left">Risk Category</th>
+                        <th class="border border-slate-300 p-2.5 text-center">2026 PREVENT-ASCVD</th>
+                        <th class="border border-slate-300 p-2.5 text-center">Legacy 2013 PCE</th>
+                        <th class="border border-slate-300 p-2.5 text-left">Lipid-Lowering Recommendation</th>
+                        <th class="border border-slate-300 p-2.5 text-left">LDL-C &amp; Non-HDL-C Goals</th>
+                        <th class="border border-slate-300 p-2.5 text-left">Role of CAC &amp; Other Preventive Care</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr class="bg-white">
+                        <td class="border border-slate-300 p-2.5 font-bold text-green-900">Low Risk</td>
+                        <td class="border border-slate-300 p-2.5 text-center font-extrabold">&lt; 3%</td>
+                        <td class="border border-slate-300 p-2.5 text-center text-slate-600">&lt; 5%</td>
+                        <td class="border border-slate-300 p-2.5">Health-behavior counseling (Class 1). Consider moderate-intensity statin if age 30&ndash;59 with persistent LDL-C 160&ndash;189 mg/dL or 30-yr risk &ge;10%.</td>
+                        <td class="border border-slate-300 p-2.5">If treated: LDL-C &lt;100 mg/dL; Non-HDL-C &lt;130 mg/dL.</td>
+                        <td class="border border-slate-300 p-2.5">CAC generally not needed unless strong family Hx of premature ASCVD or elevated Lp(a).</td>
+                    </tr>
+                    <tr class="bg-slate-50">
+                        <td class="border border-slate-300 p-2.5 font-bold text-amber-900">Borderline Risk</td>
+                        <td class="border border-slate-300 p-2.5 text-center font-extrabold">3% to &lt; 5%</td>
+                        <td class="border border-slate-300 p-2.5 text-center text-slate-600">5% to &lt; 7.5%</td>
+                        <td class="border border-slate-300 p-2.5">Moderate-intensity statin reasonable (Class 2a/2b) after clinician&ndash;patient discussion, especially if risk enhancers are present.</td>
+                        <td class="border border-slate-300 p-2.5">LDL-C &lt;100 mg/dL (&ge;30% drop); Non-HDL-C &lt;130 mg/dL.</td>
+                        <td class="border border-slate-300 p-2.5">Order <strong>CAC</strong> if decision is uncertain (M &ge;40, F &ge;45). CAC = 0 allows deferral; CAC &ge;1 supports statin.</td>
+                    </tr>
+                    <tr class="bg-white">
+                        <td class="border border-slate-300 p-2.5 font-bold text-orange-900">Intermediate Risk</td>
+                        <td class="border border-slate-300 p-2.5 text-center font-extrabold">5% to &lt; 10%</td>
+                        <td class="border border-slate-300 p-2.5 text-center text-slate-600">7.5% to &lt; 20%</td>
+                        <td class="border border-slate-300 p-2.5">Moderate- to high-intensity statin recommended (Class 1) after clinician&ndash;patient risk discussion.</td>
+                        <td class="border border-slate-300 p-2.5">LDL-C &lt;100 mg/dL (&ge;30% drop); Non-HDL-C &lt;130 mg/dL (aim &lt;70 if CAC &ge;100).</td>
+                        <td class="border border-slate-300 p-2.5">Order <strong>CAC</strong> if intensity/initiation uncertain. Start BP meds if Stage 1 HTN (&ge;130/80) and PREVENT Total CVD &ge;7.5%.</td>
+                    </tr>
+                    <tr class="bg-slate-50">
+                        <td class="border border-slate-300 p-2.5 font-bold text-red-900">High Risk</td>
+                        <td class="border border-slate-300 p-2.5 text-center font-extrabold">&ge; 10%</td>
+                        <td class="border border-slate-300 p-2.5 text-center text-slate-600">&ge; 20%</td>
+                        <td class="border border-slate-300 p-2.5">High-intensity statin recommended (Class 1). Add ezetimibe / PCSK9 mAb / bempedoic acid if goals unmet.</td>
+                        <td class="border border-slate-300 p-2.5">LDL-C &lt;70 mg/dL (&ge;50% drop); Non-HDL-C &lt;100 mg/dL; ApoB &lt;70 if TG 150&ndash;499.</td>
+                        <td class="border border-slate-300 p-2.5">CAC not needed (treat directly). Treat BP to &lt;130/80 mmHg. Consider low-dose aspirin (81 mg) only if age 40&ndash;70 with low bleeding risk.</td>
+                    </tr>
+                    <tr class="bg-blue-50/60">
+                        <td class="border border-slate-300 p-2.5 font-bold text-blue-950">Direct-Treatment Conditions (No Score Needed)</td>
+                        <td class="border border-slate-300 p-2.5 text-center font-bold text-blue-900" colspan="2">Bypass Risk Calculator</td>
+                        <td class="border border-slate-300 p-2.5" colspan="3">
+                            <strong>1) Clinical ASCVD:</strong> High-intensity statin; goal LDL-C &lt;70 mg/dL (or <strong>&lt;55 mg/dL</strong> if very high risk).<br>
+                            <strong>2) LDL-C &ge;190 mg/dL / FH:</strong> High-intensity statin; goal LDL-C &lt;100 mg/dL (&lt;70 if risk factors/CAC).<br>
+                            <strong>3) Diabetes, CKD Stage 3&ndash;4, or HIV (age 40&ndash;75):</strong> At least moderate-intensity statin; intensify to high-intensity (goal &lt;70) if multiple risk factors or PREVENT &ge;10%.
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <p class="text-[11px] text-slate-500 mt-3 italic">
+            <strong>Sources:</strong> Khan SS et al., <em>Circulation</em> 2024;149:430&ndash;449 (AHA PREVENT&trade; Base Equations); 2026 ACC/AHA Multisociety Guideline on the Management of Dyslipidemia; 2025 AHA/ACC High Blood Pressure Guideline; Goff DC et al., <em>Circulation</em> 2014 (2013 Pooled Cohort Equations). For clinician decision support only.
+        </p>
+    </div>
+</div>
+
+<script>
+// Fetch dynamic navbar
+fetch('nav.html')
+    .then(res => res.text())
+    .then(data => { document.getElementById('site-header').innerHTML = data; })
+    .catch(err => console.error('Error loading navigation:', err));
+
+const el = id => document.getElementById(id);
+
+/* ---------- AHA PREVENT Base Equations (10-Year Total CVD & 10-Year ASCVD, Khan et al. Circulation 2024) ---------- */
+function calcPrevent10Yr(p) {
+    // Validated age 30-79
+    const age = Math.min(Math.max(p.age, 30), 79);
+    const ageC = (age - 55) / 10;
+    const nonHdlSiC = ((p.tc - p.hdl) * 0.02586) - 3.5;
+    const hdlSiC = ((p.hdl * 0.02586) - 1.3) / 0.3;
+    const sbpLow = (Math.min(p.sbp, 110) - 110) / 20;
+    const sbpHigh = (Math.max(p.sbp, 110) - 130) / 20;
+    const dm = p.diabetes ? 1 : 0;
+    const smk = p.smoker ? 1 : 0;
+    const egfrLow = (Math.min(p.egfr, 60) - 60) / -15;
+    const egfrHigh = (Math.max(p.egfr, 60) - 90) / -15;
+    const bpRx = p.bpMed ? 1 : 0;
+    const statin = p.onStatin ? 1 : 0;
+
+    // Coefficients: [intercept, age, nonHdl, hdl, sbpLow, sbpHigh, dm, smk, egfrLow, egfrHigh, bpRx, statin,
+    //                bpRx*sbpHigh, statin*nonHdl, age*nonHdl, age*hdl, age*sbpHigh, age*dm, age*smk, age*egfrLow]
+    const COEF = {
+        cvd_F: [
+            -3.307728, 0.7939329, 0.0305239, -0.1606857, -0.2394003, 0.3600780,
+            0.8667604, 0.5360739, 0.6045917, 0.0433769, 0.3151672, -0.1477655,
+            -0.0663612, 0.1197879, -0.0819715, 0.0306769, -0.0946348, -0.2705700, -0.0787150, -0.1637806
+        ],
+        cvd_M: [
+            -3.031168, 0.7688528, 0.0736174, -0.0954431, -0.4347345, 0.3362658,
+            0.7692857, 0.4386871, 0.5378979, 0.0164827, 0.2888790, -0.1337349,
+            -0.0475924, 0.1502730, -0.0517874, 0.0191169, -0.1049477, -0.2251948, -0.0895067, -0.1542702
+        ],
+        ascvd_F: [
+            -3.819975, 0.7198830, 0.1176967, -0.1511850, -0.0835358, 0.3592852,
+            0.8348585, 0.4831078, 0.4864619, 0.0397779, 0.2265309, -0.0592374,
+            -0.0395762, 0.0844423, -0.0567839, 0.0325692, -0.1035985, -0.2417542, -0.0791142, -0.1671492
+        ],
+        ascvd_M: [
+            -3.500655, 0.7099847, 0.1658663, -0.1144285, -0.2837212, 0.3239977,
+            0.7189597, 0.3956973, 0.3690075, 0.0203619, 0.2036522, -0.0865581,
+            -0.0322916, 0.1145630, -0.0300005, 0.0232747, -0.0927024, -0.2018525, -0.0970527, -0.1217081
+        ]
+    };
+
+    const terms = [
+        1, ageC, nonHdlSiC, hdlSiC, sbpLow, sbpHigh,
+        dm, smk, egfrLow, egfrHigh, bpRx, statin,
+        bpRx * sbpHigh, statin * nonHdlSiC, ageC * nonHdlSiC, ageC * hdlSiC,
+        ageC * sbpHigh, ageC * dm, ageC * smk, ageC * egfrLow
+    ];
+
+    const evalLogit = key => {
+        const c = COEF[key];
+        let x = 0;
+        for (let i = 0; i < c.length; i++) x += c[i] * terms[i];
+        return (Math.exp(x) / (1 + Math.exp(x))) * 100;
+    };
+
+    return {
+        ascvd: evalLogit('ascvd_' + p.sex),
+        cvd: evalLogit('cvd_' + p.sex),
+        clamped: p.age < 30 || p.age > 79
+    };
+}
+
+/* ---------- 2013 ACC/AHA Pooled Cohort Equations (10-Year ASCVD) ---------- */
+function calcPce10Yr(p) {
+    const age = Math.min(Math.max(p.age, 40), 79);
+    const lnAge = Math.log(age);
+    const lnTc = Math.log(p.tc);
+    const lnHdl = Math.log(p.hdl);
+    const lnSbp = Math.log(p.sbp);
+    const smk = p.smoker ? 1 : 0;
+    const dm = p.diabetes ? 1 : 0;
+    const tr = p.bpMed ? 1 : 0;
+
+    let sum = 0, mean = 0, s0 = 0;
+    if (p.sex === 'F' && p.pceRace === 'white') {
+        sum = -29.799 * lnAge + 4.884 * lnAge * lnAge + 13.540 * lnTc - 3.114 * lnAge * lnTc
+            - 13.578 * lnHdl + 3.149 * lnAge * lnHdl
+            + (tr ? 2.019 * lnSbp : 1.957 * lnSbp) + 7.574 * smk - 1.665 * lnAge * smk + 0.661 * dm;
+        mean = -29.18; s0 = 0.9665;
+    } else if (p.sex === 'F' && p.pceRace === 'black') {
+        sum = 17.114 * lnAge + 0.940 * lnTc - 18.920 * lnHdl + 4.475 * lnAge * lnHdl
+            + (tr ? 29.291 * lnSbp - 6.432 * lnAge * lnSbp : 27.820 * lnSbp - 6.087 * lnAge * lnSbp)
+            + 0.691 * smk + 0.874 * dm;
+        mean = 86.61; s0 = 0.9533;
+    } else if (p.sex === 'M' && p.pceRace === 'white') {
+        sum = 12.344 * lnAge + 11.853 * lnTc - 2.664 * lnAge * lnTc - 7.990 * lnHdl + 1.769 * lnAge * lnHdl
+            + (tr ? 1.797 * lnSbp : 1.764 * lnSbp) + 7.837 * smk - 1.795 * lnAge * smk + 0.658 * dm;
+        mean = 61.18; s0 = 0.9144;
+    } else {
+        sum = 2.469 * lnAge + 0.302 * lnTc - 0.307 * lnHdl
+            + (tr ? 1.916 * lnSbp : 1.809 * lnSbp) + 0.549 * smk + 0.645 * dm;
+        mean = 19.54; s0 = 0.8954;
+    }
+
+    const risk = (1 - Math.pow(s0, Math.exp(sum - mean))) * 100;
+    return {
+        risk: Math.max(0.1, Math.min(risk, 99.9)),
+        outOfRange: p.age < 40 || p.age > 79
+    };
+}
+
+function pceCategory(r) {
+    if (r < 5) return 'Low (<5%)';
+    if (r < 7.5) return 'Borderline (5–7.4%)';
+    if (r < 20) return 'Intermediate (7.5–19.9%)';
+    return 'High (≥20%)';
+}
+
+function preventCategory(r) {
+    if (r < 3) return { label: 'Low Risk (<3%)', tier: 'low', badge: 'bg-green-700', wrap: 'bg-green-50 border-green-500', text: 'text-green-950' };
+    if (r < 5) return { label: 'Borderline Risk (3% to <5%)', tier: 'borderline', badge: 'bg-amber-600', wrap: 'bg-amber-50 border-amber-500', text: 'text-amber-950' };
+    if (r < 10) return { label: 'Intermediate Risk (5% to <10%)', tier: 'intermediate', badge: 'bg-orange-600', wrap: 'bg-orange-50 border-orange-500', text: 'text-orange-950' };
+    return { label: 'High Risk (≥10%)', tier: 'high', badge: 'bg-red-700', wrap: 'bg-red-50 border-red-600', text: 'text-red-950' };
+}
+
+function resetCalc() {
+    el('age').value = 56;
+    el('sex').value = 'M';
+    el('pceRace').value = 'white';
+    el('knownAscvd').checked = false;
+    el('diabetes').checked = false;
+    el('smoker').checked = false;
+    el('tc').value = 215;
+    el('hdl').value = 46;
+    el('ldl').value = 142;
+    el('sbp').value = 134;
+    el('egfr').value = 82;
+    el('bpMed').checked = false;
+    el('onStatin').checked = false;
+    el('cacScore').value = 'unknown';
+    ['enhFamHx', 'enhLpa', 'enhSouthAsian', 'enhInflam', 'enhMetabolic'].forEach(id => { el(id).checked = false; });
+    updateCalculator();
+}
+
+function updateCalculator() {
+    const p = {
+        age: parseFloat(el('age').value),
+        sex: el('sex').value,
+        pceRace: el('pceRace').value,
+        knownAscvd: el('knownAscvd').checked,
+        diabetes: el('diabetes').checked,
+        smoker: el('smoker').checked,
+        tc: parseFloat(el('tc').value),
+        hdl: parseFloat(el('hdl').value),
+        ldl: parseFloat(el('ldl').value),
+        sbp: parseFloat(el('sbp').value),
+        egfr: parseFloat(el('egfr').value),
+        bpMed: el('bpMed').checked,
+        onStatin: el('onStatin').checked,
+        cac: el('cacScore').value,
+        enhancers: []
+    };
+
+    if (el('enhFamHx').checked) p.enhancers.push('premature family history of ASCVD');
+    if (el('enhLpa').checked) p.enhancers.push('elevated Lp(a)');
+    if (el('enhSouthAsian').checked) p.enhancers.push('South Asian ancestry');
+    if (el('enhInflam').checked) p.enhancers.push('chronic inflammatory condition / HIV');
+    if (el('enhMetabolic').checked) p.enhancers.push('metabolic / female-specific risk enhancer');
+
+    if (!isFinite(p.age) || !isFinite(p.tc) || !isFinite(p.hdl) || !isFinite(p.sbp) || !isFinite(p.egfr)) return;
+
+    const nonHdl = Math.max(0, p.tc - p.hdl);
+    el('kpiNonHdl').textContent = `${Math.round(nonHdl)} mg/dL`;
+    el('kpiLdlSub').textContent = isFinite(p.ldl) ? `LDL-C ${Math.round(p.ldl)} mg/dL` : 'Enter LDL-C';
+
+    const prev = calcPrevent10Yr(p);
+    const pce = calcPce10Yr(p);
+    const cat = preventCategory(prev.ascvd);
+
+    el('summarySubheader').textContent = `${Math.round(p.age)}yo ${p.sex === 'M' ? 'Male' : 'Female'} | TC ${Math.round(p.tc)}, HDL ${Math.round(p.hdl)}, LDL ${isFinite(p.ldl) ? Math.round(p.ldl) : '--'} mg/dL | SBP ${Math.round(p.sbp)} mmHg | eGFR ${Math.round(p.egfr)}`;
+
+    if (p.knownAscvd) {
+        el('kpiPreventAscvd').textContent = 'N/A';
+        el('kpiPreventAscvdCat').textContent = 'Secondary Prevention';
+        el('kpiPreventCvd').textContent = 'N/A';
+        el('kpiPce').textContent = 'N/A';
+        el('kpiPceCat').textContent = 'Known ASCVD';
+        el('gaugeSection').classList.add('hidden');
+    } else {
+        el('gaugeSection').classList.remove('hidden');
+        el('kpiPreventAscvd').textContent = `${prev.ascvd.toFixed(1)}%`;
+        el('kpiPreventAscvdCat').textContent = cat.label;
+        el('kpiPreventCvd').textContent = `${prev.cvd.toFixed(1)}%`;
+        el('kpiPce').textContent = `${pce.risk.toFixed(1)}%`;
+        el('kpiPceCat').textContent = pceCategory(pce.risk);
+
+        // Position gauge marker (scale 0% to 15% across 100% width)
+        const pctWidth = Math.min(100, Math.max(1, (prev.ascvd / 15) * 100));
+        el('gaugeMarker').style.left = `${pctWidth}%`;
+        el('gaugeReadout').textContent = `PREVENT-ASCVD: ${prev.ascvd.toFixed(1)}% (${cat.label})`;
+    }
+
+    /* ---------- Alerts ---------- */
+    const alerts = [];
+    const addAlert = (cls, msg) => alerts.push(`<div class="p-3 rounded-lg text-xs leading-relaxed border ${cls}">${msg}</div>`);
+
+    if (!p.knownAscvd && prev.clamped) {
+        addAlert('bg-amber-50 border-amber-300 text-amber-950', `<strong>Age outside validated PREVENT range (30&ndash;79 years):</strong> Calculation clamped to ${p.age < 30 ? '30' : '79'} years. Use clinical judgment and lifetime/30-year risk factors.`);
+    }
+    if (!p.knownAscvd && p.age >= 30 && p.age < 40) {
+        addAlert('bg-blue-50 border-blue-200 text-blue-950', `<strong>Young Adult (Age 30&ndash;39):</strong> Validated in PREVENT&trade; (unlike 2013 PCE). If 10-year risk is &lt;3% but LDL-C is persistently &ge;160 mg/dL or strong family history is present, early statin therapy may be considered.`);
+    }
+    if (p.egfr < 60) {
+        addAlert('bg-blue-50 border-blue-200 text-blue-950', `<strong>CKD Stage 3+ (eGFR ${Math.round(p.egfr)} mL/min/1.73m&sup2;):</strong> Directly captured in PREVENT&trade; and an independent 2026 ACC/AHA indication for lipid-lowering therapy in adults aged 40&ndash;75 regardless of risk score.`);
+    }
+    if (p.enhancers.length > 0 && !p.knownAscvd) {
+        addAlert('bg-slate-50 border-slate-300 text-slate-800', `<strong>Risk-Enhancing Factors Present (${p.enhancers.length}):</strong> ${p.enhancers.join('; ')}. Favors initiating or intensifying statin therapy in borderline (3% to &lt;5%) or intermediate (5% to &lt;10%) risk.`);
+    }
+    el('alertsContainer').innerHTML = alerts.join('');
+
+    /* ---------- Determine Clinical Pathway & Next Steps ---------- */
+    let headline = '';
+    let badgeText = '';
+    let cardStyle = '';
+    let summaryText = '';
+    const steps = [];
+
+    if (p.knownAscvd) {
+        badgeText = 'Secondary Prevention (Known ASCVD)';
+        headline = 'High-Intensity Statin Therapy (Goal LDL-C < 70 mg/dL, or < 55 mg/dL if Very High Risk)';
+        cardStyle = 'bg-red-50 border-2 border-red-600 text-red-950';
+        summaryText = 'Primary-prevention calculators do not apply once clinical ASCVD is established. Initiate or maintain maximally tolerated high-intensity statin therapy immediately.';
+        steps.push(
+            { title: 'Lipid-Lowering Therapy', body: 'Target LDL-C < 70 mg/dL and ≥50% reduction (Non-HDL-C < 100 mg/dL). Use LDL-C < 55 mg/dL (Non-HDL-C < 85 mg/dL) if very high risk (≥2 major ASCVD events, or 1 major event + ≥2 high-risk conditions such as diabetes, CKD, smoking, or age ≥65). Add ezetimibe, PCSK9 mAb, or bempedoic acid if above goal.' },
+            { title: 'Antiplatelet & Blood Pressure', body: 'Ensure daily antiplatelet therapy (aspirin 81 mg or clopidogrel 75 mg) and treat blood pressure to < 130/80 mmHg.' }
+        );
+    } else if (isFinite(p.ldl) && p.ldl >= 190) {
+        badgeText = 'Severe Hypercholesterolemia (LDL-C ≥ 190 mg/dL)';
+        headline = 'High-Intensity Statin Indicated Without Risk Calculation';
+        cardStyle = 'bg-red-50 border-2 border-red-600 text-red-950';
+        summaryText = 'Adults aged 20–79 with primary LDL-C ≥ 190 mg/dL have high lifetime atherogenic burden and warrant immediate high-intensity statin therapy regardless of 10-year PREVENT score.';
+        steps.push(
+            { title: 'Lipid-Lowering Therapy & Goals', body: 'Start high-intensity statin (rosuvastatin 20–40 mg or atorvastatin 40–80 mg) aiming for ≥50% LDL-C reduction and LDL-C < 100 mg/dL (< 70 mg/dL if heterozygous FH with additional risk factors or CAC ≥ 100). Add ezetimibe / PCSK9i if needed.' },
+            { title: 'Rule Out Secondary Causes & Screen Family', body: 'Exclude hypothyroidism, nephrotic syndrome, cholestasis, and medications; evaluate for Familial Hypercholesterolemia (Dutch Lipid Clinic Criteria) and perform cascade lipid screening in first-degree relatives.' }
+        );
+    } else if (p.diabetes && p.age >= 40 && p.age <= 75) {
+        const highRiskDm = prev.ascvd >= 10 || p.enhancers.length > 0 || p.egfr < 60 || p.smoker || p.cac === '100_999' || p.cac === '1000plus';
+        badgeText = 'Diabetes Primary Prevention Pathway (Age 40–75)';
+        headline = highRiskDm
+            ? 'High-Intensity Statin Recommended (Goal LDL-C < 70 mg/dL)'
+            : 'At Least Moderate-Intensity Statin Recommended (Goal LDL-C < 100 mg/dL)';
+        cardStyle = 'bg-orange-50 border-2 border-orange-500 text-orange-950';
+        summaryText = `Adults aged 40–75 with diabetes warrant statin therapy regardless of calculated risk (10-year PREVENT-ASCVD: ${prev.ascvd.toFixed(1)}%).`;
+        steps.push(
+            { title: 'Lipid-Lowering Therapy', body: highRiskDm
+                ? 'Multiple risk factors or PREVENT-ASCVD ≥10% present: prescribe high-intensity statin targeting ≥50% LDL-C reduction and LDL-C < 70 mg/dL (Non-HDL-C < 100 mg/dL). Add ezetimibe or PCSK9 mAb if unmet.'
+                : 'Start moderate-intensity statin (e.g., atorvastatin 10–20 mg or rosuvastatin 5–10 mg) targeting 30–49% LDL-C reduction and LDL-C < 100 mg/dL.' },
+            { title: 'Cardiorenal Protection (CKM Guideline)', body: `10-year PREVENT Total CVD risk is ${prev.cvd.toFixed(1)}%. ${prev.cvd >= 7.5 || p.egfr < 60 ? 'Because PREVENT Total CVD is ≥7.5% (or CKD is present), prioritize an SGLT2 inhibitor and/or GLP-1 receptor agonist with proven CV/kidney benefit.' : 'Screen urine albumin-to-creatinine ratio (UACR) annually and optimize A1c and blood pressure (<130/80 mmHg).'}` }
+        );
+    } else if (p.egfr < 60 && p.age >= 40 && p.age <= 75) {
+        badgeText = 'CKD Stage 3–4 Primary Prevention Pathway';
+        headline = prev.ascvd >= 10 ? 'High-Intensity Statin (Goal LDL-C < 70 mg/dL)' : 'Moderate-to-High Intensity Statin (Goal LDL-C < 100 mg/dL)';
+        cardStyle = 'bg-orange-50 border-2 border-orange-500 text-orange-950';
+        summaryText = `Under the 2026 ACC/AHA Dyslipidemia Guideline, CKD Stage 3+ (eGFR ${Math.round(p.egfr)}) in adults aged 40–75 is a standalone indication for lipid-lowering therapy without requiring a risk-threshold cutoff.`;
+        steps.push(
+            { title: 'Lipid-Lowering Therapy (Renal-Safe Dosing)', body: 'Start atorvastatin 20–40 mg (no renal dose adjustment required) or rosuvastatin 5–10 mg (cap rosuvastatin at 10 mg if eGFR < 30 mL/min/1.73m²). Target LDL-C < 100 mg/dL (< 70 mg/dL if PREVENT-ASCVD ≥ 10%).' },
+            { title: 'CKM & Albuminuria Workup', body: 'Check urine albumin-to-creatinine ratio (UACR), maintain BP < 130/80 mmHg (prefer ACEi/ARB if albuminuria present), and consider an SGLT2 inhibitor.' }
+        );
+    } else if (p.cac === '1000plus') {
+        badgeText = 'CAC ≥ 1,000 AU (Very High-Risk Subclinical Atherosclerosis)';
+        headline = 'Treat as Very High-Risk Equivalent: High-Intensity Statin + Non-Statin to LDL-C < 55 mg/dL';
+        cardStyle = 'bg-red-50 border-2 border-red-600 text-red-950';
+        summaryText = 'Extensive calcified plaque (CAC ≥ 1,000 AU) carries event rates comparable to secondary-prevention ASCVD populations.';
+        steps.push(
+            { title: 'Intensive Lipid Lowering', body: 'Initiate high-intensity statin and add ezetimibe / PCSK9 mAb as needed to reach LDL-C < 55 mg/dL (Non-HDL-C < 85 mg/dL).' },
+            { title: 'Preventive Aspirin & BP', body: 'Low-dose aspirin (81 mg daily) is reasonable if bleeding risk is low; target BP < 130/80 mmHg.' }
+        );
+    } else if (p.cac === '100_999') {
+        badgeText = 'CAC 100–999 AU (or ≥ 75th Percentile)';
+        headline = 'Reclassified to High Risk: Start Statin Therapy (Goal LDL-C < 70 mg/dL)';
+        cardStyle = 'bg-orange-50 border-2 border-orange-500 text-orange-950';
+        summaryText = 'Significant subclinical coronary atherosclerosis reclassifies risk upward regardless of PREVENT score.';
+        steps.push(
+            { title: 'Lipid-Lowering Therapy', body: 'Initiate moderate-to-high intensity statin aiming for ≥50% LDL-C reduction and LDL-C < 70 mg/dL (Non-HDL-C < 100 mg/dL).' },
+            { title: 'Aspirin & Blood Pressure', body: 'Consider aspirin 81 mg daily if age 40–70 without elevated bleeding risk; target BP < 130/80 mmHg.' }
+        );
+    } else if (cat.tier === 'high') {
+        badgeText = 'High 10-Year PREVENT-ASCVD Risk (≥ 10%)';
+        headline = 'Start High-Intensity Statin Therapy (Goal LDL-C < 70 mg/dL)';
+        cardStyle = 'bg-red-50 border-2 border-red-600 text-red-950';
+        summaryText = `10-year PREVENT-ASCVD risk is ${prev.ascvd.toFixed(1)}% (≥ 10% threshold). High-intensity statin therapy is a Class 1 recommendation.`;
+        steps.push(
+            { title: 'Lipid-Lowering Therapy & Goals', body: 'Initiate high-intensity statin (rosuvastatin 20–40 mg or atorvastatin 40–80 mg) targeting ≥50% LDL-C reduction, LDL-C < 70 mg/dL, and Non-HDL-C < 100 mg/dL. Add ezetimibe (then PCSK9 mAb or bempedoic acid) if goals are not met at 4–12 weeks.' },
+            { title: 'CAC Not Required', body: 'Do not order a CAC scan—pharmacotherapy is already clearly indicated regardless of calcium score.' }
+        );
+    } else if (cat.tier === 'intermediate') {
+        badgeText = 'Intermediate 10-Year PREVENT-ASCVD Risk (5% to < 10%)';
+        headline = p.cac === '0'
+            ? 'CAC = 0: Statin May Be Deferred (Unless Smoker, Diabetes, or Strong Family Hx)'
+            : 'Moderate- to High-Intensity Statin Recommended (Goal LDL-C < 100 mg/dL)';
+        cardStyle = 'bg-orange-50 border-2 border-orange-500 text-orange-950';
+        summaryText = `10-year PREVENT-ASCVD risk is ${prev.ascvd.toFixed(1)}% (5% to < 10% intermediate range).`;
+        steps.push(
+            { title: 'Lipid-Lowering Therapy', body: p.cac === '0'
+                ? 'With CAC = 0 and no active smoking or diabetes, statin therapy may be deferred with lifestyle optimization and repeat CAC in 3–7 years.'
+                : 'Engage in clinician–patient discussion and initiate a moderate- to high-intensity statin targeting ≥30% LDL-C reduction and LDL-C < 100 mg/dL (Non-HDL-C < 130 mg/dL).' },
+            { title: 'Use of CAC Scoring', body: p.cac === 'unknown'
+                ? 'If the decision to start a statin or choose intensity remains uncertain, obtain a non-contrast CAC scan (M ≥40, F ≥45): CAC ≥ 100 supports aiming for LDL-C < 70 mg/dL.'
+                : `Recorded CAC (${el('cacScore').options[el('cacScore').selectedIndex].text}) incorporated above.` }
+        );
+    } else if (cat.tier === 'borderline') {
+        badgeText = 'Borderline 10-Year PREVENT-ASCVD Risk (3% to < 5%)';
+        headline = (p.enhancers.length > 0 || p.cac === '1_99')
+            ? 'Risk Enhancers / CAC Present: Moderate-Intensity Statin Reasonable (Goal LDL-C < 100 mg/dL)'
+            : 'Clinician–Patient Discussion: Review Risk Enhancers or Consider CAC Scoring';
+        cardStyle = 'bg-amber-50 border-2 border-amber-500 text-amber-950';
+        summaryText = `10-year PREVENT-ASCVD risk is ${prev.ascvd.toFixed(1)}% (3% to < 5% borderline range under 2026 ACC/AHA criteria).`;
+        steps.push(
+            { title: 'Lipid-Lowering Decision', body: (p.enhancers.length > 0 || p.cac === '1_99')
+                ? 'Because risk-enhancing factors or coronary calcium are present, initiating a moderate-intensity statin is reasonable (target ≥30% LDL-C drop and LDL-C < 100 mg/dL).'
+                : 'Prioritize heart-healthy lifestyle counseling. A moderate-intensity statin can be considered after shared decision-making.' },
+            { title: 'Role of CAC Reclassification', body: p.cac === 'unknown'
+                ? 'If uncertain whether to start medication (and age M ≥40 or F ≥45), consider a CAC score: CAC = 0 supports deferral; CAC ≥ 1 favors statin therapy.'
+                : (p.cac === '0' ? 'CAC = 0 supports deferring statin therapy with repeat risk assessment in 3–5 years.' : 'Positive CAC supports statin initiation.') }
+        );
+    } else {
+        const highLdlLowRisk = isFinite(p.ldl) && p.ldl >= 160 && p.age >= 30 && p.age <= 59;
+        badgeText = 'Low 10-Year PREVENT-ASCVD Risk (< 3%)';
+        headline = highLdlLowRisk
+            ? 'Lifestyle Counseling + Consider Moderate-Intensity Statin (LDL-C 160–189 mg/dL)'
+            : 'Heart-Healthy Lifestyle Counseling; Routine Statin Not Indicated';
+        cardStyle = 'bg-green-50 border-2 border-green-600 text-green-950';
+        summaryText = `10-year PREVENT-ASCVD risk is ${prev.ascvd.toFixed(1)}% (< 3% low risk). Focus on foundational cardiovascular health behaviors (Life's Essential 8).`;
+        steps.push(
+            { title: 'Lipid-Lowering Guidance', body: highLdlLowRisk
+                ? 'Even at <3% 10-year risk, a moderate-intensity statin is reasonable (Class 2a) in adults aged 30–59 with persistently elevated LDL-C 160–189 mg/dL to curb cumulative lifetime exposure.'
+                : 'Pharmacotherapy is generally not indicated. Reassess cardiovascular risk factors every 4–6 years.' },
+            { title: 'Universal Screening Pearls', body: 'Ensure Lipoprotein(a) has been measured at least once in adulthood (elevated if ≥125 nmol/L or ≥50 mg/dL).' }
+        );
+    }
+
+    // Add Blood Pressure & General Preventive Step for all primary prevention
+    if (!p.knownAscvd) {
+        let bpBody = '';
+        if (p.sbp >= 140) {
+            bpBody = `SBP is ${Math.round(p.sbp)} mmHg (Stage 2 HTN): antihypertensive medication is recommended regardless of PREVENT score, targeting BP < 130/80 mmHg.`;
+        } else if (p.sbp >= 130) {
+            bpBody = prev.cvd >= 7.5 || p.diabetes || p.egfr < 60
+                ? `SBP is ${Math.round(p.sbp)} mmHg (Stage 1 HTN) and 10-year PREVENT Total CVD risk is ${prev.cvd.toFixed(1)}% (≥7.5% threshold): initiate antihypertensive medication alongside lifestyle changes (target < 130/80 mmHg).`
+                : `SBP is ${Math.round(p.sbp)} mmHg (Stage 1 HTN) with PREVENT Total CVD risk ${prev.cvd.toFixed(1)}% (<7.5%): trial 3–6 months of intensive lifestyle modification (DASH diet, sodium <1,500–2,300 mg/day, exercise) and recheck BP.`;
+        } else {
+            bpBody = `SBP is ${Math.round(p.sbp)} mmHg (<130 mmHg): maintain healthy lifestyle and recheck annually.`;
+        }
+        steps.push({ title: 'Blood Pressure Management (2025 AHA/ACC Guideline)', body: bpBody });
+
+        steps.push({
+            title: 'Biomarkers & Lifestyle Foundation',
+            body: `Measure Lp(a) once if not previously checked. ${p.smoker ? 'Strongly prioritize smoking cessation (varenicline, bupropion, or combination NRT + behavioral counseling).' : 'Recommend Mediterranean/DASH dietary pattern, ≥150 min/week moderate aerobic activity, and weight optimization.'}`
+        });
+    }
+
+    el('primaryActionCard').innerHTML = `
+        <div class="p-4 rounded-xl ${cardStyle} shadow-sm">
+            <div class="flex flex-wrap items-center justify-between gap-2 mb-1.5">
+                <span class="text-[11px] font-extrabold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-blue-950 text-white">${badgeText}</span>
+                ${!p.knownAscvd ? `<span class="text-xs font-extrabold">PREVENT-ASCVD: ${prev.ascvd.toFixed(1)}%</span>` : ''}
+            </div>
+            <h3 class="text-base font-extrabold mb-1.5">${headline}</h3>
+            <p class="text-xs leading-relaxed opacity-95">${summaryText}</p>
+        </div>`;
+
+    el('nextStepsContainer').innerHTML = steps.map((s, idx) => `
+        <div class="p-3 rounded-lg border border-slate-200 bg-slate-50/70 flex items-start gap-2.5">
+            <span class="w-6 h-6 rounded-full bg-blue-900 text-white font-extrabold text-xs flex items-center justify-center shrink-0 mt-0.5">${idx + 1}</span>
+            <div>
+                <div class="text-xs font-bold text-slate-900">${s.title}</div>
+                <p class="text-[11px] text-slate-700 mt-0.5 leading-relaxed">${s.body}</p>
+            </div>
+        </div>`).join('');
+
+    /* ---------- EHR Clinical Note ---------- */
+    if (p.knownAscvd) {
+        el('clinicalNoteBox').textContent =
+            `${Math.round(p.age)}yo ${p.sex === 'M' ? 'male' : 'female'} with established clinical ASCVD (secondary prevention; primary-prevention calculators not applicable). ` +
+            `TC ${Math.round(p.tc)} mg/dL, HDL-C ${Math.round(p.hdl)} mg/dL, Non-HDL-C ${Math.round(nonHdl)} mg/dL, LDL-C ${isFinite(p.ldl) ? Math.round(p.ldl) : '--'} mg/dL, SBP ${Math.round(p.sbp)} mmHg. ` +
+            `Plan: ${headline}. Target BP <130/80 mmHg and daily antiplatelet therapy; recheck fasting lipid panel in 4-12 weeks.`;
+    } else {
+        el('clinicalNoteBox').textContent =
+            `Cardiovascular Risk Assessment (${Math.round(p.age)}yo ${p.sex === 'M' ? 'male' : 'female'}, no known ASCVD): ` +
+            `10-year AHA PREVENT-ASCVD risk ${prev.ascvd.toFixed(1)}% (${cat.label}); 10-year PREVENT Total CVD risk ${prev.cvd.toFixed(1)}%; legacy 2013 PCE 10-year ASCVD risk ${pce.risk.toFixed(1)}%. ` +
+            `Inputs: TC ${Math.round(p.tc)}, HDL-C ${Math.round(p.hdl)}, Non-HDL-C ${Math.round(nonHdl)}, LDL-C ${isFinite(p.ldl) ? Math.round(p.ldl) : '--'} mg/dL; SBP ${Math.round(p.sbp)} mmHg (${p.bpMed ? 'treated' : 'untreated'}); eGFR ${Math.round(p.egfr)} mL/min/1.73m2; ` +
+            `diabetes: ${p.diabetes ? 'yes' : 'no'}; current smoker: ${p.smoker ? 'yes' : 'no'}. ` +
+            `Recommendation: ${headline}.`;
+    }
+}
+
+function copyPlanNote() {
+    const textToCopy = el('clinicalNoteBox').textContent.trim();
+    if (!textToCopy || textToCopy === '--') return;
+    navigator.clipboard.writeText(textToCopy).then(() => {
+        const btn = el('copyPlanBtn');
+        const originalText = btn.innerHTML;
+        btn.innerHTML = '&#9989; Copied!';
+        btn.classList.remove('bg-blue-900', 'hover:bg-blue-950');
+        btn.classList.add('bg-green-600', 'hover:bg-green-700');
+        setTimeout(() => {
+            btn.innerHTML = originalText;
+            btn.classList.remove('bg-green-600', 'hover:bg-green-700');
+            btn.classList.add('bg-blue-900', 'hover:bg-blue-950');
+        }, 2000);
+    });
+}
+
+window.onload = () => {
+    ['age', 'sex', 'pceRace', 'knownAscvd', 'diabetes', 'smoker', 'tc', 'hdl', 'ldl', 'sbp', 'egfr',
+     'bpMed', 'onStatin', 'cacScore', 'enhFamHx', 'enhLpa', 'enhSouthAsian', 'enhInflam', 'enhMetabolic']
+        .forEach(id => {
+            el(id).addEventListener('input', updateCalculator);
+            el(id).addEventListener('change', updateCalculator);
+        });
+    updateCalculator();
+};
+</script>
+</body>
+</html>
