@@ -454,7 +454,7 @@ function preprocessImageForOcr(imageSource) {
         const img = new Image();
         img.onload = () => {
             const scale = img.width < 1600 ? Math.min(3.0, 2000 / Math.max(img.width, 1)) : 1;
-            const pad = 24; // White quiet-zone border prevents clipped top/left headers from failing OCR
+            const pad = 24;
             const canvas = document.createElement('canvas');
             canvas.width = Math.round(img.width * scale) + pad * 2;
             canvas.height = Math.round(img.height * scale) + pad * 2;
@@ -467,7 +467,6 @@ function preprocessImageForOcr(imageSource) {
             const d = imgData.data;
             for (let i = 0; i < d.length; i += 4) {
                 const gray = 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
-                // Crisp contrast curve to sharpen thin '1', 'L', and '-' characters
                 const contrasted = gray < 165 ? Math.max(0, gray * 0.65) : 255;
                 d[i] = d[i + 1] = d[i + 2] = contrasted;
             }
@@ -544,23 +543,27 @@ function clearImagePreview() {
 
 /* ---------- Paste & Auto-Extract Parser ---------- */
 function repairLumbarOcrLine(line) {
-    // Fix common OCR confusions in vertebral range labels at the start of a table row or inside parentheses:
-    // e.g., "Li-L4", "LI-LA", "L1-14", "11-L4", "L1_L4", "L1.L4", "L1 - L4" -> "L1-L4"
     const decodeDigit = ch => {
         if (/[1iIl|!]/.test(ch)) return '1';
         if (/[2zZ]/.test(ch)) return '2';
         if (/[3]/.test(ch)) return '3';
-        if (/[4aA]/.test(ch)) return '4';
+        if (/[4aA9]/.test(ch)) return '4';
         return ch;
     };
 
-    // 1. Repair range labels like "Li-L4", "L1-14", "11-L4", "LI-LA"
+    // 1. Repair range labels like "Li-L4", "L1-14", "11-L4", "LI-LA", "L1-L9", "L1L4", "L1 - 4"
     let fixed = line.replace(
-        /(^|[\s(])[LlIi1|]([1-4iIl|aA])\s*[-_.\u2010-\u2015]\s*[LlIi1|]?([1-4iIl|aA])(?=$|[\s),:])/g,
+        /(^|[\s(])[LlIi1|]([1-4iIl|aA])\s*[-_.\u2010-\u2015]?\s*[LlIi1|]?([1-4iIl|aA9])(?=$|[\s),:])/g,
         (_, prefix, d1, d2) => `${prefix}L${decodeDigit(d1)}-L${decodeDigit(d2)}`
     );
 
-    // 2. Repair single vertebra row labels at the start of a line (e.g., "Li 0.879...", "LA 0.970...")
+    // 2. Repair truncated range prefix at start of row where second digit dropped (e.g., "L1-L 0.960..." or "L1- 0.960...")
+    fixed = fixed.replace(
+        /^([LlIi1|])([1-4iIl|])\s*[-_.\u2010-\u2015]\s*[LlIi1|]?(?=\s+[0-9])/,
+        (_, _l, d1) => `L${decodeDigit(d1)}-L4`
+    );
+
+    // 3. Repair single vertebra row labels at the start of a line (e.g., "Li 0.879...", "LA 0.970...")
     fixed = fixed.replace(
         /^([LlIi|])([1-4iIl|aA])(?=\s+[0-9])/,
         (_, _l, d1) => `L${decodeDigit(d1)}`
@@ -643,7 +646,6 @@ function parseLumbarVertebrae(str) {
     const cleaned = String(str || '').replace(/\s+/g, '');
     const found = new Set();
 
-    // Match ranges like L1-L4, L2-L4, L1-L2
     const rangeMatches = [...cleaned.matchAll(/\bL([1-4])-L([1-4])\b/gi)];
     rangeMatches.forEach(m => {
         const start = Math.min(parseInt(m[1], 10), parseInt(m[2], 10));
@@ -651,7 +653,6 @@ function parseLumbarVertebrae(str) {
         for (let v = start; v <= end; v++) found.add(v);
     });
 
-    // Match standalone levels like L1, L2, L3, L4 (including non-contiguous combinations like L1, L3-L4)
     const singleMatches = [...cleaned.matchAll(/\bL([1-4])\b/gi)];
     singleMatches.forEach(m => {
         found.add(parseInt(m[1], 10));
@@ -683,6 +684,21 @@ function parseLumbarVertebrae(str) {
         spanLabel: segments.join(', '),
         isExplicit: true
     };
+}
+
+function reconcileLumbarSpanWithDimensions(siteInfo, area) {
+    if (!siteInfo || siteInfo.category !== 'spine') return siteInfo;
+    // In GE Lunar ancillary spine tables, a single vertebra (L1) is ~9-16 cm²,
+    // whereas L1-L4 is ~42-65 cm². If OCR dropped "-L4" from "L1-L4" leaving "L1"
+    // on a row with Area > 42 cm², restore the L1-L4 label.
+    if (siteInfo.location === 'Lumbar Spine (L1)' && area !== null && area > 42.0) {
+        return {
+            ...siteInfo,
+            location: 'Lumbar Spine (L1-L4)',
+            vertebraCount: 4
+        };
+    }
+    return siteInfo;
 }
 
 function isTableHeaderLine(line) {
@@ -734,7 +750,6 @@ function normalizeSiteInfo(rawLine, inheritedSide = '') {
     const side = detectLaterality(cleanedLine) || inheritedSide;
     const sideSuffix = side ? ` (${side})` : '';
 
-    // Check for Lumbar Spine (including standalone L1, L2, L3, L4 or spans L1-L4, L2-L4, L1-L2, L1-L2, L4)
     const hasSpineKeyword = /\b(?:ap\s+spine|pa\s+spine|lumbar\s+spine|spine)\b/i.test(cleanedLine);
     const hasVertebraToken = /\bL[1-4](?:\s*-\s*L?[1-4])?\b/i.test(cleanedLine);
     if (hasSpineKeyword || hasVertebraToken) {
@@ -851,10 +866,6 @@ function selectBestLumbarCandidate(candidates) {
     if (!candidates || candidates.length === 0) return null;
     if (candidates.length === 1) return candidates[0];
 
-    // Sort descending by:
-    // 1. Number of vertebrae included (e.g., L1-L4 [4] > L2-L4 [3] > L1-L2 [2] > L1 [1])
-    // 2. Bone Area (cm²) if tied in vertebra count (e.g., L2-L4 area > L1-L3 area)
-    // 3. Completeness (both BMD and T-score present)
     return [...candidates].sort((a, b) => {
         if (b.vertebraCount !== a.vertebraCount) {
             return b.vertebraCount - a.vertebraCount;
@@ -909,7 +920,7 @@ function parseDxaReportText(rawText) {
         if (activeColumnMap) {
             const cells = line.split(/\t+|\s{2,}/).map(c => c.trim()).filter(Boolean);
             if (cells.length >= 2 && cells[activeColumnMap.site]) {
-                const siteInfo = normalizeSiteInfo(cells[activeColumnMap.site], currentSectionSide);
+                let siteInfo = normalizeSiteInfo(cells[activeColumnMap.site], currentSectionSide);
                 if (siteInfo) {
                     const mappedBmd = activeColumnMap.bmd !== -1
                         ? parseSingleCellNumber(cells[activeColumnMap.bmd], 0.1, 2.6)
@@ -920,6 +931,8 @@ function parseDxaReportText(rawText) {
                     const mappedArea = activeColumnMap.area !== -1
                         ? parseSingleCellNumber(cells[activeColumnMap.area], 5.0, 120.0)
                         : null;
+
+                    siteInfo = reconcileLumbarSpanWithDimensions(siteInfo, mappedArea);
 
                     if (mappedBmd !== null || mappedT !== null) {
                         const rowObj = {
@@ -944,7 +957,7 @@ function parseDxaReportText(rawText) {
             }
         }
 
-        const siteInfo = normalizeSiteInfo(line, currentSectionSide);
+        let siteInfo = normalizeSiteInfo(line, currentSectionSide);
         if (!siteInfo) continue;
 
         let remainder = line;
@@ -966,6 +979,8 @@ function parseDxaReportText(rawText) {
             check = extractNumbersFromSegment(combined);
             lookahead++;
         }
+
+        siteInfo = reconcileLumbarSpanWithDimensions(siteInfo, check.area);
 
         if (check.bmd !== null || check.tscore !== null) {
             const rowObj = {
