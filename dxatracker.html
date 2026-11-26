@@ -520,7 +520,7 @@ async function processDxaImageBlob(blob, label = 'Pasted image') {
                 return;
             }
 
-            // Repair lumbar span labels before displaying in the textbox so L1-L4 is preserved visibly
+            // Repair lumbar span labels before displaying in the textbox so L1-L4 / L2-L4 are preserved visibly
             const cleanedOcrText = rawOcrText
                 .split(/\r?\n/)
                 .map(repairLumbarOcrLine)
@@ -553,20 +553,19 @@ function repairLumbarOcrLine(line) {
     const decodeDigit = ch => {
         if (/[1iIl|!]/.test(ch)) return '1';
         if (/[2zZ]/.test(ch)) return '2';
-        if (/[3]/.test(ch)) return '3';
+        if (/[3bB]/.test(ch)) return '3';
         if (/[4aA9]/.test(ch)) return '4';
         return ch;
     };
 
-    // 0. Strip vertical table-border or rotated-margin characters fused before a leading 'L' (e.g., "|L1-L4", "IL1-L4", "1L1-L4", "[L1-L4")
-    let fixed = line.replace(
-        /^[\s|[\]!1Il]+(?=[Ll][1-4iIl|aA](?:\s*[-_.\u2010-\u2015~]|\s+[0-9LlIi|4aA]))/,
-        ''
-    );
+    // 0. Strip vertical table-border or rotated-margin characters fused before a leading 'L' or 'Total'
+    let fixed = line
+        .replace(/^[\s|[\]!1Il]+(?=[Ll][1-4iIl|aAzZbB9](?:\s*[-_.\u2010-\u2015~]|\s+[0-9LlIi|4aA]|$))/, '')
+        .replace(/^[\s|[\]!1Il]+(?=[Tt]otal(?:\s|$))/, '');
 
     // 1. Repair range labels like "Li-L4", "L1-14", "11-L4", "LI-LA", "L1-L9", "L1L4", "L1 - 4", "L1-1.4"
     fixed = fixed.replace(
-        /(^|[\s(|[\]])[LlIi1|]([1-4iIl|aA])\s*[-_.\u2010-\u2015~]?\s*[LlIi1|]?\.?([1-4iIl|aA9])(?=$|[\s),:])/g,
+        /(^|[\s(|[\]])[LlIi1|]([1-4iIl|aAzZbB])\s*[-_.\u2010-\u2015~]?\s*[LlIi1|]?\.?([1-4iIl|aAzZbB9])(?=$|[\s),:])/g,
         (_, prefix, d1, d2) => `${prefix === '|' || prefix === '[' || prefix === ']' ? '' : prefix}L${decodeDigit(d1)}-L${decodeDigit(d2)}`
     );
 
@@ -576,10 +575,16 @@ function repairLumbarOcrLine(line) {
         (_, prefix, _l, d1) => `${prefix}L${decodeDigit(d1)}-L4`
     );
 
-    // 3. Repair single vertebra row labels at the start of a line (e.g., "Li 0.879...", "LA 0.970...")
+    // 3. Repair single vertebra row labels at the start of a line (e.g., "Li 0.879...", "LA 0.970...", "LZ 13.58...", or "L2" alone)
     fixed = fixed.replace(
-        /^([LlIi|])([1-4iIl|aA])(?=\s+[0-9])/,
+        /^([LlIi|])([1-4iIl|aAzZbB9])(?=$|\s+[0-9])/,
         (_, _l, d1) => `L${decodeDigit(d1)}`
+    );
+
+    // 4. Repair leading 'L' misread as '1' on individual vertebra rows followed by DXA numeric columns (e.g., "12 13.58 10.76 0.792" -> "L2 13.58...")
+    fixed = fixed.replace(
+        /^1([1-4])(?=\s+\d+\.\d{2,3}\b)/,
+        (_, d1) => `L${d1}`
     );
 
     return fixed;
@@ -707,7 +712,7 @@ function parseLumbarVertebrae(str) {
 }
 
 function reconcileLumbarSpanWithDimensions(siteInfo, area, height) {
-    if (!siteInfo || siteInfo.category !== 'spine') return siteInfo;
+    if (!siteInfo || siteInfo.category !== 'spine' || siteInfo.isTotalRow) return siteInfo;
 
     if (siteInfo.vertebraCount === 1) {
         const isFourVerts = (area !== null && area > 44.0) || (height !== null && height > 11.5);
@@ -792,7 +797,7 @@ function parseSingleCellNumber(cellStr, minVal, maxVal) {
 }
 
 function isLumbarTotalLabel(rawLine) {
-    const cleaned = rawLine.replace(/^[\s|[\]!]+/, '').trim();
+    const cleaned = rawLine.replace(/^[\s|[\]!1Il]+(?=[Tt]otal\b)/, '').trim();
     if (/^total\s+bmd\b/i.test(cleaned)) return false;
     if (/\b(?:hip|femur|forearm|radius|body)\b/i.test(cleaned)) return false;
     return /^(?:ap\s+spine\s+|lumbar\s+spine\s+|spine\s+)?total\b/i.test(cleaned);
@@ -809,8 +814,8 @@ function normalizeSiteInfo(rawLine, inheritedSide = '', seenLumbarLevels = null)
     if (isLumbarTotalLabel(cleanedLine)) {
         const levels = seenLumbarLevels && seenLumbarLevels.size > 0
             ? [...seenLumbarLevels].sort((a, b) => a - b)
-            : [1, 2, 3, 4];
-        const span = formatVertebraLevels(levels);
+            : [];
+        const span = levels.length > 0 ? formatVertebraLevels(levels) : 'L1-L4';
         return {
             category: 'spine',
             location: `Lumbar Spine (${span})`,
@@ -963,17 +968,31 @@ function extractNumbersFromSegment(seg) {
     return { bmd, tscore, area, height };
 }
 
-function selectBestLumbarCandidate(candidates) {
+function selectBestLumbarCandidate(candidates, seenLumbarLevels = null) {
     if (!candidates || candidates.length === 0) return null;
-    if (candidates.length === 1) {
-        const solo = candidates[0];
+
+    // Resolve any "Total" spine row against all detected individual vertebra levels across the report
+    const resolved = candidates.map(cand => {
+        if (cand.isTotalRow && seenLumbarLevels && seenLumbarLevels.size > 0) {
+            const levels = [...seenLumbarLevels].sort((a, b) => a - b);
+            return {
+                ...cand,
+                location: `Lumbar Spine (${formatVertebraLevels(levels)})`,
+                vertebraCount: levels.length
+            };
+        }
+        return cand;
+    });
+
+    if (resolved.length === 1) {
+        const solo = resolved[0];
         if (solo.location === 'Lumbar Spine (L1)') {
             return { ...solo, location: 'Lumbar Spine (L1-L4)', vertebraCount: 4 };
         }
         return solo;
     }
 
-    return [...candidates].sort((a, b) => {
+    return [...resolved].sort((a, b) => {
         if (Boolean(b.isTotalRow) !== Boolean(a.isTotalRow)) {
             return b.isTotalRow ? 1 : -1;
         }
@@ -1033,6 +1052,10 @@ function parseDxaReportText(rawText) {
             if (cells.length >= 2 && cells[activeColumnMap.site]) {
                 let siteInfo = normalizeSiteInfo(cells[activeColumnMap.site], currentSectionSide, seenLumbarLevels);
                 if (siteInfo) {
+                    if (siteInfo.category === 'spine' && !siteInfo.isTotalRow && Array.isArray(siteInfo.levels)) {
+                        siteInfo.levels.forEach(lvl => seenLumbarLevels.add(lvl));
+                    }
+
                     const mappedBmd = activeColumnMap.bmd !== -1
                         ? parseSingleCellNumber(cells[activeColumnMap.bmd], 0.1, 2.6)
                         : null;
@@ -1053,9 +1076,6 @@ function parseDxaReportText(rawText) {
                     siteInfo = reconcileLumbarSpanWithDimensions(siteInfo, mappedArea, mappedHeight);
 
                     if (mappedBmd !== null || mappedT !== null) {
-                        if (siteInfo.category === 'spine' && !siteInfo.isTotalRow && Array.isArray(siteInfo.levels)) {
-                            siteInfo.levels.forEach(lvl => seenLumbarLevels.add(lvl));
-                        }
                         const rowObj = {
                             location: siteInfo.location,
                             bmd: mappedBmd !== null ? +mappedBmd.toFixed(3) : '',
@@ -1082,6 +1102,11 @@ function parseDxaReportText(rawText) {
         let siteInfo = normalizeSiteInfo(line, currentSectionSide, seenLumbarLevels);
         if (!siteInfo) continue;
 
+        // Always record detected individual lumbar vertebra levels even if OCR places numbers on another line
+        if (siteInfo.category === 'spine' && !siteInfo.isTotalRow && Array.isArray(siteInfo.levels)) {
+            siteInfo.levels.forEach(lvl => seenLumbarLevels.add(lvl));
+        }
+
         let remainder = line;
         const cols = line.split(/\t+|\s{2,}/);
         if (cols.length >= 2 && normalizeSiteInfo(cols[0], currentSectionSide, seenLumbarLevels)) {
@@ -1105,9 +1130,6 @@ function parseDxaReportText(rawText) {
         siteInfo = reconcileLumbarSpanWithDimensions(siteInfo, check.area, check.height);
 
         if (check.bmd !== null || check.tscore !== null) {
-            if (siteInfo.category === 'spine' && !siteInfo.isTotalRow && Array.isArray(siteInfo.levels)) {
-                siteInfo.levels.forEach(lvl => seenLumbarLevels.add(lvl));
-            }
             const rowObj = {
                 location: siteInfo.location,
                 bmd: check.bmd !== null ? +check.bmd.toFixed(3) : '',
@@ -1129,7 +1151,7 @@ function parseDxaReportText(rawText) {
     }
 
     const extractedRows = [];
-    const bestLumbar = selectBestLumbarCandidate(lumbarCandidates);
+    const bestLumbar = selectBestLumbarCandidate(lumbarCandidates, seenLumbarLevels);
     if (bestLumbar) {
         extractedRows.push({
             location: bestLumbar.location,
