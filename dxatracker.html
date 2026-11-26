@@ -467,7 +467,8 @@ function preprocessImageForOcr(imageSource) {
             const d = imgData.data;
             for (let i = 0; i < d.length; i += 4) {
                 const gray = 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
-                const contrasted = gray < 165 ? Math.max(0, gray * 0.65) : 255;
+                // Keep cutoff high (215) so thin anti-aliased '-' minus signs are darkened rather than erased
+                const contrasted = gray < 215 ? Math.max(0, Math.min(255, (gray - 60) * 1.15)) : 255;
                 d[i] = d[i + 1] = d[i + 2] = contrasted;
             }
             ctx.putImageData(imgData, 0, 0);
@@ -580,7 +581,9 @@ function repairLumbarOcrLine(line) {
 
 function normalizeText(raw) {
     const base = String(raw || '')
-        .replace(/[\u2212\u2013\u2014~]/g, '-')
+        .replace(/[\u2212\u2010-\u2015\u00AC~]/g, '-')
+        .replace(/(^|\s)[_•·]\s*(\d+\.\d+)/g, '$1-$2')
+        .replace(/(^|\s)\.(\d+\.\d+)/g, '$1-$2')
         .replace(/\u00A0/g, ' ')
         .replace(/\bO\.(\d)/g, '0.$1')
         .replace(/(\d),(\d{2,3})\b/g, '$1.$2');
@@ -695,11 +698,6 @@ function parseLumbarVertebrae(str) {
 function reconcileLumbarSpanWithDimensions(siteInfo, area, height) {
     if (!siteInfo || siteInfo.category !== 'spine') return siteInfo;
 
-    // In GE Lunar ancillary spine tables:
-    // - 1 vertebra (L1..L4): Area ~9-18 cm², Height ~2.5-4.2 cm
-    // - 2 vertebrae (L1-L2, L2-L3, L3-L4): Area ~20-30 cm², Height ~5.5-8.0 cm
-    // - 3 vertebrae (L1-L3, L2-L4): Area ~32-44 cm², Height ~8.5-11.5 cm
-    // - 4 vertebrae (L1-L4): Area ~45-65 cm², Height ~11.5-15.5 cm
     if (siteInfo.vertebraCount === 1) {
         const isFourVerts = (area !== null && area > 44.0) || (height !== null && height > 11.5);
         if (isFourVerts) {
@@ -723,6 +721,21 @@ function reconcileLumbarSpanWithDimensions(siteInfo, area, height) {
     return siteInfo;
 }
 
+function reconcileTScoreSignWithYaPct(tscore, yaPct) {
+    if (tscore === null || !isFinite(tscore) || yaPct === null || !isFinite(yaPct)) {
+        return tscore;
+    }
+    // In GE Lunar DXA tables, YA (%) < 100% means BMD is below the Young Adult mean,
+    // so the YA T-score must be negative (OCR occasionally drops the thin '-' sign).
+    if (yaPct >= 25 && yaPct < 100 && tscore > 0.05 && tscore <= 6.5) {
+        return -tscore;
+    }
+    if (yaPct > 100 && yaPct <= 165 && tscore < -0.05) {
+        return Math.abs(tscore);
+    }
+    return tscore;
+}
+
 function isTableHeaderLine(line) {
     const hasSiteHeader = /\b(?:anatomical\s+region|region|site|location|roi)\b/i.test(line);
     const hasMetricHeader = /\b(?:bmd|t-?score|z-?score|young\s+adult|age\s+matched)\b/i.test(line);
@@ -739,10 +752,11 @@ function detectTableColumnMap(line) {
     const cols = line.split(/\t+|\s{2,}/).map(c => c.trim().toLowerCase()).filter(Boolean);
     if (cols.length < 2) return null;
 
-    const map = { site: -1, bmd: -1, tscore: -1, zscore: -1, area: -1, height: -1 };
+    const map = { site: -1, bmd: -1, yaPct: -1, tscore: -1, zscore: -1, area: -1, height: -1 };
     cols.forEach((col, idx) => {
         if (map.site === -1 && /\b(?:region|site|location|roi)\b/.test(col)) map.site = idx;
         else if (map.bmd === -1 && /\bbmd\b/.test(col)) map.bmd = idx;
+        else if (map.yaPct === -1 && /\b(?:ya|young\s+adult)\b/.test(col) && !/\bt-?score\b/.test(col)) map.yaPct = idx;
         else if (map.tscore === -1 && /\bt-?score\b/.test(col)) map.tscore = idx;
         else if (map.zscore === -1 && /\bz-?score\b/.test(col)) map.zscore = idx;
         else if (map.area === -1 && /\barea\b/.test(col)) map.area = idx;
@@ -824,6 +838,7 @@ function extractNumbersFromSegment(seg) {
 
     let bmd = explicitBmd ? parseFloat(explicitBmd[1]) : null;
     let tscore = explicitT ? parseFloat(explicitT[1]) : null;
+    let yaPct = null;
     let area = null;
     let height = null;
 
@@ -850,6 +865,12 @@ function extractNumbersFromSegment(seg) {
         if (bmdIdx !== -1) {
             bmd = tokens[bmdIdx].val;
 
+            // Check if the token right after BMD is a GE Lunar YA (%) integer (e.g. 78, 81, 105)
+            const nextTok = tokens[bmdIdx + 1];
+            if (nextTok && !nextTok.hasSign && !nextTok.hasDecimal && nextTok.val >= 25 && nextTok.val <= 165) {
+                yaPct = nextTok.val;
+            }
+
             if (tscore === null) {
                 for (let j = bmdIdx + 1; j < tokens.length; j++) {
                     const cand = tokens[j];
@@ -868,23 +889,30 @@ function extractNumbersFromSegment(seg) {
                 }
             }
         }
-    } else if (tscore === null) {
+    } else {
         const bmdIdx = tokens.findIndex(t => Math.abs(t.val - bmd) < 0.0005);
         const startIdx = bmdIdx !== -1 ? bmdIdx + 1 : 0;
-        for (let j = startIdx; j < tokens.length; j++) {
-            const cand = tokens[j];
-            if (cand.val >= -7.5 && cand.val <= 6.0) {
-                tscore = cand.val;
-                break;
+        const nextTok = tokens[startIdx];
+        if (nextTok && !nextTok.hasSign && !nextTok.hasDecimal && nextTok.val >= 25 && nextTok.val <= 165) {
+            yaPct = nextTok.val;
+        }
+        if (tscore === null) {
+            for (let j = startIdx; j < tokens.length; j++) {
+                const cand = tokens[j];
+                if (cand.val >= -7.5 && cand.val <= 6.0) {
+                    tscore = cand.val;
+                    break;
+                }
             }
         }
     }
+
+    tscore = reconcileTScoreSignWithYaPct(tscore, yaPct);
 
     const twoDecTokens = tokens.filter(t => !t.hasSign && t.decimals === 2 && (bmd === null || Math.abs(t.val - bmd) > 0.01));
     const areaTok = twoDecTokens.find(t => t.val >= 8.0 && t.val <= 90.0);
     if (areaTok) area = areaTok.val;
 
-    // Height (cm) is the last 2-decimal column in GE Lunar tables (typically 2.50 - 16.50 cm)
     if (twoDecTokens.length >= 2) {
         const lastTwoDec = twoDecTokens[twoDecTokens.length - 1];
         if (lastTwoDec !== areaTok && lastTwoDec.val >= 2.5 && lastTwoDec.val <= 17.5) {
@@ -958,7 +986,10 @@ function parseDxaReportText(rawText) {
                     const mappedBmd = activeColumnMap.bmd !== -1
                         ? parseSingleCellNumber(cells[activeColumnMap.bmd], 0.1, 2.6)
                         : null;
-                    const mappedT = activeColumnMap.tscore !== -1
+                    const mappedYaPct = activeColumnMap.yaPct !== -1
+                        ? parseSingleCellNumber(cells[activeColumnMap.yaPct], 25, 165)
+                        : null;
+                    let mappedT = activeColumnMap.tscore !== -1
                         ? parseSingleCellNumber(cells[activeColumnMap.tscore], -7.5, 6.0)
                         : null;
                     const mappedArea = activeColumnMap.area !== -1
@@ -968,6 +999,7 @@ function parseDxaReportText(rawText) {
                         ? parseSingleCellNumber(cells[activeColumnMap.height], 2.0, 20.0)
                         : null;
 
+                    mappedT = reconcileTScoreSignWithYaPct(mappedT, mappedYaPct);
                     siteInfo = reconcileLumbarSpanWithDimensions(siteInfo, mappedArea, mappedHeight);
 
                     if (mappedBmd !== null || mappedT !== null) {
