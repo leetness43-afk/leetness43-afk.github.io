@@ -513,14 +513,20 @@ async function processDxaImageBlob(blob, label = 'Pasted image') {
                 }
             });
 
-            const ocrText = (result && result.data && result.data.text ? result.data.text : '').trim();
-            if (!ocrText) {
+            const rawOcrText = (result && result.data && result.data.text ? result.data.text : '').trim();
+            if (!rawOcrText) {
                 statusEl.textContent = '⚠️ No readable text detected in the image. Try cropping closer to the DXA results table.';
                 statusEl.className = 'text-[11px] font-medium text-amber-700 mt-2';
                 return;
             }
 
-            document.getElementById('rawReportPaste').value = ocrText;
+            // Repair lumbar span labels before displaying in the textbox so L1-L4 is preserved visibly
+            const cleanedOcrText = rawOcrText
+                .split(/\r?\n/)
+                .map(repairLumbarOcrLine)
+                .join('\n');
+
+            document.getElementById('rawReportPaste').value = cleanedOcrText;
             extractFromPastedReport();
         } catch (err) {
             statusEl.textContent = `⚠️ Image OCR failed: ${err.message}`;
@@ -552,22 +558,22 @@ function repairLumbarOcrLine(line) {
         return ch;
     };
 
-    // 0. Strip vertical table-border characters fused to a leading 'L' (e.g., "|L1-L4", "IL1-L4", "1L1-L4", "[L1-L4")
+    // 0. Strip vertical table-border or rotated-margin characters fused before a leading 'L' (e.g., "|L1-L4", "IL1-L4", "1L1-L4", "[L1-L4")
     let fixed = line.replace(
-        /^[\s|[\]!1Il]+(?=[Ll][1-4iIl|aA](?:\s*[-_.\u2010-\u2015]|\s+[0-9]))/,
+        /^[\s|[\]!1Il]+(?=[Ll][1-4iIl|aA](?:\s*[-_.\u2010-\u2015~]|\s+[0-9LlIi|4aA]))/,
         ''
     );
 
-    // 1. Repair range labels like "Li-L4", "L1-14", "11-L4", "LI-LA", "L1-L9", "L1L4", "L1 - 4"
+    // 1. Repair range labels like "Li-L4", "L1-14", "11-L4", "LI-LA", "L1-L9", "L1L4", "L1 - 4", "L1-1.4"
     fixed = fixed.replace(
-        /(^|[\s(|[\]])[LlIi1|]([1-4iIl|aA])\s*[-_.\u2010-\u2015]?\s*[LlIi1|]?([1-4iIl|aA9])(?=$|[\s),:])/g,
+        /(^|[\s(|[\]])[LlIi1|]([1-4iIl|aA])\s*[-_.\u2010-\u2015~]?\s*[LlIi1|]?\.?([1-4iIl|aA9])(?=$|[\s),:])/g,
         (_, prefix, d1, d2) => `${prefix === '|' || prefix === '[' || prefix === ']' ? '' : prefix}L${decodeDigit(d1)}-L${decodeDigit(d2)}`
     );
 
-    // 2. Repair truncated range prefix at start of row where second digit dropped (e.g., "L1-L 0.960..." or "L2- 0.981...")
+    // 2. Repair truncated range suffix before numeric columns (e.g., "L1-L 0.959", "L1- 0.959", "L1 L 0.959", "L1-L+ 0.959")
     fixed = fixed.replace(
-        /^([LlIi1|])([1-4iIl|])\s*[-_.\u2010-\u2015]\s*[LlIi1|]?(?=\s+[0-9])/,
-        (_, _l, d1) => `L${decodeDigit(d1)}-L4`
+        /(^|\s)([LlIi1|])([1-4iIl|])(?:\s*[-_.\u2010-\u2015~]\s*[LlIi1|aA+*]*|\s+[LlIi1|aA])(?=\s+[0-9])/g,
+        (_, prefix, _l, d1) => `${prefix}L${decodeDigit(d1)}-L4`
     );
 
     // 3. Repair single vertebra row labels at the start of a line (e.g., "Li 0.879...", "LA 0.970...")
@@ -651,6 +657,26 @@ function extractModelFromText(text) {
 }
 
 /* ---------- Lumbar Spine Vertebra Span Parsing & Ranking ---------- */
+function formatVertebraLevels(levels) {
+    const sorted = [...new Set(levels)].filter(v => v >= 1 && v <= 4).sort((a, b) => a - b);
+    if (sorted.length === 0) return 'L1-L4';
+    const segments = [];
+    let i = 0;
+    while (i < sorted.length) {
+        let j = i;
+        while (j + 1 < sorted.length && sorted[j + 1] === sorted[j] + 1) {
+            j++;
+        }
+        if (j > i) {
+            segments.push(`L${sorted[i]}-L${sorted[j]}`);
+        } else {
+            segments.push(`L${sorted[i]}`);
+        }
+        i = j + 1;
+    }
+    return segments.join(', ');
+}
+
 function parseLumbarVertebrae(str) {
     const cleaned = String(str || '').replace(/\s+/g, '');
     const found = new Set();
@@ -672,25 +698,10 @@ function parseLumbarVertebrae(str) {
         return { levels: [], count: 0, spanLabel: 'L1-L4', isExplicit: false };
     }
 
-    const segments = [];
-    let i = 0;
-    while (i < levels.length) {
-        let j = i;
-        while (j + 1 < levels.length && levels[j + 1] === levels[j] + 1) {
-            j++;
-        }
-        if (j > i) {
-            segments.push(`L${levels[i]}-L${levels[j]}`);
-        } else {
-            segments.push(`L${levels[i]}`);
-        }
-        i = j + 1;
-    }
-
     return {
         levels,
         count: levels.length,
-        spanLabel: segments.join(', '),
+        spanLabel: formatVertebraLevels(levels),
         isExplicit: true
     };
 }
@@ -704,16 +715,18 @@ function reconcileLumbarSpanWithDimensions(siteInfo, area, height) {
             return {
                 ...siteInfo,
                 location: 'Lumbar Spine (L1-L4)',
+                levels: [1, 2, 3, 4],
                 vertebraCount: 4
             };
         }
 
         const isThreeVerts = (area !== null && area > 32.0) || (height !== null && height > 8.5);
         if (isThreeVerts) {
-            const inferredSpan = siteInfo.location === 'Lumbar Spine (L2)' ? 'L2-L4' : 'L1-L3';
+            const isL2Start = siteInfo.location === 'Lumbar Spine (L2)';
             return {
                 ...siteInfo,
-                location: `Lumbar Spine (${inferredSpan})`,
+                location: `Lumbar Spine (${isL2Start ? 'L2-L4' : 'L1-L3'})`,
+                levels: isL2Start ? [2, 3, 4] : [1, 2, 3],
                 vertebraCount: 3
             };
         }
@@ -725,8 +738,6 @@ function reconcileTScoreSignWithYaPct(tscore, yaPct) {
     if (tscore === null || !isFinite(tscore) || yaPct === null || !isFinite(yaPct)) {
         return tscore;
     }
-    // In GE Lunar DXA tables, YA (%) < 100% means BMD is below the Young Adult mean,
-    // so the YA T-score must be negative (OCR occasionally drops the thin '-' sign).
     if (yaPct >= 25 && yaPct < 100 && tscore > 0.05 && tscore <= 6.5) {
         return -tscore;
     }
@@ -780,12 +791,34 @@ function parseSingleCellNumber(cellStr, minVal, maxVal) {
     return (isFinite(val) && val >= minVal && val <= maxVal) ? val : null;
 }
 
-function normalizeSiteInfo(rawLine, inheritedSide = '') {
+function isLumbarTotalLabel(rawLine) {
+    const cleaned = rawLine.replace(/^[\s|[\]!]+/, '').trim();
+    if (/^total\s+bmd\b/i.test(cleaned)) return false;
+    if (/\b(?:hip|femur|forearm|radius|body)\b/i.test(cleaned)) return false;
+    return /^(?:ap\s+spine\s+|lumbar\s+spine\s+|spine\s+)?total\b/i.test(cleaned);
+}
+
+function normalizeSiteInfo(rawLine, inheritedSide = '', seenLumbarLevels = null) {
     if (isTableHeaderLine(rawLine)) return null;
 
     const cleanedLine = rawLine.replace(/\(\s+/g, '(').replace(/\s+\)/g, ')');
     const side = detectLaterality(cleanedLine) || inheritedSide;
     const sideSuffix = side ? ` (${side})` : '';
+
+    // Handle Hologic spine summary "Total" row (e.g., rows L2, L3, L4 followed by "Total")
+    if (isLumbarTotalLabel(cleanedLine)) {
+        const levels = seenLumbarLevels && seenLumbarLevels.size > 0
+            ? [...seenLumbarLevels].sort((a, b) => a - b)
+            : [1, 2, 3, 4];
+        const span = formatVertebraLevels(levels);
+        return {
+            category: 'spine',
+            location: `Lumbar Spine (${span})`,
+            levels,
+            vertebraCount: levels.length,
+            isTotalRow: true
+        };
+    }
 
     const hasSpineKeyword = /\b(?:ap\s+spine|pa\s+spine|lumbar\s+spine|spine)\b/i.test(cleanedLine);
     const hasVertebraToken = /\bL[1-4](?:\s*-\s*L?[1-4])?\b/i.test(cleanedLine);
@@ -795,7 +828,9 @@ function normalizeSiteInfo(rawLine, inheritedSide = '') {
         return {
             category: 'spine',
             location: `Lumbar Spine (${span})`,
-            vertebraCount: vertInfo.isExplicit ? vertInfo.count : 0
+            levels: vertInfo.levels,
+            vertebraCount: vertInfo.isExplicit ? vertInfo.count : 0,
+            isTotalRow: false
         };
     }
 
@@ -803,21 +838,27 @@ function normalizeSiteInfo(rawLine, inheritedSide = '') {
         return {
             category: 'femNeck',
             location: `Femoral Neck${sideSuffix}`,
-            vertebraCount: 0
+            levels: [],
+            vertebraCount: 0,
+            isTotalRow: false
         };
     }
     if (/\b(?:total\s+hip|total\s+femur|hip\s+total|femur\s+total)\b/i.test(cleanedLine)) {
         return {
             category: 'totalHip',
             location: `Total Hip${sideSuffix}`,
-            vertebraCount: 0
+            levels: [],
+            vertebraCount: 0,
+            isTotalRow: false
         };
     }
     if (/\b(?:1\/3\s*radius|radius\s*1\/3|one-third\s*radius|radius\s*33%|33%\s*radius|forearm|distal\s*radius|mid\s*radius)\b/i.test(cleanedLine)) {
         return {
             category: 'radius',
             location: `1/3 Radius${sideSuffix || ' (Forearm)'}`,
-            vertebraCount: 0
+            levels: [],
+            vertebraCount: 0,
+            isTotalRow: false
         };
     }
     return null;
@@ -865,7 +906,6 @@ function extractNumbersFromSegment(seg) {
         if (bmdIdx !== -1) {
             bmd = tokens[bmdIdx].val;
 
-            // Check if the token right after BMD is a GE Lunar YA (%) integer (e.g. 78, 81, 105)
             const nextTok = tokens[bmdIdx + 1];
             if (nextTok && !nextTok.hasSign && !nextTok.hasDecimal && nextTok.val >= 25 && nextTok.val <= 165) {
                 yaPct = nextTok.val;
@@ -925,9 +965,18 @@ function extractNumbersFromSegment(seg) {
 
 function selectBestLumbarCandidate(candidates) {
     if (!candidates || candidates.length === 0) return null;
-    if (candidates.length === 1) return candidates[0];
+    if (candidates.length === 1) {
+        const solo = candidates[0];
+        if (solo.location === 'Lumbar Spine (L1)') {
+            return { ...solo, location: 'Lumbar Spine (L1-L4)', vertebraCount: 4 };
+        }
+        return solo;
+    }
 
     return [...candidates].sort((a, b) => {
+        if (Boolean(b.isTotalRow) !== Boolean(a.isTotalRow)) {
+            return b.isTotalRow ? 1 : -1;
+        }
         if (b.vertebraCount !== a.vertebraCount) {
             return b.vertebraCount - a.vertebraCount;
         }
@@ -951,6 +1000,7 @@ function parseDxaReportText(rawText) {
     const nonSpineRows = [];
     const seenNonSpine = new Set();
     const lumbarCandidates = [];
+    const seenLumbarLevels = new Set();
 
     const rawLines = text.split(/\r?\n|;/).map(s => s.trim()).filter(Boolean);
     let currentSectionSide = '';
@@ -981,7 +1031,7 @@ function parseDxaReportText(rawText) {
         if (activeColumnMap) {
             const cells = line.split(/\t+|\s{2,}/).map(c => c.trim()).filter(Boolean);
             if (cells.length >= 2 && cells[activeColumnMap.site]) {
-                let siteInfo = normalizeSiteInfo(cells[activeColumnMap.site], currentSectionSide);
+                let siteInfo = normalizeSiteInfo(cells[activeColumnMap.site], currentSectionSide, seenLumbarLevels);
                 if (siteInfo) {
                     const mappedBmd = activeColumnMap.bmd !== -1
                         ? parseSingleCellNumber(cells[activeColumnMap.bmd], 0.1, 2.6)
@@ -1003,11 +1053,15 @@ function parseDxaReportText(rawText) {
                     siteInfo = reconcileLumbarSpanWithDimensions(siteInfo, mappedArea, mappedHeight);
 
                     if (mappedBmd !== null || mappedT !== null) {
+                        if (siteInfo.category === 'spine' && !siteInfo.isTotalRow && Array.isArray(siteInfo.levels)) {
+                            siteInfo.levels.forEach(lvl => seenLumbarLevels.add(lvl));
+                        }
                         const rowObj = {
                             location: siteInfo.location,
                             bmd: mappedBmd !== null ? +mappedBmd.toFixed(3) : '',
                             tscore: mappedT !== null ? +mappedT.toFixed(1) : '',
                             vertebraCount: siteInfo.vertebraCount,
+                            isTotalRow: Boolean(siteInfo.isTotalRow),
                             area: mappedArea
                         };
                         if (siteInfo.category === 'spine') {
@@ -1025,12 +1079,12 @@ function parseDxaReportText(rawText) {
             }
         }
 
-        let siteInfo = normalizeSiteInfo(line, currentSectionSide);
+        let siteInfo = normalizeSiteInfo(line, currentSectionSide, seenLumbarLevels);
         if (!siteInfo) continue;
 
         let remainder = line;
         const cols = line.split(/\t+|\s{2,}/);
-        if (cols.length >= 2 && normalizeSiteInfo(cols[0], currentSectionSide)) {
+        if (cols.length >= 2 && normalizeSiteInfo(cols[0], currentSectionSide, seenLumbarLevels)) {
             remainder = cols.slice(1).join('  ');
         }
 
@@ -1041,7 +1095,7 @@ function parseDxaReportText(rawText) {
         while ((check.bmd === null && check.tscore === null) && lookahead <= 4 && (i + lookahead) < rawLines.length) {
             const nextLine = rawLines[i + lookahead];
             if (isTableHeaderLine(nextLine) || isSectionBannerLine(nextLine)) break;
-            const nextSite = normalizeSiteInfo(nextLine, currentSectionSide);
+            const nextSite = normalizeSiteInfo(nextLine, currentSectionSide, seenLumbarLevels);
             if (nextSite) break;
             combined += ' ' + nextLine;
             check = extractNumbersFromSegment(combined);
@@ -1051,11 +1105,15 @@ function parseDxaReportText(rawText) {
         siteInfo = reconcileLumbarSpanWithDimensions(siteInfo, check.area, check.height);
 
         if (check.bmd !== null || check.tscore !== null) {
+            if (siteInfo.category === 'spine' && !siteInfo.isTotalRow && Array.isArray(siteInfo.levels)) {
+                siteInfo.levels.forEach(lvl => seenLumbarLevels.add(lvl));
+            }
             const rowObj = {
                 location: siteInfo.location,
                 bmd: check.bmd !== null ? +check.bmd.toFixed(3) : '',
                 tscore: check.tscore !== null ? +check.tscore.toFixed(1) : '',
                 vertebraCount: siteInfo.vertebraCount,
+                isTotalRow: Boolean(siteInfo.isTotalRow),
                 area: check.area
             };
             if (siteInfo.category === 'spine') {
