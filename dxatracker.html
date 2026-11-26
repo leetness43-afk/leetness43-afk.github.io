@@ -551,13 +551,19 @@ function repairLumbarOcrLine(line) {
         return ch;
     };
 
-    // 1. Repair range labels like "Li-L4", "L1-14", "11-L4", "LI-LA", "L1-L9", "L1L4", "L1 - 4"
+    // 0. Strip vertical table-border characters fused to a leading 'L' (e.g., "|L1-L4", "IL1-L4", "1L1-L4", "[L1-L4")
     let fixed = line.replace(
-        /(^|[\s(])[LlIi1|]([1-4iIl|aA])\s*[-_.\u2010-\u2015]?\s*[LlIi1|]?([1-4iIl|aA9])(?=$|[\s),:])/g,
-        (_, prefix, d1, d2) => `${prefix}L${decodeDigit(d1)}-L${decodeDigit(d2)}`
+        /^[\s|[\]!1Il]+(?=[Ll][1-4iIl|aA](?:\s*[-_.\u2010-\u2015]|\s+[0-9]))/,
+        ''
     );
 
-    // 2. Repair truncated range prefix at start of row where second digit dropped (e.g., "L1-L 0.960..." or "L1- 0.960...")
+    // 1. Repair range labels like "Li-L4", "L1-14", "11-L4", "LI-LA", "L1-L9", "L1L4", "L1 - 4"
+    fixed = fixed.replace(
+        /(^|[\s(|[\]])[LlIi1|]([1-4iIl|aA])\s*[-_.\u2010-\u2015]?\s*[LlIi1|]?([1-4iIl|aA9])(?=$|[\s),:])/g,
+        (_, prefix, d1, d2) => `${prefix === '|' || prefix === '[' || prefix === ']' ? '' : prefix}L${decodeDigit(d1)}-L${decodeDigit(d2)}`
+    );
+
+    // 2. Repair truncated range prefix at start of row where second digit dropped (e.g., "L1-L 0.960..." or "L2- 0.981...")
     fixed = fixed.replace(
         /^([LlIi1|])([1-4iIl|])\s*[-_.\u2010-\u2015]\s*[LlIi1|]?(?=\s+[0-9])/,
         (_, _l, d1) => `L${decodeDigit(d1)}-L4`
@@ -686,17 +692,33 @@ function parseLumbarVertebrae(str) {
     };
 }
 
-function reconcileLumbarSpanWithDimensions(siteInfo, area) {
+function reconcileLumbarSpanWithDimensions(siteInfo, area, height) {
     if (!siteInfo || siteInfo.category !== 'spine') return siteInfo;
-    // In GE Lunar ancillary spine tables, a single vertebra (L1) is ~9-16 cm²,
-    // whereas L1-L4 is ~42-65 cm². If OCR dropped "-L4" from "L1-L4" leaving "L1"
-    // on a row with Area > 42 cm², restore the L1-L4 label.
-    if (siteInfo.location === 'Lumbar Spine (L1)' && area !== null && area > 42.0) {
-        return {
-            ...siteInfo,
-            location: 'Lumbar Spine (L1-L4)',
-            vertebraCount: 4
-        };
+
+    // In GE Lunar ancillary spine tables:
+    // - 1 vertebra (L1..L4): Area ~9-18 cm², Height ~2.5-4.2 cm
+    // - 2 vertebrae (L1-L2, L2-L3, L3-L4): Area ~20-30 cm², Height ~5.5-8.0 cm
+    // - 3 vertebrae (L1-L3, L2-L4): Area ~32-44 cm², Height ~8.5-11.5 cm
+    // - 4 vertebrae (L1-L4): Area ~45-65 cm², Height ~11.5-15.5 cm
+    if (siteInfo.vertebraCount === 1) {
+        const isFourVerts = (area !== null && area > 44.0) || (height !== null && height > 11.5);
+        if (isFourVerts) {
+            return {
+                ...siteInfo,
+                location: 'Lumbar Spine (L1-L4)',
+                vertebraCount: 4
+            };
+        }
+
+        const isThreeVerts = (area !== null && area > 32.0) || (height !== null && height > 8.5);
+        if (isThreeVerts) {
+            const inferredSpan = siteInfo.location === 'Lumbar Spine (L2)' ? 'L2-L4' : 'L1-L3';
+            return {
+                ...siteInfo,
+                location: `Lumbar Spine (${inferredSpan})`,
+                vertebraCount: 3
+            };
+        }
     }
     return siteInfo;
 }
@@ -717,13 +739,14 @@ function detectTableColumnMap(line) {
     const cols = line.split(/\t+|\s{2,}/).map(c => c.trim().toLowerCase()).filter(Boolean);
     if (cols.length < 2) return null;
 
-    const map = { site: -1, bmd: -1, tscore: -1, zscore: -1, area: -1 };
+    const map = { site: -1, bmd: -1, tscore: -1, zscore: -1, area: -1, height: -1 };
     cols.forEach((col, idx) => {
         if (map.site === -1 && /\b(?:region|site|location|roi)\b/.test(col)) map.site = idx;
         else if (map.bmd === -1 && /\bbmd\b/.test(col)) map.bmd = idx;
         else if (map.tscore === -1 && /\bt-?score\b/.test(col)) map.tscore = idx;
         else if (map.zscore === -1 && /\bz-?score\b/.test(col)) map.zscore = idx;
         else if (map.area === -1 && /\barea\b/.test(col)) map.area = idx;
+        else if (map.height === -1 && /\bheight\b/.test(col)) map.height = idx;
     });
 
     if (map.site !== -1 && (map.bmd !== -1 || map.tscore !== -1)) {
@@ -802,6 +825,7 @@ function extractNumbersFromSegment(seg) {
     let bmd = explicitBmd ? parseFloat(explicitBmd[1]) : null;
     let tscore = explicitT ? parseFloat(explicitT[1]) : null;
     let area = null;
+    let height = null;
 
     const tokenMatches = [...cleaned.matchAll(/(?<![A-Za-z0-9.])([+-]?(?:\d+\.\d+|\.\d+|\d+))(?![A-Za-z0-9]|\.\d)/g)];
     const tokens = tokenMatches.map(m => {
@@ -856,10 +880,19 @@ function extractNumbersFromSegment(seg) {
         }
     }
 
-    const areaTok = tokens.find(t => !t.hasSign && t.decimals === 2 && t.val >= 8.0 && t.val <= 90.0 && (bmd === null || Math.abs(t.val - bmd) > 0.01));
+    const twoDecTokens = tokens.filter(t => !t.hasSign && t.decimals === 2 && (bmd === null || Math.abs(t.val - bmd) > 0.01));
+    const areaTok = twoDecTokens.find(t => t.val >= 8.0 && t.val <= 90.0);
     if (areaTok) area = areaTok.val;
 
-    return { bmd, tscore, area };
+    // Height (cm) is the last 2-decimal column in GE Lunar tables (typically 2.50 - 16.50 cm)
+    if (twoDecTokens.length >= 2) {
+        const lastTwoDec = twoDecTokens[twoDecTokens.length - 1];
+        if (lastTwoDec !== areaTok && lastTwoDec.val >= 2.5 && lastTwoDec.val <= 17.5) {
+            height = lastTwoDec.val;
+        }
+    }
+
+    return { bmd, tscore, area, height };
 }
 
 function selectBestLumbarCandidate(candidates) {
@@ -931,8 +964,11 @@ function parseDxaReportText(rawText) {
                     const mappedArea = activeColumnMap.area !== -1
                         ? parseSingleCellNumber(cells[activeColumnMap.area], 5.0, 120.0)
                         : null;
+                    const mappedHeight = activeColumnMap.height !== -1
+                        ? parseSingleCellNumber(cells[activeColumnMap.height], 2.0, 20.0)
+                        : null;
 
-                    siteInfo = reconcileLumbarSpanWithDimensions(siteInfo, mappedArea);
+                    siteInfo = reconcileLumbarSpanWithDimensions(siteInfo, mappedArea, mappedHeight);
 
                     if (mappedBmd !== null || mappedT !== null) {
                         const rowObj = {
@@ -980,7 +1016,7 @@ function parseDxaReportText(rawText) {
             lookahead++;
         }
 
-        siteInfo = reconcileLumbarSpanWithDimensions(siteInfo, check.area);
+        siteInfo = reconcileLumbarSpanWithDimensions(siteInfo, check.area, check.height);
 
         if (check.bmd !== null || check.tscore !== null) {
             const rowObj = {
