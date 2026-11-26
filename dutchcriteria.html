@@ -1,0 +1,755 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dutch Lipid Clinic Network (DLCN) Criteria Calculator for FH</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @media print {
+            @page { size: portrait; margin: 0; }
+            .no-print { display: none !important; }
+            html, body { margin: 0 !important; padding: 0 !important; background: white !important; }
+            .print-wrapper { display: block !important; max-width: 100% !important; margin: 0 !important; padding: 0 !important; }
+            .print-area {
+                width: 100% !important; max-width: 100% !important; margin: 0 auto !important;
+                padding: 1.2cm !important; box-shadow: none !important; border: none !important;
+            }
+            table { border-collapse: collapse !important; }
+            tr { page-break-inside: avoid !important; page-break-after: auto; }
+            th, td { border: 1px solid #000 !important; padding: 4px 6px !important; }
+        }
+        body { font-family: 'Inter', sans-serif; }
+    </style>
+</head>
+<body class="bg-slate-100 min-h-screen p-4 sm:p-8">
+
+<!-- Header container populated via fetch (matching site theme) -->
+<header id="site-header" class="no-print sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b border-blue-200 shadow-sm -mx-4 -mt-4 sm:-mx-8 sm:-mt-8 mb-8 px-4 py-3"></header>
+
+<div id="app" class="max-w-7xl mx-auto">
+    <header class="text-center mb-6 no-print">
+        <h1 class="text-3xl font-extrabold text-blue-950">Dutch Lipid Clinic Network (DLCN) Criteria for FH</h1>
+        <p class="text-slate-600 mt-2 text-sm">Calculate the diagnostic likelihood of heterozygous Familial Hypercholesterolemia (HeFH) across all five clinical, biochemical, and genetic domains, with cascade-screening and LDL-C goal recommendations.</p>
+    </header>
+
+    <div class="print-wrapper grid grid-cols-1 lg:grid-cols-12 gap-6 items-start mb-8">
+
+        <!-- LEFT SIDE: 5 DLCN DOMAINS + UNTREATED LDL ESTIMATOR -->
+        <div class="no-print lg:col-span-5 space-y-5">
+
+            <!-- Domain 4 First or Prominent: Biochemical Results (Untreated LDL-C) -->
+            <div class="bg-white p-5 rounded-xl shadow-lg border border-blue-200">
+                <div class="flex flex-wrap justify-between items-center gap-2 border-b pb-3 mb-3">
+                    <div>
+                        <h2 class="text-base font-bold text-blue-950">1. Biochemical Results (Untreated LDL-C)</h2>
+                        <p class="text-[11px] text-slate-500">Highest single biochemical bracket applies (up to 8 pts).</p>
+                    </div>
+                    <button type="button" onclick="resetDlcn()" class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-600 px-2.5 py-1 rounded transition">Reset</button>
+                </div>
+
+                <div class="space-y-3 text-xs">
+                    <div>
+                        <label for="untreatedLdlInput" class="block font-bold text-slate-700 uppercase tracking-wider mb-1">Highest Documented Untreated LDL-C (mg/dL)</label>
+                        <div class="flex items-center gap-2">
+                            <input id="untreatedLdlInput" type="number" min="40" max="1000" step="1" inputmode="numeric" value="225"
+                                class="w-full p-2 border border-slate-300 rounded-lg bg-white text-base font-bold text-blue-950 focus:ring-blue-900 focus:border-blue-900">
+                            <span id="ldlMmolBadge" class="shrink-0 px-2.5 py-2 rounded-lg bg-slate-100 border border-slate-200 font-bold text-slate-700">
+                                5.82 mmol/L
+                            </span>
+                        </div>
+                    </div>
+
+                    <!-- Optional On-Treatment Back-Calculator -->
+                    <div class="border border-blue-200 rounded-lg bg-blue-50/50 p-3">
+                        <label class="flex items-center gap-2 cursor-pointer font-bold text-blue-950">
+                            <input id="estimateUntreatedToggle" type="checkbox" class="rounded border-slate-300 text-blue-900 focus:ring-blue-900">
+                            <span>Untreated LDL-C unknown &mdash; estimate from treated LDL-C</span>
+                        </label>
+                        <div id="backCalcPanel" class="hidden mt-2.5 pt-2.5 border-t border-blue-200 space-y-2.5">
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                <div>
+                                    <label for="treatedLdl" class="block text-[10px] font-bold uppercase text-slate-600 mb-0.5">Treated LDL-C (mg/dL)</label>
+                                    <input id="treatedLdl" type="number" min="20" max="600" step="1" value="125"
+                                        class="w-full p-1.5 border border-slate-300 rounded bg-white text-xs font-bold text-blue-950">
+                                </div>
+                                <div>
+                                    <label for="backStatin" class="block text-[10px] font-bold uppercase text-slate-600 mb-0.5">Current Statin</label>
+                                    <select id="backStatin" class="w-full p-1.5 border border-slate-300 rounded bg-white text-xs font-semibold text-blue-950"></select>
+                                </div>
+                            </div>
+                            <div class="flex flex-wrap gap-3 text-[11px]">
+                                <label class="flex items-center gap-1.5 cursor-pointer">
+                                    <input id="backEze" type="checkbox" class="rounded border-slate-300 text-blue-900">
+                                    <span>+ Ezetimibe 10 mg</span>
+                                </label>
+                                <label class="flex items-center gap-1.5 cursor-pointer">
+                                    <input id="backBemp" type="checkbox" class="rounded border-slate-300 text-blue-900">
+                                    <span>+ Bempedoic acid</span>
+                                </label>
+                                <label class="flex items-center gap-1.5 cursor-pointer">
+                                    <input id="backPcsk9" type="checkbox" class="rounded border-slate-300 text-blue-900">
+                                    <span>+ PCSK9 mAb</span>
+                                </label>
+                            </div>
+                            <p class="text-[10px] italic text-slate-600">
+                                Automatically populates estimated pre-treatment LDL-C above using multiplicative potency factors.
+                            </p>
+                        </div>
+                    </div>
+
+                    <div id="ldlBracketReadout" class="p-2 rounded-lg bg-slate-50 border border-slate-200 flex items-center justify-between">
+                        <span class="text-slate-600 font-semibold">Biochemical Domain Score:</span>
+                        <span id="scoreLdlBadge" class="font-extrabold text-blue-950">+3 pts (190&ndash;249 mg/dL)</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Domain 1: Family History -->
+            <div class="bg-white p-5 rounded-xl shadow-lg border border-blue-200">
+                <div class="flex justify-between items-center border-b pb-2.5 mb-3">
+                    <div>
+                        <h2 class="text-base font-bold text-blue-950">2. Family History</h2>
+                        <p class="text-[11px] text-slate-500">Only the highest matching item is scored (max 2 pts).</p>
+                    </div>
+                    <span id="scoreFamBadge" class="text-xs font-extrabold px-2 py-0.5 rounded bg-blue-50 text-blue-900 border border-blue-200">0 pts</span>
+                </div>
+
+                <div class="space-y-2 text-xs">
+                    <label class="flex items-start gap-2.5 p-2.5 rounded-lg border border-slate-200 bg-slate-50/70 cursor-pointer">
+                        <input id="famPremature" type="checkbox" class="mt-0.5 rounded border-slate-300 text-blue-900 focus:ring-blue-900">
+                        <div class="flex-1">
+                            <div class="flex justify-between gap-2">
+                                <span class="font-bold text-slate-800">1st-degree relative with premature CAD/vascular disease OR LDL-C &gt; 95th percentile</span>
+                                <span class="shrink-0 font-extrabold text-blue-900">+1 pt</span>
+                            </div>
+                            <span class="text-[10px] text-slate-500 block mt-0.5">Premature = men &lt; 55 years, women &lt; 60 years (parent, sibling, or child).</span>
+                        </div>
+                    </label>
+
+                    <label class="flex items-start gap-2.5 p-2.5 rounded-lg border border-slate-200 bg-slate-50/70 cursor-pointer">
+                        <input id="famXanthomaChild" type="checkbox" class="mt-0.5 rounded border-slate-300 text-blue-900 focus:ring-blue-900">
+                        <div class="flex-1">
+                            <div class="flex justify-between gap-2">
+                                <span class="font-bold text-slate-800">1st-degree relative with tendinous xanthomata and/or arcus cornealis, OR child &lt; 18 yr with LDL-C &gt; 95th percentile</span>
+                                <span class="shrink-0 font-extrabold text-blue-900">+2 pts</span>
+                            </div>
+                        </div>
+                    </label>
+                </div>
+            </div>
+
+            <!-- Domain 2: Clinical History -->
+            <div class="bg-white p-5 rounded-xl shadow-lg border border-blue-200">
+                <div class="flex justify-between items-center border-b pb-2.5 mb-3">
+                    <div>
+                        <h2 class="text-base font-bold text-blue-950">3. Patient Clinical History</h2>
+                        <p class="text-[11px] text-slate-500">Only the highest matching item is scored (max 2 pts).</p>
+                    </div>
+                    <span id="scoreClinBadge" class="text-xs font-extrabold px-2 py-0.5 rounded bg-blue-50 text-blue-900 border border-blue-200">0 pts</span>
+                </div>
+
+                <div class="space-y-2 text-xs">
+                    <label class="flex items-start gap-2.5 p-2.5 rounded-lg border border-slate-200 bg-slate-50/70 cursor-pointer">
+                        <input id="clinCerebPad" type="checkbox" class="mt-0.5 rounded border-slate-300 text-blue-900 focus:ring-blue-900">
+                        <div class="flex-1">
+                            <div class="flex justify-between gap-2">
+                                <span class="font-bold text-slate-800">Premature cerebral or peripheral vascular disease</span>
+                                <span class="shrink-0 font-extrabold text-blue-900">+1 pt</span>
+                            </div>
+                            <span class="text-[10px] text-slate-500 block mt-0.5">Onset at age &lt; 55 years in men or &lt; 60 years in women.</span>
+                        </div>
+                    </label>
+
+                    <label class="flex items-start gap-2.5 p-2.5 rounded-lg border border-slate-200 bg-slate-50/70 cursor-pointer">
+                        <input id="clinCad" type="checkbox" class="mt-0.5 rounded border-slate-300 text-blue-900 focus:ring-blue-900">
+                        <div class="flex-1">
+                            <div class="flex justify-between gap-2">
+                                <span class="font-bold text-slate-800">Premature coronary artery disease (MI, angina, PCI, CABG)</span>
+                                <span class="shrink-0 font-extrabold text-blue-900">+2 pts</span>
+                            </div>
+                            <span class="text-[10px] text-slate-500 block mt-0.5">Onset at age &lt; 55 years in men or &lt; 60 years in women.</span>
+                        </div>
+                    </label>
+                </div>
+            </div>
+
+            <!-- Domain 3: Physical Examination -->
+            <div class="bg-white p-5 rounded-xl shadow-lg border border-blue-200">
+                <div class="flex justify-between items-center border-b pb-2.5 mb-3">
+                    <div>
+                        <h2 class="text-base font-bold text-blue-950">4. Physical Examination</h2>
+                        <p class="text-[11px] text-slate-500">Only the highest matching finding is scored (max 6 pts).</p>
+                    </div>
+                    <span id="scoreExamBadge" class="text-xs font-extrabold px-2 py-0.5 rounded bg-blue-50 text-blue-900 border border-blue-200">0 pts</span>
+                </div>
+
+                <div class="space-y-2 text-xs">
+                    <label class="flex items-start gap-2.5 p-2.5 rounded-lg border border-slate-200 bg-slate-50/70 cursor-pointer">
+                        <input id="examArcus" type="checkbox" class="mt-0.5 rounded border-slate-300 text-blue-900 focus:ring-blue-900">
+                        <div class="flex-1">
+                            <div class="flex justify-between gap-2">
+                                <span class="font-bold text-slate-800">Arcus cornealis prior to age 45 years</span>
+                                <span class="shrink-0 font-extrabold text-blue-900">+4 pts</span>
+                            </div>
+                            <span class="text-[10px] text-slate-500 block mt-0.5">Complete or partial white/gray lipid ring at the corneal periphery before age 45.</span>
+                        </div>
+                    </label>
+
+                    <label class="flex items-start gap-2.5 p-2.5 rounded-lg border border-slate-200 bg-slate-50/70 cursor-pointer">
+                        <input id="examXanthoma" type="checkbox" class="mt-0.5 rounded border-slate-300 text-blue-900 focus:ring-blue-900">
+                        <div class="flex-1">
+                            <div class="flex justify-between gap-2">
+                                <span class="font-bold text-slate-800">Tendinous xanthomata</span>
+                                <span class="shrink-0 font-extrabold text-blue-900">+6 pts</span>
+                            </div>
+                            <span class="text-[10px] text-slate-500 block mt-0.5">Firm nodules on Achilles tendons or extensor tendons of hands/knees/elbows (note: xanthelasma = 0 pts).</span>
+                        </div>
+                    </label>
+                </div>
+            </div>
+
+            <!-- Domain 5: DNA Analysis & Clinical Confounders -->
+            <div class="bg-white p-5 rounded-xl shadow-lg border border-blue-200">
+                <div class="flex justify-between items-center border-b pb-2.5 mb-3">
+                    <div>
+                        <h2 class="text-base font-bold text-blue-950">5. DNA Analysis &amp; Secondary Rule-Outs</h2>
+                        <p class="text-[11px] text-slate-500">Pathogenic mutation carries 8 points on its own.</p>
+                    </div>
+                    <span id="scoreDnaBadge" class="text-xs font-extrabold px-2 py-0.5 rounded bg-blue-50 text-blue-900 border border-blue-200">0 pts</span>
+                </div>
+
+                <div class="space-y-2.5 text-xs">
+                    <label class="flex items-start gap-2.5 p-2.5 rounded-lg border border-blue-200 bg-blue-50/60 cursor-pointer">
+                        <input id="dnaMutation" type="checkbox" class="mt-0.5 rounded border-slate-300 text-blue-900 focus:ring-blue-900">
+                        <div class="flex-1">
+                            <div class="flex justify-between gap-2">
+                                <span class="font-bold text-blue-950">Functional causative mutation in <em>LDLR</em>, <em>APOB</em>, or <em>PCSK9</em></span>
+                                <span class="shrink-0 font-extrabold text-blue-900">+8 pts</span>
+                            </div>
+                        </div>
+                    </label>
+
+                    <div class="pt-1 border-t border-slate-200 space-y-2">
+                        <div class="font-bold text-[10px] uppercase tracking-wider text-slate-500">Clinical Confounders &amp; Risk Modifiers</div>
+                        <label class="flex items-start gap-2 p-2 rounded-lg border border-slate-200 bg-slate-50/70 cursor-pointer">
+                            <input id="secondaryChecked" type="checkbox" checked class="mt-0.5 rounded border-slate-300 text-blue-900">
+                            <span class="text-slate-700">Secondary causes excluded (TSH, urinalysis/albumin, LFTs/alk phos, medications)</span>
+                        </label>
+                        <label class="flex items-start gap-2 p-2 rounded-lg border border-slate-200 bg-slate-50/70 cursor-pointer">
+                            <input id="elevatedLpa" type="checkbox" class="mt-0.5 rounded border-slate-300 text-blue-900">
+                            <span class="text-slate-700">Elevated Lipoprotein(a) (&ge;125 nmol/L or &ge;50 mg/dL) present</span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- RIGHT SIDE: DLCN SCORE OUTPUT & MANAGEMENT PLAN -->
+        <div id="report" class="print-area lg:col-span-7 bg-white p-6 rounded-xl shadow-2xl border border-slate-300">
+            <div class="border-b pb-3 mb-4 flex flex-wrap justify-between items-start gap-2">
+                <div>
+                    <h2 class="text-xl font-bold text-slate-800">DLCN Diagnostic Assessment &amp; Next Steps</h2>
+                    <p id="summarySubheader" class="text-xs text-slate-500 mt-0.5">--</p>
+                </div>
+                <div class="flex items-center gap-2 no-print">
+                    <button type="button" onclick="window.print()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 font-semibold px-3 py-1.5 rounded-lg text-xs transition">&#128424;&#65039; Print</button>
+                </div>
+            </div>
+
+            <!-- Score & Domain Breakdown Strip -->
+            <div class="grid grid-cols-2 sm:grid-cols-6 gap-2 mb-5">
+                <div class="col-span-2 p-3 rounded-lg bg-blue-50 border-2 border-blue-900 text-center">
+                    <div class="text-[10px] font-bold uppercase tracking-wider text-blue-900">Total DLCN Score</div>
+                    <div id="kpiTotalScore" class="text-2xl font-extrabold text-blue-950 mt-0.5">3 pts</div>
+                    <div id="kpiCategoryLabel" class="text-[11px] font-extrabold text-blue-800">Possible FH</div>
+                </div>
+                <div class="p-2.5 rounded-lg bg-slate-50 border border-slate-200 text-center">
+                    <div class="text-[10px] font-bold uppercase text-slate-500">Family Hx</div>
+                    <div id="kpiFam" class="text-base font-extrabold text-slate-800 mt-1">0</div>
+                    <div class="text-[9px] text-slate-400">max 2</div>
+                </div>
+                <div class="p-2.5 rounded-lg bg-slate-50 border border-slate-200 text-center">
+                    <div class="text-[10px] font-bold uppercase text-slate-500">Clinical Hx</div>
+                    <div id="kpiClin" class="text-base font-extrabold text-slate-800 mt-1">0</div>
+                    <div class="text-[9px] text-slate-400">max 2</div>
+                </div>
+                <div class="p-2.5 rounded-lg bg-slate-50 border border-slate-200 text-center">
+                    <div class="text-[10px] font-bold uppercase text-slate-500">Exam</div>
+                    <div id="kpiExam" class="text-base font-extrabold text-slate-800 mt-1">0</div>
+                    <div class="text-[9px] text-slate-400">max 6</div>
+                </div>
+                <div class="p-2.5 rounded-lg bg-slate-50 border border-slate-200 text-center">
+                    <div class="text-[10px] font-bold uppercase text-slate-500">LDL + DNA</div>
+                    <div id="kpiLdlDna" class="text-base font-extrabold text-slate-800 mt-1">3 + 0</div>
+                    <div class="text-[9px] text-slate-400">max 8 + 8</div>
+                </div>
+            </div>
+
+            <!-- Visual DLCN Score Spectrum -->
+            <div class="mb-5 p-3.5 rounded-xl bg-slate-50 border border-slate-200">
+                <div class="flex justify-between items-center text-[11px] font-bold text-slate-700 mb-1.5">
+                    <span>DLCN Diagnostic Classification Scale</span>
+                    <span id="gaugeReadout" class="text-blue-950">3 points &mdash; Possible FH</span>
+                </div>
+                <div class="relative h-3 rounded-full overflow-hidden flex bg-slate-200">
+                    <div class="bg-slate-400 h-full" style="width: 20%" title="Unlikely FH: 0-2 pts"></div>
+                    <div class="bg-amber-400 h-full" style="width: 25%" title="Possible FH: 3-5 pts"></div>
+                    <div class="bg-orange-500 h-full" style="width: 25%" title="Probable FH: 6-8 pts"></div>
+                    <div class="bg-red-600 h-full" style="width: 30%" title="Definite FH: >8 pts"></div>
+                </div>
+                <div class="relative h-4 mt-0.5">
+                    <div id="gaugeMarker" class="absolute -top-1 -translate-x-1/2 transition-all duration-300 flex flex-col items-center" style="left: 25%;">
+                        <div class="w-0 h-0 border-l-[5px] border-l-transparent border-r-[5px] border-r-transparent border-b-[6px] border-b-blue-950"></div>
+                    </div>
+                </div>
+                <div class="flex justify-between text-[10px] font-semibold text-slate-500">
+                    <span>0&ndash;2 (Unlikely)</span>
+                    <span>3&ndash;5 (Possible)</span>
+                    <span>6&ndash;8 (Probable)</span>
+                    <span>&gt; 8 (Definite FH)</span>
+                </div>
+            </div>
+
+            <!-- Clinical Alerts -->
+            <div id="alertsContainer" class="space-y-2 mb-4"></div>
+
+            <!-- Primary Diagnostic Summary Card -->
+            <div id="diagnosisCard" class="mb-5"></div>
+
+            <!-- Step-by-Step Clinical Management Checklist -->
+            <div class="mb-5">
+                <h3 class="text-xs font-extrabold text-blue-950 uppercase tracking-wider mb-2.5">Recommended Clinical Next Steps</h3>
+                <div id="nextStepsContainer" class="space-y-2.5"></div>
+            </div>
+
+            <!-- Cross-Link to LDL Therapy Stepwise Planner -->
+            <div class="mb-5 p-3.5 rounded-xl bg-blue-50 border border-blue-200 flex flex-wrap items-center justify-between gap-3 no-print">
+                <div class="text-xs text-blue-950">
+                    <strong class="block">Build a Stepwise Lipid-Lowering Regimen for This Patient</strong>
+                    <span class="text-slate-600">Calculate the fewest medications needed to reach an LDL-C goal of &lt;100, &lt;70, or &lt;55 mg/dL.</span>
+                </div>
+                <a href="https://www.endocrineinfo.org/ldlgoal.html" class="bg-blue-900 hover:bg-blue-950 text-white font-bold px-3.5 py-2 rounded-lg text-xs shadow transition whitespace-nowrap">
+                    Open LDL Therapy Calculator &rarr;
+                </a>
+            </div>
+
+            <!-- EHR Clinical Note -->
+            <div class="border-t pt-4">
+                <h4 class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Clinical Assessment Note (Copy to EHR)</h4>
+                <div class="flex items-stretch gap-2">
+                    <div id="clinicalNoteBox" class="flex-1 p-3.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-semibold text-slate-800 leading-relaxed">--</div>
+                    <button id="copyPlanBtn" type="button" onclick="copyPlanNote()" class="no-print bg-blue-900 hover:bg-blue-950 text-white font-semibold px-3.5 py-2 rounded-lg shadow transition flex items-center gap-1.5 text-xs whitespace-nowrap">&#128203; Copy</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- BOTTOM REFERENCE TABLE: FULL DLCN CRITERIA MATRIX -->
+    <div class="bg-white p-6 rounded-xl shadow-xl border border-blue-200 mb-8">
+        <div class="border-b pb-3 mb-4">
+            <h2 class="text-lg font-extrabold text-blue-950">Reference: Dutch Lipid Clinic Network (DLCN) Scoring Table</h2>
+            <p class="text-xs text-slate-500 mt-0.5">Scoring rule: select only the single highest-scoring criterion within each of the five domains, then sum across domains.</p>
+        </div>
+
+        <div class="overflow-x-auto">
+            <table class="min-w-full border-collapse border border-slate-300 text-xs">
+                <thead class="bg-blue-900 text-white">
+                    <tr>
+                        <th class="border border-slate-300 p-2.5 text-left w-44">Domain</th>
+                        <th class="border border-slate-300 p-2.5 text-left">Criterion</th>
+                        <th class="border border-slate-300 p-2.5 text-center w-24">Points</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr class="bg-white">
+                        <td class="border border-slate-300 p-2.5 font-bold text-blue-950 align-top" rowspan="2">1. Family History<br><span class="font-normal text-[11px] text-slate-500">(Max 2 points)</span></td>
+                        <td class="border border-slate-300 p-2.5">First-degree relative with known premature coronary and/or vascular disease (men &lt;55 yr, women &lt;60 yr), <strong>OR</strong> first-degree relative with known LDL-C &gt;95th percentile for age and sex</td>
+                        <td class="border border-slate-300 p-2.5 text-center font-extrabold text-blue-950">1</td>
+                    </tr>
+                    <tr class="bg-white">
+                        <td class="border border-slate-300 p-2.5">First-degree relative with tendinous xanthomata and/or arcus cornealis, <strong>OR</strong> child(ren) &lt;18 yr with known LDL-C &gt;95th percentile for age and sex</td>
+                        <td class="border border-slate-300 p-2.5 text-center font-extrabold text-blue-950">2</td>
+                    </tr>
+
+                    <tr class="bg-slate-50">
+                        <td class="border border-slate-300 p-2.5 font-bold text-blue-950 align-top" rowspan="2">2. Clinical History<br><span class="font-normal text-[11px] text-slate-500">(Max 2 points)</span></td>
+                        <td class="border border-slate-300 p-2.5">Patient with premature cerebral or peripheral vascular disease (men &lt;55 yr, women &lt;60 yr)</td>
+                        <td class="border border-slate-300 p-2.5 text-center font-extrabold text-blue-950">1</td>
+                    </tr>
+                    <tr class="bg-slate-50">
+                        <td class="border border-slate-300 p-2.5">Patient with premature coronary artery disease (men &lt;55 yr, women &lt;60 yr)</td>
+                        <td class="border border-slate-300 p-2.5 text-center font-extrabold text-blue-950">2</td>
+                    </tr>
+
+                    <tr class="bg-white">
+                        <td class="border border-slate-300 p-2.5 font-bold text-blue-950 align-top" rowspan="2">3. Physical Exam<br><span class="font-normal text-[11px] text-slate-500">(Max 6 points)</span></td>
+                        <td class="border border-slate-300 p-2.5">Arcus cornealis prior to age 45 years</td>
+                        <td class="border border-slate-300 p-2.5 text-center font-extrabold text-blue-950">4</td>
+                    </tr>
+                    <tr class="bg-white">
+                        <td class="border border-slate-300 p-2.5">Tendinous xanthomata</td>
+                        <td class="border border-slate-300 p-2.5 text-center font-extrabold text-blue-950">6</td>
+                    </tr>
+
+                    <tr class="bg-slate-50">
+                        <td class="border border-slate-300 p-2.5 font-bold text-blue-950 align-top" rowspan="4">4. Biochemical (Untreated LDL-C)<br><span class="font-normal text-[11px] text-slate-500">(Max 8 points)</span></td>
+                        <td class="border border-slate-300 p-2.5">LDL-C &ge; 330 mg/dL (&ge; 8.5 mmol/L)</td>
+                        <td class="border border-slate-300 p-2.5 text-center font-extrabold text-blue-950">8</td>
+                    </tr>
+                    <tr class="bg-slate-50">
+                        <td class="border border-slate-300 p-2.5">LDL-C 250 &ndash; 329 mg/dL (6.5 &ndash; 8.4 mmol/L)</td>
+                        <td class="border border-slate-300 p-2.5 text-center font-extrabold text-blue-950">5</td>
+                    </tr>
+                    <tr class="bg-slate-50">
+                        <td class="border border-slate-300 p-2.5">LDL-C 190 &ndash; 249 mg/dL (5.0 &ndash; 6.4 mmol/L)</td>
+                        <td class="border border-slate-300 p-2.5 text-center font-extrabold text-blue-950">3</td>
+                    </tr>
+                    <tr class="bg-slate-50">
+                        <td class="border border-slate-300 p-2.5">LDL-C 155 &ndash; 189 mg/dL (4.0 &ndash; 4.9 mmol/L)</td>
+                        <td class="border border-slate-300 p-2.5 text-center font-extrabold text-blue-950">1</td>
+                    </tr>
+
+                    <tr class="bg-white">
+                        <td class="border border-slate-300 p-2.5 font-bold text-blue-950 align-top">5. DNA Analysis<br><span class="font-normal text-[11px] text-slate-500">(Max 8 points)</span></td>
+                        <td class="border border-slate-300 p-2.5">Causative functional mutation in the <em>LDLR</em>, <em>APOB</em>, or <em>PCSK9</em> gene</td>
+                        <td class="border border-slate-300 p-2.5 text-center font-extrabold text-blue-950">8</td>
+                    </tr>
+
+                    <tr class="bg-blue-50/70">
+                        <td class="border border-slate-300 p-2.5 font-extrabold text-blue-950">Diagnosis Totals</td>
+                        <td class="border border-slate-300 p-2.5 font-semibold text-slate-800" colspan="2">
+                            <strong>&gt; 8 points:</strong> Definite FH &nbsp;|&nbsp;
+                            <strong>6&ndash;8 points:</strong> Probable FH &nbsp;|&nbsp;
+                            <strong>3&ndash;5 points:</strong> Possible FH &nbsp;|&nbsp;
+                            <strong>&lt; 3 points (0&ndash;2):</strong> Unlikely FH
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- CLINICAL PEARLS & GENETIC TESTING GUIDANCE -->
+    <div class="bg-white p-6 rounded-xl shadow-xl border border-blue-200">
+        <h2 class="text-lg font-extrabold text-blue-950 border-b pb-3 mb-4">Clinical Pearls: Genetic Testing, Cascade Screening &amp; LDL-C Targets</h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs text-slate-700 leading-relaxed">
+            <div class="p-3 rounded-lg bg-blue-50/60 border border-blue-200">
+                <div class="font-bold text-blue-950 mb-1">When to Order Genetic Testing (<em>LDLR, APOB, PCSK9, LDLRAP1</em>)</div>
+                <ul class="list-disc pl-4 space-y-1">
+                    <li>Recommended in adults with <strong>Probable or Definite FH (DLCN &ge; 6)</strong>, or Possible FH with a strong family history of premature ASCVD.</li>
+                    <li>A pathogenic variant confirms the diagnosis (adding 8 points), clarifies lifelong cardiovascular risk (2&ndash;3&times; higher ASCVD risk at any given LDL-C compared with polygenic hypercholesterolemia), and enables definitive DNA cascade testing in relatives.</li>
+                    <li><strong>Negative genetic testing does not exclude clinical FH:</strong> ~20&ndash;40% of phenotypically definite FH patients have polygenic hypercholesterolemia or an unidentified variant and still require aggressive LDL-C lowering.</li>
+                </ul>
+            </div>
+            <div class="p-3 rounded-lg bg-slate-50 border border-slate-200">
+                <div class="font-bold text-blue-950 mb-1">Cascade Screening &amp; Pediatric Timing</div>
+                <ul class="list-disc pl-4 space-y-1">
+                    <li>Heterozygous FH is autosomal dominant: each first-degree relative (parent, sibling, child) has a <strong>50% probability</strong> of inheriting the condition.</li>
+                    <li>Screen first-degree relatives with a fasting lipid panel (and targeted variant testing if a familial mutation is identified).</li>
+                    <li><strong>Children:</strong> Screen starting at <strong>age 2 years</strong> if there is a family history of FH or premature ASCVD; statin therapy is typically initiated at age 8&ndash;10 years if LDL-C remains &ge;160 mg/dL (or &ge;130 mg/dL with additional risk factors).</li>
+                </ul>
+            </div>
+        </div>
+        <p class="text-[10px] text-slate-500 mt-4 italic">
+            <strong>Sources:</strong> World Health Organization / Dutch Lipid Clinic Network (DLCN) Criteria; Sturm AC et al., <em>J Am Coll Cardiol</em> 2018;72:662&ndash;680 (Clinical Genetic Testing for Familial Hypercholesterolemia); 2026 ACC/AHA Multisociety Guideline on the Management of Dyslipidemia; 2019 ESC/EAS Dyslipidaemia Guidelines &amp; 2025 Focused Update. For clinician decision support only.
+        </p>
+    </div>
+</div>
+
+<script>
+// Fetch dynamic navbar
+fetch('nav.html')
+    .then(res => res.text())
+    .then(data => { document.getElementById('site-header').innerHTML = data; })
+    .catch(err => console.error('Error loading navigation:', err));
+
+const el = id => document.getElementById(id);
+
+const BACK_STATINS = [
+    { id: 'none', label: 'No statin', red: 0 },
+    { id: 'rosuva5', label: 'Rosuvastatin 5 mg (~39%)', red: 0.39 },
+    { id: 'rosuva10', label: 'Rosuvastatin 10 mg (~44%)', red: 0.44 },
+    { id: 'rosuva20', label: 'Rosuvastatin 20 mg (~50%)', red: 0.50 },
+    { id: 'rosuva40', label: 'Rosuvastatin 40 mg (~55%)', red: 0.55 },
+    { id: 'atorva10', label: 'Atorvastatin 10 mg (~37%)', red: 0.37 },
+    { id: 'atorva20', label: 'Atorvastatin 20 mg (~43%)', red: 0.43 },
+    { id: 'atorva40', label: 'Atorvastatin 40 mg (~48%)', red: 0.48 },
+    { id: 'atorva80', label: 'Atorvastatin 80 mg (~51%)', red: 0.51 },
+    { id: 'simva20', label: 'Simvastatin 20 mg (~35%)', red: 0.35 },
+    { id: 'simva40', label: 'Simvastatin 40 mg (~39%)', red: 0.39 },
+    { id: 'prava40', label: 'Pravastatin 40 mg (~30%)', red: 0.30 },
+    { id: 'pitava2', label: 'Pitavastatin 2 mg (~38%)', red: 0.38 },
+    { id: 'pitava4', label: 'Pitavastatin 4 mg (~45%)', red: 0.45 }
+];
+
+function computeUntreatedFromTreated() {
+    if (!el('estimateUntreatedToggle').checked) return;
+    const treated = parseFloat(el('treatedLdl').value);
+    if (!isFinite(treated) || treated <= 0) return;
+
+    const st = BACK_STATINS.find(s => s.id === el('backStatin').value) || BACK_STATINS[0];
+    const onStatin = st.red > 0;
+    let rem = 1 - st.red;
+    if (el('backEze').checked) rem *= (1 - (onStatin ? 0.22 : 0.18));
+    if (el('backBemp').checked) rem *= (1 - (onStatin ? 0.17 : 0.22));
+    if (el('backPcsk9').checked) rem *= (1 - 0.58);
+
+    const est = Math.round(treated / Math.max(rem, 0.05));
+    el('untreatedLdlInput').value = est;
+}
+
+function resetDlcn() {
+    el('untreatedLdlInput').value = 225;
+    el('estimateUntreatedToggle').checked = false;
+    el('backCalcPanel').classList.add('hidden');
+    el('treatedLdl').value = 125;
+    el('backStatin').value = 'none';
+    el('backEze').checked = false;
+    el('backBemp').checked = false;
+    el('backPcsk9').checked = false;
+    el('famPremature').checked = false;
+    el('famXanthomaChild').checked = false;
+    el('clinCerebPad').checked = false;
+    el('clinCad').checked = false;
+    el('examArcus').checked = false;
+    el('examXanthoma').checked = false;
+    el('dnaMutation').checked = false;
+    el('secondaryChecked').checked = true;
+    el('elevatedLpa').checked = false;
+    updateDlcn();
+}
+
+function updateDlcn() {
+    const useEst = el('estimateUntreatedToggle').checked;
+    el('backCalcPanel').classList.toggle('hidden', !useEst);
+    el('untreatedLdlInput').readOnly = useEst;
+    el('untreatedLdlInput').classList.toggle('bg-slate-100', useEst);
+    if (useEst) computeUntreatedFromTreated();
+
+    const ldl = parseFloat(el('untreatedLdlInput').value);
+    const validLdl = isFinite(ldl) && ldl > 0;
+    el('ldlMmolBadge').textContent = validLdl ? `${(ldl * 0.02586).toFixed(2)} mmol/L` : '-- mmol/L';
+
+    // Domain 1: Family History (highest only: 0, 1, or 2)
+    let famPts = 0;
+    if (el('famXanthomaChild').checked) famPts = 2;
+    else if (el('famPremature').checked) famPts = 1;
+
+    // Domain 2: Clinical History (highest only: 0, 1, or 2)
+    let clinPts = 0;
+    if (el('clinCad').checked) clinPts = 2;
+    else if (el('clinCerebPad').checked) clinPts = 1;
+
+    // Domain 3: Physical Exam (highest only: 0, 4, or 6)
+    let examPts = 0;
+    if (el('examXanthoma').checked) examPts = 6;
+    else if (el('examArcus').checked) examPts = 4;
+
+    // Domain 4: Untreated LDL-C (highest only: 0, 1, 3, 5, or 8)
+    let ldlPts = 0;
+    let ldlBracketText = '< 155 mg/dL (< 4.0 mmol/L)';
+    if (validLdl) {
+        if (ldl >= 330) { ldlPts = 8; ldlBracketText = '≥ 330 mg/dL (≥ 8.5 mmol/L)'; }
+        else if (ldl >= 250) { ldlPts = 5; ldlBracketText = '250–329 mg/dL (6.5–8.4 mmol/L)'; }
+        else if (ldl >= 190) { ldlPts = 3; ldlBracketText = '190–249 mg/dL (5.0–6.4 mmol/L)'; }
+        else if (ldl >= 155) { ldlPts = 1; ldlBracketText = '155–189 mg/dL (4.0–4.9 mmol/L)'; }
+    }
+
+    // Domain 5: DNA Analysis (0 or 8)
+    const dnaPts = el('dnaMutation').checked ? 8 : 0;
+
+    const total = famPts + clinPts + examPts + ldlPts + dnaPts;
+
+    // Update Badges & KPI Strip
+    el('scoreFamBadge').textContent = `${famPts} ${famPts === 1 ? 'pt' : 'pts'}`;
+    el('scoreClinBadge').textContent = `${clinPts} ${clinPts === 1 ? 'pt' : 'pts'}`;
+    el('scoreExamBadge').textContent = `${examPts} ${examPts === 1 ? 'pt' : 'pts'}`;
+    el('scoreLdlBadge').textContent = `+${ldlPts} ${ldlPts === 1 ? 'pt' : 'pts'} (${ldlBracketText})`;
+    el('scoreDnaBadge').textContent = `${dnaPts} ${dnaPts === 1 ? 'pt' : 'pts'}`;
+
+    el('kpiTotalScore').textContent = `${total} ${total === 1 ? 'pt' : 'pts'}`;
+    el('kpiFam').textContent = `${famPts}`;
+    el('kpiClin').textContent = `${clinPts}`;
+    el('kpiExam').textContent = `${examPts}`;
+    el('kpiLdlDna').textContent = `${ldlPts} + ${dnaPts}`;
+
+    // Classification
+    let cat = {
+        label: 'Unlikely FH (< 3 pts)',
+        short: 'Unlikely FH',
+        style: 'bg-slate-50 border-2 border-slate-400 text-slate-900',
+        badge: 'bg-slate-700',
+        summary: 'Score is below 3 points. Monogenic Familial Hypercholesterolemia is unlikely; manage dyslipidemia using standard 10-year PREVENT risk stratification.'
+    };
+    if (total > 8) {
+        cat = {
+            label: 'Definite FH (> 8 pts)',
+            short: 'Definite FH',
+            style: 'bg-red-50 border-2 border-red-600 text-red-950',
+            badge: 'bg-red-700',
+            summary: 'Score exceeds 8 points, meeting clinical criteria for Definite Familial Hypercholesterolemia. High lifetime atherogenic burden requires intensive lipid-lowering therapy and family cascade screening.'
+        };
+    } else if (total >= 6) {
+        cat = {
+            label: 'Probable FH (6 – 8 pts)',
+            short: 'Probable FH',
+            style: 'bg-orange-50 border-2 border-orange-500 text-orange-950',
+            badge: 'bg-orange-600',
+            summary: 'Score of 6–8 points indicates Probable Familial Hypercholesterolemia. Treat aggressively as an FH phenotype and offer diagnostic genetic testing plus first-degree relative cascade screening.'
+        };
+    } else if (total >= 3) {
+        cat = {
+            label: 'Possible FH (3 – 5 pts)',
+            short: 'Possible FH',
+            style: 'bg-amber-50 border-2 border-amber-500 text-amber-950',
+            badge: 'bg-amber-600',
+            summary: 'Score of 3–5 points indicates Possible Familial Hypercholesterolemia. Obtain detailed three-generation family lipid/ASCVD history, exclude secondary causes, and initiate high-intensity statin therapy if untreated LDL-C is ≥190 mg/dL.'
+        };
+    }
+
+    el('kpiCategoryLabel').textContent = cat.short;
+    el('summarySubheader').textContent = `Untreated LDL-C: ${validLdl ? Math.round(ldl) + ' mg/dL' : '--'}${useEst ? ' (estimated from treated level)' : ''} | DLCN Total: ${total} pts (${cat.short})`;
+
+    // Gauge Marker (0 to 12+ mapped across 0-100%)
+    const markerPct = Math.min(98, Math.max(2, (total / 12) * 100));
+    el('gaugeMarker').style.left = `${markerPct}%`;
+    el('gaugeReadout').textContent = `${total} ${total === 1 ? 'point' : 'points'} — ${cat.label}`;
+
+    // Clinical Alerts
+    const alerts = [];
+    if (!el('secondaryChecked').checked) {
+        alerts.push(`<div class="p-3 rounded-lg bg-amber-50 border border-amber-300 text-xs text-amber-950 leading-relaxed">
+            <strong>&#9888;&#65039; Exclude Secondary Hypercholesterolemia First:</strong> Before finalizing an FH diagnosis, rule out hypothyroidism (TSH), nephrotic syndrome (urinalysis/UACR), cholestatic liver disease (ALP/bilirubin), and offending drugs (corticosteroids, cyclosporine, retinoids, protease inhibitors).
+        </div>`);
+    }
+    if (el('elevatedLpa').checked) {
+        alerts.push(`<div class="p-3 rounded-lg bg-blue-50 border border-blue-200 text-xs text-blue-950 leading-relaxed">
+            <strong>&#8505;&#65039; Elevated Lipoprotein(a) Present:</strong> Standard laboratory LDL-C includes cholesterol carried inside Lp(a) particles (~30% of Lp(a) mass), which can inflate apparent LDL-C and DLCN points. Concomitant elevated Lp(a) + FH further compounds ASCVD risk and favors lower LDL-C targets (&lt;70 or &lt;55 mg/dL).
+        </div>`);
+    }
+    if (validLdl && ldl >= 500) {
+        alerts.push(`<div class="p-3 rounded-lg bg-red-50 border border-red-300 text-xs text-red-950 leading-relaxed">
+            <strong>&#9888;&#65039; Evaluate for Homozygous FH (HoFH):</strong> Untreated LDL-C &ge; 500 mg/dL (or &ge; 400 mg/dL with premature childhood xanthomata/ASCVD) raises suspicion for biallelic HoFH. Refer promptly to a specialized lipid center (evinacumab, lomitapide, lipoprotein apheresis).
+        </div>`);
+    }
+    el('alertsContainer').innerHTML = alerts.join('');
+
+    // Diagnosis Card
+    el('diagnosisCard').innerHTML = `
+        <div class="p-4 rounded-xl ${cat.style} shadow-sm">
+            <div class="flex flex-wrap items-center justify-between gap-2 mb-1.5">
+                <span class="text-[11px] font-extrabold uppercase tracking-wider px-2.5 py-0.5 rounded-full ${cat.badge} text-white">${cat.label}</span>
+                <span class="text-xs font-extrabold">Domain Breakdown: Fam ${famPts} + Clin ${clinPts} + Exam ${examPts} + LDL ${ldlPts} + DNA ${dnaPts}</span>
+            </div>
+            <h3 class="text-base font-extrabold mb-1">${cat.short}: ${total} Total DLCN Points</h3>
+            <p class="text-xs leading-relaxed opacity-95">${cat.summary}</p>
+        </div>`;
+
+    // Tailored Next Steps
+    const steps = [];
+    const hasAscvd = clinPts > 0;
+    if (total >= 6) {
+        steps.push({
+            title: '1. Intensive Lipid-Lowering Therapy & LDL-C Targets',
+            body: hasAscvd
+                ? 'Patient has premature clinical ASCVD + Probable/Definite FH (very high risk): initiate maximally tolerated high-intensity statin + ezetimibe and add a PCSK9 inhibitor as needed to reach LDL-C < 55 mg/dL (Non-HDL-C < 85 mg/dL) and ≥50% reduction.'
+                : 'Initiate maximally tolerated high-intensity statin (rosuvastatin 20–40 mg or atorvastatin 40–80 mg) targeting ≥50% LDL-C reduction and LDL-C < 100 mg/dL (or < 70 mg/dL if additional risk factors, elevated Lp(a), or CAC ≥ 100 are present). Add ezetimibe, bempedoic acid, or a PCSK9 inhibitor if goal is unmet.'
+        });
+        steps.push({
+            title: '2. Genetic Testing (LDLR, APOB, PCSK9)',
+            body: dnaPts > 0
+                ? 'Pathogenic FH variant already documented. Use this specific familial variant for targeted cascade testing in relatives.'
+                : 'Offer clinical FH genetic panel sequencing (LDLR, APOB, PCSK9, LDLRAP1) to confirm molecular etiology, guide family cascade testing, and support prior authorization for PCSK9-targeted therapies.'
+        });
+        steps.push({
+            title: '3. First-Degree Relative Cascade Screening',
+            body: 'Notify and screen all parents, siblings, and children (50% inheritance risk). Screen children starting at age 2 years with a fasting lipid panel.'
+        });
+    } else if (total >= 3) {
+        steps.push({
+            title: '1. Lipid-Lowering Therapy',
+            body: validLdl && ldl >= 190
+                ? 'Untreated LDL-C is ≥190 mg/dL: high-intensity statin therapy is a Class 1 recommendation regardless of risk score, aiming for ≥50% LDL-C reduction and LDL-C < 100 mg/dL (< 70 mg/dL if ASCVD or risk enhancers/CAC ≥ 100).'
+                : 'Assess 10-year PREVENT-ASCVD risk, risk enhancers, and CAC score to guide moderate- to high-intensity statin initiation.'
+        });
+        steps.push({
+            title: '2. Complete Family Pedigree & Consider Genetic Testing',
+            body: 'Obtain documented lipid panels and premature ASCVD ages from first-degree relatives (a single confirmed relative with premature CAD or LDL-C >95th percentile can reclassify Possible FH into Probable FH). Consider FH genetic testing if strong family history is present.'
+        });
+        steps.push({
+            title: '3. Measure Lipoprotein(a) & Rule Out Secondary Causes',
+            body: 'Measure Lp(a) once (elevated Lp(a) often mimics Possible FH) and verify normal TSH, renal, and hepatic panels.'
+        });
+    } else {
+        steps.push({
+            title: '1. Standard Primary/Secondary Risk Assessment',
+            body: 'Because DLCN score is < 3 points, use the 2026 ACC/AHA PREVENT™ Risk Calculator (or secondary-prevention guidelines if ASCVD is present) to determine statin eligibility and LDL-C goal.'
+        });
+        steps.push({
+            title: '2. Universal Once-Lifetime Lp(a) & Lifestyle Counseling',
+            body: 'Ensure Lp(a) has been checked once in adulthood and reinforce heart-healthy nutrition and physical activity.'
+        });
+    }
+
+    el('nextStepsContainer').innerHTML = steps.map((s, i) => `
+        <div class="p-3 rounded-lg border border-slate-200 bg-slate-50/70 flex items-start gap-2.5">
+            <span class="w-6 h-6 rounded-full bg-blue-900 text-white font-extrabold text-xs flex items-center justify-center shrink-0 mt-0.5">${i + 1}</span>
+            <div>
+                <div class="text-xs font-bold text-slate-900">${s.title}</div>
+                <p class="text-[11px] text-slate-700 mt-0.5 leading-relaxed">${s.body}</p>
+            </div>
+        </div>`).join('');
+
+    // EHR Clinical Note
+    const activeCriteria = [];
+    if (famPts === 2) activeCriteria.push('1st-degree relative with xanthomata/arcus or child <18y with LDL >95th percentile (+2)');
+    else if (famPts === 1) activeCriteria.push('1st-degree relative with premature CAD/vascular disease or LDL >95th percentile (+1)');
+    if (clinPts === 2) activeCriteria.push('premature CAD (+2)');
+    else if (clinPts === 1) activeCriteria.push('premature cerebral/peripheral vascular disease (+1)');
+    if (examPts === 6) activeCriteria.push('tendinous xanthomata (+6)');
+    else if (examPts === 4) activeCriteria.push('arcus cornealis <45y (+4)');
+    if (ldlPts > 0) activeCriteria.push(`untreated LDL-C ${validLdl ? Math.round(ldl) + ' mg/dL' : ldlBracketText} (+${ldlPts})`);
+    if (dnaPts > 0) activeCriteria.push('causative LDLR/APOB/PCSK9 mutation (+8)');
+
+    el('clinicalNoteBox').textContent =
+        `Dutch Lipid Clinic Network (DLCN) FH Assessment: Total Score = ${total} points (${cat.short}). ` +
+        `Domain scores: Family History ${famPts}/2, Clinical History ${clinPts}/2, Physical Exam ${examPts}/6, Untreated LDL-C ${ldlPts}/8 (${validLdl ? Math.round(ldl) + ' mg/dL' : '--'}${useEst ? ', back-calculated from treated LDL-C' : ''}), DNA Analysis ${dnaPts}/8. ` +
+        `Contributing criteria: ${activeCriteria.length ? activeCriteria.join('; ') : 'none'}. ` +
+        `Secondary causes excluded: ${el('secondaryChecked').checked ? 'yes' : 'pending'}. ` +
+        `Plan: ${steps[0].body}`;
+}
+
+function copyPlanNote() {
+    const textToCopy = el('clinicalNoteBox').textContent.trim();
+    if (!textToCopy || textToCopy === '--') return;
+    navigator.clipboard.writeText(textToCopy).then(() => {
+        const btn = el('copyPlanBtn');
+        const originalText = btn.innerHTML;
+        btn.innerHTML = '&#9989; Copied!';
+        btn.classList.remove('bg-blue-900', 'hover:bg-blue-950');
+        btn.classList.add('bg-green-600', 'hover:bg-green-700');
+        setTimeout(() => {
+            btn.innerHTML = originalText;
+            btn.classList.remove('bg-green-600', 'hover:bg-green-700');
+            btn.classList.add('bg-blue-900', 'hover:bg-blue-950');
+        }, 2000);
+    });
+}
+
+window.onload = () => {
+    el('backStatin').innerHTML = BACK_STATINS.map(s => `<option value="${s.id}">${s.label}</option>`).join('');
+
+    ['untreatedLdlInput', 'estimateUntreatedToggle', 'treatedLdl', 'backStatin', 'backEze', 'backBemp', 'backPcsk9',
+     'famPremature', 'famXanthomaChild', 'clinCerebPad', 'clinCad', 'examArcus', 'examXanthoma', 'dnaMutation',
+     'secondaryChecked', 'elevatedLpa']
+        .forEach(id => {
+            el(id).addEventListener('input', updateDlcn);
+            el(id).addEventListener('change', updateDlcn);
+        });
+
+    updateDlcn();
+};
+</script>
+</body>
+</html>
