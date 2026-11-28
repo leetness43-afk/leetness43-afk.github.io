@@ -448,7 +448,7 @@ function refreshTargetScanDropdown() {
     }
 }
 
-/* ---------- Client-Side Image OCR (Tesseract.js) ---------- */
+/* ---------- Client-Side Image OCR (Tesseract.js v5 with blocks/TSV coordinates) ---------- */
 function preprocessImageForOcr(imageSource) {
     return new Promise((resolve, reject) => {
         const img = new Image();
@@ -477,6 +477,55 @@ function preprocessImageForOcr(imageSource) {
         img.onerror = () => reject(new Error('Could not decode image'));
         img.src = imageSource;
     });
+}
+
+function extractWordsFromOcrData(data) {
+    if (!data) return [];
+
+    // 1. Tesseract.js v5/v6 `blocks` hierarchy (blocks -> paragraphs -> lines -> words)
+    if (Array.isArray(data.blocks)) {
+        const words = [];
+        data.blocks.forEach(block => {
+            (block.paragraphs || []).forEach(para => {
+                (para.lines || []).forEach(line => {
+                    (line.words || []).forEach(w => {
+                        if (w && w.text && w.bbox) words.push(w);
+                    });
+                });
+            });
+        });
+        if (words.length > 0) return words;
+    }
+
+    // 2. Legacy `words` array if present
+    if (Array.isArray(data.words) && data.words.length > 0) {
+        return data.words;
+    }
+
+    // 3. TSV output fallback (level 5 = word with left, top, width, height, text)
+    if (typeof data.tsv === 'string' && data.tsv.trim()) {
+        const words = [];
+        data.tsv.split(/\r?\n/).forEach((line, idx) => {
+            if (idx === 0 || !line) return;
+            const parts = line.split('\t');
+            if (parts.length >= 12 && parts[0] === '5') {
+                const left = parseFloat(parts[6]);
+                const top = parseFloat(parts[7]);
+                const width = parseFloat(parts[8]);
+                const height = parseFloat(parts[9]);
+                const text = parts.slice(11).join('\t').trim();
+                if (text && isFinite(left) && isFinite(top) && isFinite(width) && isFinite(height)) {
+                    words.push({
+                        text,
+                        bbox: { x0: left, y0: top, x1: left + width, y1: top + height }
+                    });
+                }
+            }
+        });
+        if (words.length > 0) return words;
+    }
+
+    return [];
 }
 
 function reconstructRowsFromOcrWords(words) {
@@ -574,19 +623,24 @@ async function processDxaImageBlob(blob, label = 'Pasted image') {
         statusEl.textContent = '⏳ Reading text from image locally in your browser (OCR)...';
         statusEl.className = 'text-[11px] font-semibold text-blue-900 mt-2';
 
+        let worker = null;
         try {
             const processedCanvas = await preprocessImageForOcr(dataUrl);
-            const result = await Tesseract.recognize(processedCanvas, 'eng', {
-                tessedit_pageseg_mode: '6',
-                preserve_interword_spaces: '1',
+            worker = await Tesseract.createWorker('eng', 1, {
                 logger: m => {
                     if (m.status === 'recognizing text' && typeof m.progress === 'number') {
                         statusEl.textContent = `⏳ Reading image locally... ${Math.round(m.progress * 100)}%`;
                     }
                 }
             });
+            await worker.setParameters({
+                tessedit_pageseg_mode: '6',
+                preserve_interword_spaces: '1'
+            });
 
-            const bboxRebuilt = reconstructRowsFromOcrWords(result && result.data && result.data.words);
+            const result = await worker.recognize(processedCanvas, {}, { blocks: true, tsv: true, text: true });
+            const wordList = extractWordsFromOcrData(result && result.data);
+            const bboxRebuilt = reconstructRowsFromOcrWords(wordList);
             const rawPlain = (result && result.data && result.data.text ? result.data.text : '').trim();
             const chosenRaw = bboxRebuilt || rawPlain;
             const cleanedText = cleanOcrTextBlock(chosenRaw).trim();
@@ -602,6 +656,10 @@ async function processDxaImageBlob(blob, label = 'Pasted image') {
         } catch (err) {
             statusEl.textContent = `⚠️ Image OCR failed: ${err.message}`;
             statusEl.className = 'text-[11px] font-medium text-red-700 mt-2';
+        } finally {
+            if (worker) {
+                try { await worker.terminate(); } catch (_) {}
+            }
         }
     };
     reader.readAsDataURL(blob);
@@ -1128,6 +1186,61 @@ function selectBestLumbarCandidate(candidates, seenLumbarLevels = null) {
     })[0];
 }
 
+function tryVerticalColumnZipFallback(rawLines) {
+    const siteItems = [];
+    const bmdItems = [];
+    const tItems = [];
+
+    for (const line of rawLines) {
+        if (isTableHeaderLine(line) || isSectionBannerLine(line)) continue;
+        const hasInlineNum = /\d+\.\d{2,3}/.test(line);
+        const site = normalizeSiteInfo(line);
+        if (site && !hasInlineNum) {
+            siteItems.push(site);
+            continue;
+        }
+        if (!site && /^[0-2]?\.\d{3}$/.test(line)) {
+            const v = parseFloat(line);
+            if (v >= 0.15 && v <= 2.5) bmdItems.push(v);
+            continue;
+        }
+        if (!site && /^[+-]?\d+\.\d$/.test(line)) {
+            const v = parseFloat(line);
+            if (v >= -7.5 && v <= 6.0) tItems.push(v);
+        }
+    }
+
+    const n = siteItems.length;
+    if (n >= 2 && bmdItems.length === n && tItems.length >= n) {
+        const lumbarCandidates = [];
+        const nonSpineRows = [];
+        const seenLumbarLevels = new Set();
+
+        siteItems.forEach((site, idx) => {
+            if (site.category === 'spine' && !site.isTotalRow) {
+                site.levels.forEach(l => seenLumbarLevels.add(l));
+            }
+            const rowObj = {
+                location: site.location,
+                bmd: +bmdItems[idx].toFixed(3),
+                tscore: +tItems[idx].toFixed(1),
+                vertebraCount: site.vertebraCount,
+                isTotalRow: Boolean(site.isTotalRow),
+                area: null
+            };
+            if (site.category === 'spine') lumbarCandidates.push(rowObj);
+            else nonSpineRows.push(rowObj);
+        });
+
+        const rows = [];
+        const bestLumbar = selectBestLumbarCandidate(lumbarCandidates, seenLumbarLevels);
+        if (bestLumbar) rows.push({ location: bestLumbar.location, bmd: bestLumbar.bmd, tscore: bestLumbar.tscore });
+        nonSpineRows.forEach(r => rows.push({ location: r.location, bmd: r.bmd, tscore: r.tscore }));
+        return rows;
+    }
+    return null;
+}
+
 function parseDxaReportText(rawText) {
     const text = normalizeText(rawText);
     const date = extractDateFromText(text);
@@ -1251,7 +1364,7 @@ function parseDxaReportText(rawText) {
             siteInfo = activeSectionSite;
             usedSectionFallback = true;
         }
-        // Recover trailing lumbar composite row when OCR mangles the "L1-L4" label after individual L1..L4 rows
+        // Recover trailing lumbar composite row when OCR mangles the "L1-L4" label after individual L1..L4 rows (requires BOTH BMD and T-score)
         if (!siteInfo && seenLumbarLevels.size >= 2 && !/\b(?:hip|femur|neck|radius|forearm)\b/i.test(line)) {
             const probe = extractNumbersFromSegment(line);
             if (probe.bmd !== null && probe.tscore !== null) {
@@ -1339,6 +1452,14 @@ function parseDxaReportText(rawText) {
             tscore: r.tscore
         });
     });
+
+    // Fallback for plain text dumped vertically column-by-column
+    if (extractedRows.length === 0) {
+        const zipped = tryVerticalColumnZipFallback(rawLines);
+        if (zipped && zipped.length > 0) {
+            return { date, age, model, rows: zipped };
+        }
+    }
 
     return { date, age, model, rows: extractedRows };
 }
