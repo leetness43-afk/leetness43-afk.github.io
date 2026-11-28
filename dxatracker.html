@@ -459,6 +459,7 @@ function preprocessImageForOcr(imageSource) {
             canvas.width = Math.round(img.width * scale) + pad * 2;
             canvas.height = Math.round(img.height * scale) + pad * 2;
             const ctx = canvas.getContext('2d');
+            ctx.imageSmoothingEnabled = false;
             ctx.fillStyle = '#ffffff';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
             ctx.drawImage(img, pad, pad, Math.round(img.width * scale), Math.round(img.height * scale));
@@ -467,8 +468,8 @@ function preprocessImageForOcr(imageSource) {
             const d = imgData.data;
             for (let i = 0; i < d.length; i += 4) {
                 const gray = 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
-                // Keep cutoff high (215) so thin anti-aliased '-' minus signs are darkened rather than erased
-                const contrasted = gray < 215 ? Math.max(0, Math.min(255, (gray - 60) * 1.15)) : 255;
+                // Clear light-gray header shading (>222) to white while strongly darkening thin '-' and '1' strokes
+                const contrasted = gray < 222 ? Math.max(0, Math.min(255, (gray - 115) * 2.4)) : 255;
                 d[i] = d[i + 1] = d[i + 2] = contrasted;
             }
             ctx.putImageData(imgData, 0, 0);
@@ -719,6 +720,13 @@ function repairLumbarOcrLine(line) {
     return fixed;
 }
 
+function repairNumericOcrToken(tok) {
+    return tok
+        .replace(/[lI|]/g, '1')
+        .replace(/[Oo]/g, '0')
+        .replace(/B/g, '8');
+}
+
 function normalizeText(raw) {
     const base = String(raw || '')
         .replace(/[\u2212\u2010-\u2015\u00AC~]/g, '-')
@@ -726,6 +734,8 @@ function normalizeText(raw) {
         .replace(/(^|\s)\.(\d+\.\d+)/g, '$1-$2')
         .replace(/\u00A0/g, ' ')
         .replace(/\bO\.(\d)/g, '0.$1')
+        // Fix OCR digit lookalikes inside numeric tokens (e.g., 0.97l -> 0.971, -l.7 -> -1.7, 0.B17 -> 0.817)
+        .replace(/(^|[\s(])([+-]?[0-9lI|OoB]+\.[0-9lI|OoB]+)(?=$|[\s),;])/g, (_, pre, num) => pre + repairNumericOcrToken(num))
         .replace(/(\d),(\d{2,3})\b/g, '$1.$2');
 
     return base
@@ -1081,7 +1091,8 @@ function extractNumbersFromSegment(seg) {
     if (bmd === null) {
         let bmdIdx = tokens.findIndex(t => !t.hasSign && t.decimals === 3 && t.val >= 0.15 && t.val <= 2.5);
         if (bmdIdx === -1) {
-            bmdIdx = tokens.findIndex(t => !t.hasSign && t.hasDecimal && t.val >= 0.15 && t.val <= 2.2);
+            // Require >= 2 decimal places so 1-decimal T-scores/Z-scores (e.g., 0.2, 0.7) are never mistaken for BMD
+            bmdIdx = tokens.findIndex(t => !t.hasSign && t.decimals >= 2 && t.val >= 0.15 && t.val <= 2.2);
         }
 
         if (bmdIdx !== -1) {
@@ -1162,6 +1173,10 @@ function selectBestLumbarCandidate(candidates, seenLumbarLevels = null) {
 
     if (resolved.length === 1) {
         const solo = resolved[0];
+        if (solo.vertebraCount === 1 && seenLumbarLevels && seenLumbarLevels.size >= 2) {
+            const levels = [...seenLumbarLevels].sort((a, b) => a - b);
+            return { ...solo, location: `Lumbar Spine (${formatVertebraLevels(levels)})`, vertebraCount: levels.length };
+        }
         if (solo.location === 'Lumbar Spine (L1)') {
             return { ...solo, location: 'Lumbar Spine (L1-L4)', vertebraCount: 4 };
         }
