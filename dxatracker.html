@@ -468,8 +468,8 @@ function preprocessImageForOcr(imageSource) {
             const d = imgData.data;
             for (let i = 0; i < d.length; i += 4) {
                 const gray = 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
-                // Clear light-gray header shading (>222) to white while strongly darkening thin '-' and '1' strokes
-                const contrasted = gray < 222 ? Math.max(0, Math.min(255, (gray - 115) * 2.4)) : 255;
+                // Clear light-gray header shading (>218) to white while keeping anti-aliased '-' and digits solid dark
+                const contrasted = gray < 218 ? Math.max(0, Math.min(255, (gray - 90) * 1.8)) : 255;
                 d[i] = d[i + 1] = d[i + 2] = contrasted;
             }
             ctx.putImageData(imgData, 0, 0);
@@ -693,7 +693,7 @@ function repairLumbarOcrLine(line) {
         .replace(/^[\s|[\]!1Il^<>~*_]+(?=[Ll][1-4iIl|aAzZbB9qQ](?:\s*[-_.\u2010-\u2015~]|\s+[0-9LlIi|4aA]|$))/, '')
         .replace(/^[\s|[\]!1Il^<>~*_]+(?=[Tt]otal(?:\s|$))/, '');
 
-    // 1. Repair range labels like "Li-L4", "L1-14", "11-L4", "LI-LA", "L1-L9", "L1L4", "L1 - 4", "L1-L4_"
+    // 1. Repair range labels like "Li-L4", "L1-14", "11-L4", "11-14", "LI-LA", "L1-L9", "L1L4", "L1 - 4", "L1-L4_"
     fixed = fixed.replace(
         /(^|[\s(|[\]^<>_])([LlIi1|])([1-4iIl|aAzZbB])\s*[-_.\u2010-\u2015~]?\s*[LlIi1|]?\.?([1-4iIl|aAzZbB9qQ])[_|[\].,:;*~]*(?=$|[\s),:])/g,
         (_, prefix, _l, d1, d2) => `${prefix === '|' || prefix === '[' || prefix === ']' || prefix === '^' || prefix === '_' ? '' : prefix}L${decodeDigit(d1)}-L${decodeDigit(d2)}`
@@ -1162,10 +1162,11 @@ function selectBestLumbarCandidate(candidates, seenLumbarLevels = null) {
     const resolved = candidates.map(cand => {
         if (cand.isTotalRow && seenLumbarLevels && seenLumbarLevels.size > 0) {
             const levels = [...seenLumbarLevels].sort((a, b) => a - b);
+            const span = levels.length >= 2 ? formatVertebraLevels(levels) : 'L1-L4';
             return {
                 ...cand,
-                location: `Lumbar Spine (${formatVertebraLevels(levels)})`,
-                vertebraCount: levels.length
+                location: `Lumbar Spine (${span})`,
+                vertebraCount: Math.max(levels.length, 4)
             };
         }
         return cand;
@@ -1314,13 +1315,14 @@ function parseDxaReportText(rawText) {
             const cells = line.split(/\t+|\s{2,}/).map(c => c.trim()).filter(Boolean);
             if (cells.length === activeColumnMap.colCount && cells[activeColumnMap.site]) {
                 let siteInfo = normalizeSiteInfo(cells[activeColumnMap.site], currentSectionSide, seenLumbarLevels);
-                if (!siteInfo && seenLumbarLevels.size >= 2 && !/\b(?:hip|femur|neck|radius|forearm)\b/i.test(line)) {
+                if (!siteInfo && (seenLumbarLevels.size >= 1 || lumbarCandidates.length >= 1) && !/\b(?:hip|femur|neck|radius|forearm)\b/i.test(line)) {
                     const levels = [...seenLumbarLevels].sort((a, b) => a - b);
+                    const span = levels.length >= 2 ? formatVertebraLevels(levels) : 'L1-L4';
                     siteInfo = {
                         category: 'spine',
-                        location: `Lumbar Spine (${formatVertebraLevels(levels)})`,
+                        location: `Lumbar Spine (${span})`,
                         levels,
-                        vertebraCount: levels.length,
+                        vertebraCount: Math.max(levels.length, 4),
                         isTotalRow: true
                     };
                 }
@@ -1379,16 +1381,17 @@ function parseDxaReportText(rawText) {
             siteInfo = activeSectionSite;
             usedSectionFallback = true;
         }
-        // Recover trailing lumbar composite row when OCR mangles the "L1-L4" label after individual L1..L4 rows (requires BOTH BMD and T-score)
-        if (!siteInfo && seenLumbarLevels.size >= 2 && !/\b(?:hip|femur|neck|radius|forearm)\b/i.test(line)) {
+        // Recover trailing lumbar composite row when OCR mangles or drops the "L1-L4" label after any lumbar row
+        if (!siteInfo && (seenLumbarLevels.size >= 1 || lumbarCandidates.length >= 1) && !/\b(?:hip|femur|neck|radius|forearm)\b/i.test(line)) {
             const probe = extractNumbersFromSegment(line);
             if (probe.bmd !== null && probe.tscore !== null) {
                 const levels = [...seenLumbarLevels].sort((a, b) => a - b);
+                const span = levels.length >= 2 ? formatVertebraLevels(levels) : 'L1-L4';
                 siteInfo = {
                     category: 'spine',
-                    location: `Lumbar Spine (${formatVertebraLevels(levels)})`,
+                    location: `Lumbar Spine (${span})`,
                     levels,
-                    vertebraCount: levels.length,
+                    vertebraCount: Math.max(levels.length, 4),
                     isTotalRow: true
                 };
             }
