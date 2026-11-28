@@ -454,7 +454,7 @@ function preprocessImageForOcr(imageSource) {
         const img = new Image();
         img.onload = () => {
             const scale = img.width < 1600 ? Math.min(3.0, 2000 / Math.max(img.width, 1)) : 1;
-            const pad = 24;
+            const pad = 28;
             const canvas = document.createElement('canvas');
             canvas.width = Math.round(img.width * scale) + pad * 2;
             canvas.height = Math.round(img.height * scale) + pad * 2;
@@ -477,6 +477,20 @@ function preprocessImageForOcr(imageSource) {
         img.onerror = () => reject(new Error('Could not decode image'));
         img.src = imageSource;
     });
+}
+
+function cleanOcrTextBlock(rawOcrText) {
+    return String(rawOcrText || '')
+        .split(/\r?\n/)
+        .map(repairLumbarOcrLine)
+        .join('\n');
+}
+
+function hasCompositeLumbarRow(parsed) {
+    if (!parsed || !Array.isArray(parsed.rows)) return false;
+    const spineRow = parsed.rows.find(r => /lumbar\s+spine/i.test(r.location));
+    if (!spineRow) return false;
+    return /L[1-4]\s*-\s*L[1-4]/i.test(spineRow.location);
 }
 
 async function processDxaImageBlob(blob, label = 'Pasted image') {
@@ -513,20 +527,31 @@ async function processDxaImageBlob(blob, label = 'Pasted image') {
                 }
             });
 
-            const rawOcrText = (result && result.data && result.data.text ? result.data.text : '').trim();
-            if (!rawOcrText) {
+            let bestText = cleanOcrTextBlock(result && result.data && result.data.text ? result.data.text : '').trim();
+            let bestParsed = bestText ? parseDxaReportText(bestText) : null;
+
+            // If individual vertebrae were found without a composite L1-L4/L2-L4 row (e.g., bottom border touching L1-L4), retry in PSM 4
+            if (bestParsed && bestParsed.rows.some(r => /lumbar\s+spine\s*\(L[1-4]\)/i.test(r.location)) && !hasCompositeLumbarRow(bestParsed)) {
+                statusEl.textContent = '⏳ Refining bordered table rows...';
+                const altResult = await Tesseract.recognize(processedCanvas, 'eng', {
+                    tessedit_pageseg_mode: '4',
+                    preserve_interword_spaces: '1'
+                });
+                const altText = cleanOcrTextBlock(altResult && altResult.data && altResult.data.text ? altResult.data.text : '').trim();
+                const altParsed = altText ? parseDxaReportText(altText) : null;
+                if (hasCompositeLumbarRow(altParsed)) {
+                    bestText = altText;
+                    bestParsed = altParsed;
+                }
+            }
+
+            if (!bestText) {
                 statusEl.textContent = '⚠️ No readable text detected in the image. Try cropping closer to the DXA results table.';
                 statusEl.className = 'text-[11px] font-medium text-amber-700 mt-2';
                 return;
             }
 
-            // Repair lumbar span labels before displaying in the textbox so L1-L4 / L2-L4 are preserved visibly
-            const cleanedOcrText = rawOcrText
-                .split(/\r?\n/)
-                .map(repairLumbarOcrLine)
-                .join('\n');
-
-            document.getElementById('rawReportPaste').value = cleanedOcrText;
+            document.getElementById('rawReportPaste').value = bestText;
             extractFromPastedReport();
         } catch (err) {
             statusEl.textContent = `⚠️ Image OCR failed: ${err.message}`;
@@ -554,30 +579,30 @@ function repairLumbarOcrLine(line) {
         if (/[1iIl|!]/.test(ch)) return '1';
         if (/[2zZ]/.test(ch)) return '2';
         if (/[3bB]/.test(ch)) return '3';
-        if (/[4aA9]/.test(ch)) return '4';
+        if (/[4aA9qQ]/.test(ch)) return '4';
         return ch;
     };
 
-    // 0. Strip vertical table-border or rotated-margin characters fused before a leading 'L' or 'Total'
+    // 0. Strip vertical table-border, cursor arrows (^/<), or rotated-margin characters fused before a leading 'L' or 'Total'
     let fixed = line
-        .replace(/^[\s|[\]!1Il]+(?=[Ll][1-4iIl|aAzZbB9](?:\s*[-_.\u2010-\u2015~]|\s+[0-9LlIi|4aA]|$))/, '')
-        .replace(/^[\s|[\]!1Il]+(?=[Tt]otal(?:\s|$))/, '');
+        .replace(/^[\s|[\]!1Il^<>~*_]+(?=[Ll][1-4iIl|aAzZbB9qQ](?:\s*[-_.\u2010-\u2015~]|\s+[0-9LlIi|4aA]|$))/, '')
+        .replace(/^[\s|[\]!1Il^<>~*_]+(?=[Tt]otal(?:\s|$))/, '');
 
-    // 1. Repair range labels like "Li-L4", "L1-14", "11-L4", "LI-LA", "L1-L9", "L1L4", "L1 - 4", "L1-1.4"
+    // 1. Repair range labels like "Li-L4", "L1-14", "11-L4", "LI-LA", "L1-L9", "L1L4", "L1 - 4", "L1-L4_", "L1-L4|"
     fixed = fixed.replace(
-        /(^|[\s(|[\]])[LlIi1|]([1-4iIl|aAzZbB])\s*[-_.\u2010-\u2015~]?\s*[LlIi1|]?\.?([1-4iIl|aAzZbB9])(?=$|[\s),:])/g,
-        (_, prefix, d1, d2) => `${prefix === '|' || prefix === '[' || prefix === ']' ? '' : prefix}L${decodeDigit(d1)}-L${decodeDigit(d2)}`
+        /(^|[\s(|[\]^<>_])([LlIi1|])([1-4iIl|aAzZbB])\s*[-_.\u2010-\u2015~]?\s*[LlIi1|]?\.?([1-4iIl|aAzZbB9qQ])[_|[\].,:;*~]*(?=$|[\s),:])/g,
+        (_, prefix, _l, d1, d2) => `${prefix === '|' || prefix === '[' || prefix === ']' || prefix === '^' || prefix === '_' ? '' : prefix}L${decodeDigit(d1)}-L${decodeDigit(d2)}`
     );
 
-    // 2. Repair truncated range suffix before numeric columns (e.g., "L1-L 0.959", "L1- 0.959", "L1 L 0.959", "L1-L+ 0.959")
+    // 2. Repair truncated/garbled range suffix before numeric columns (e.g., "L1-L 0.971", "L1-L* 0.971", "L1-L+ 0.971", "L1-L. 0.971", "11-L 0.971")
     fixed = fixed.replace(
-        /(^|\s)([LlIi1|])([1-4iIl|])(?:\s*[-_.\u2010-\u2015~]\s*[LlIi1|aA+*]*|\s+[LlIi1|aA])(?=\s+[0-9])/g,
+        /(^|\s)([LlIi1|])([1-4iIl|])(?:\s*[-_.\u2010-\u2015~]\s*[LlIi1|aA+*.'"`&#?_|]*|\s+[LlIi1|aA])(?=\s+[0-9])/g,
         (_, prefix, _l, d1) => `${prefix}L${decodeDigit(d1)}-L4`
     );
 
     // 3. Repair single vertebra row labels at the start of a line (e.g., "Li 0.879...", "LA 0.970...", "LZ 13.58...", or "L2" alone)
     fixed = fixed.replace(
-        /^([LlIi|])([1-4iIl|aAzZbB9])(?=$|\s+[0-9])/,
+        /^([LlIi|])([1-4iIl|aAzZbB9qQ])[_|[\].,:;*~]*(?=$|\s+[0-9])/,
         (_, _l, d1) => `L${decodeDigit(d1)}`
     );
 
@@ -754,7 +779,7 @@ function reconcileTScoreSignWithYaPct(tscore, yaPct) {
 
 function isTableHeaderLine(line) {
     const hasSiteHeader = /\b(?:anatomical\s+region|region|site|location|roi)\b/i.test(line);
-    const hasMetricHeader = /\b(?:bmd|t-?score|z-?score|young\s+adult|age\s+matched)\b/i.test(line);
+    const hasMetricHeader = /\b(?:bmd|g\/cm2|g\/cm²|t-?score|z-?score|young\s+adult|age\s+matched)\b/i.test(line);
     return hasSiteHeader && hasMetricHeader;
 }
 
@@ -812,10 +837,10 @@ function detectTableColumnMap(line) {
     const cols = line.split(/\t+|\s{2,}/).map(c => c.trim().toLowerCase()).filter(Boolean);
     if (cols.length < 2) return null;
 
-    const map = { site: -1, bmd: -1, yaPct: -1, tscore: -1, zscore: -1, area: -1, height: -1 };
+    const map = { colCount: cols.length, site: -1, bmd: -1, yaPct: -1, tscore: -1, zscore: -1, area: -1, height: -1 };
     cols.forEach((col, idx) => {
         if (map.site === -1 && /\b(?:region|site|location|roi)\b/.test(col)) map.site = idx;
-        else if (map.bmd === -1 && /\bbmd\b/.test(col)) map.bmd = idx;
+        else if (map.bmd === -1 && (/\bbmd\b/.test(col) || /g\/cm[2²]/.test(col))) map.bmd = idx;
         else if (map.yaPct === -1 && /\b(?:ya|young\s+adult)\b/.test(col) && !/\bt-?score\b/.test(col)) map.yaPct = idx;
         else if (map.tscore === -1 && /\bt-?score\b/.test(col)) map.tscore = idx;
         else if (map.zscore === -1 && /\bz-?score\b/.test(col)) map.zscore = idx;
@@ -841,7 +866,7 @@ function parseSingleCellNumber(cellStr, minVal, maxVal) {
 }
 
 function isLumbarTotalLabel(rawLine) {
-    const cleaned = rawLine.replace(/^[\s|[\]!1Il]+(?=[Tt]otal\b)/, '').trim();
+    const cleaned = rawLine.replace(/^[\s|[\]!1Il^<>~*_]+(?=[Tt]otal\b)/, '').trim();
     if (/^total\s+bmd\b/i.test(cleaned)) return false;
     if (/\b(?:hip|femur|forearm|radius|body)\b/i.test(cleaned)) return false;
     return /^(?:ap\s+spine\s+|lumbar\s+spine\s+|spine\s+)?total\b/i.test(cleaned);
@@ -1092,8 +1117,18 @@ function parseDxaReportText(rawText) {
 
         if (activeColumnMap) {
             const cells = line.split(/\t+|\s{2,}/).map(c => c.trim()).filter(Boolean);
-            if (cells.length >= 2 && cells[activeColumnMap.site]) {
+            if (cells.length === activeColumnMap.colCount && cells[activeColumnMap.site]) {
                 let siteInfo = normalizeSiteInfo(cells[activeColumnMap.site], currentSectionSide, seenLumbarLevels);
+                if (!siteInfo && seenLumbarLevels.size >= 2 && !/\b(?:hip|femur|neck|radius|forearm)\b/i.test(line)) {
+                    const levels = [...seenLumbarLevels].sort((a, b) => a - b);
+                    siteInfo = {
+                        category: 'spine',
+                        location: `Lumbar Spine (${formatVertebraLevels(levels)})`,
+                        levels,
+                        vertebraCount: levels.length,
+                        isTotalRow: true
+                    };
+                }
                 if (siteInfo) {
                     if (siteInfo.category === 'spine' && !siteInfo.isTotalRow && Array.isArray(siteInfo.levels)) {
                         siteInfo.levels.forEach(lvl => seenLumbarLevels.add(lvl));
@@ -1147,6 +1182,20 @@ function parseDxaReportText(rawText) {
         if (!siteInfo && activeSectionSite) {
             siteInfo = activeSectionSite;
             usedSectionFallback = true;
+        }
+        // Recover trailing lumbar composite row when OCR mangles the "L1-L4" label after individual L1..L4 rows
+        if (!siteInfo && seenLumbarLevels.size >= 2 && !/\b(?:hip|femur|neck|radius|forearm)\b/i.test(line)) {
+            const probe = extractNumbersFromSegment(line);
+            if (probe.bmd !== null && probe.tscore !== null) {
+                const levels = [...seenLumbarLevels].sort((a, b) => a - b);
+                siteInfo = {
+                    category: 'spine',
+                    location: `Lumbar Spine (${formatVertebraLevels(levels)})`,
+                    levels,
+                    vertebraCount: levels.length,
+                    isTotalRow: true
+                };
+            }
         }
         if (!siteInfo) continue;
 
