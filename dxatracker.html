@@ -897,6 +897,20 @@ function reconcileTScoreSignWithYaPct(tscore, yaPct) {
     return tscore;
 }
 
+function reconcileTScoreSignWithBmd(tscore, bmd, category) {
+    if (tscore === null || !isFinite(tscore) || bmd === null || !isFinite(bmd)) {
+        return tscore;
+    }
+    // If OCR dropped '-' before T-score and PR%/YA% was unreadable, flip positive T-scores that contradict sub-peak BMD
+    if (tscore > 0.2 && tscore <= 6.5) {
+        if (category === 'spine' && bmd < 1.12) return -tscore;
+        if (category === 'totalHip' && bmd < 0.90) return -tscore;
+        if (category === 'femNeck' && bmd < 0.80) return -tscore;
+        if (category === 'radius' && bmd < 0.65) return -tscore;
+    }
+    return tscore;
+}
+
 function isTableHeaderLine(line) {
     const hasSiteHeader = /\b(?:anatomical\s+region|region|site|location|roi)\b/i.test(line);
     const hasMetricHeader = /\b(?:bmd|g\/cm2|g\/cm²|t-?score|z-?score|young\s+adult|age\s+matched)\b/i.test(line);
@@ -961,7 +975,7 @@ function detectTableColumnMap(line) {
     cols.forEach((col, idx) => {
         if (map.site === -1 && /\b(?:region|site|location|roi)\b/.test(col)) map.site = idx;
         else if (map.bmd === -1 && (/\bbmd\b/.test(col) || /g\/cm[2²]/.test(col))) map.bmd = idx;
-        else if (map.yaPct === -1 && /\b(?:ya|young\s+adult)\b/.test(col) && !/\bt-?score\b/.test(col)) map.yaPct = idx;
+        else if (map.yaPct === -1 && /\b(?:ya|young\s+adult|pr|peak(?:\s+ref)?)\b/.test(col) && !/\bt-?score\b/.test(col)) map.yaPct = idx;
         else if (map.tscore === -1 && /\bt-?score\b/.test(col)) map.tscore = idx;
         else if (map.zscore === -1 && /\bz-?score\b/.test(col)) map.zscore = idx;
         else if (map.area === -1 && /\barea\b/.test(col)) map.area = idx;
@@ -1063,7 +1077,7 @@ function normalizeSiteInfo(rawLine, inheritedSide = '', seenLumbarLevels = null)
 }
 
 function extractNumbersFromSegment(seg) {
-    // Capture percentage YA values (e.g., "74%", "86%") BEFORE stripping % tokens so sign reconciliation works
+    // Capture percentage YA/PR values (e.g., "74%", "82%") BEFORE stripping % tokens so sign reconciliation works
     const pctYaMatch = seg.match(/(?:^|\s)(\d{2,3}(?:\.\d+)?)\s*%/);
     let yaPct = pctYaMatch ? parseFloat(pctYaMatch[1]) : null;
     if (yaPct !== null && (yaPct < 25 || yaPct > 165)) yaPct = null;
@@ -1170,7 +1184,7 @@ function extractNumbersFromSegment(seg) {
         }
     }
 
-    return { bmd, tscore, area, height };
+    return { bmd, tscore, area, height, yaPct };
 }
 
 function selectBestLumbarCandidate(candidates, seenLumbarLevels = null) {
@@ -1263,10 +1277,11 @@ function tryVerticalColumnZipFallback(rawLines) {
             if (site.category === 'spine' && !site.isTotalRow) {
                 site.levels.forEach(l => seenLumbarLevels.add(l));
             }
+            const adjT = reconcileTScoreSignWithBmd(tItems[idx], bmdItems[idx], site.category);
             const rowObj = {
                 location: site.location,
                 bmd: +bmdItems[idx].toFixed(3),
-                tscore: +tItems[idx].toFixed(1),
+                tscore: +adjT.toFixed(1),
                 vertebraCount: site.vertebraCount,
                 isTotalRow: Boolean(site.isTotalRow),
                 area: null,
@@ -1377,6 +1392,9 @@ function parseDxaReportText(rawText) {
                         : null;
 
                     mappedT = reconcileTScoreSignWithYaPct(mappedT, mappedYaPct);
+                    if (mappedYaPct === null) {
+                        mappedT = reconcileTScoreSignWithBmd(mappedT, mappedBmd, siteInfo.category);
+                    }
                     siteInfo = reconcileLumbarSpanWithDimensions(siteInfo, mappedArea, mappedHeight);
 
                     if (mappedBmd !== null || mappedT !== null) {
@@ -1454,6 +1472,9 @@ function parseDxaReportText(rawText) {
             lookahead++;
         }
 
+        if (check.yaPct === null) {
+            check.tscore = reconcileTScoreSignWithBmd(check.tscore, check.bmd, siteInfo.category);
+        }
         siteInfo = reconcileLumbarSpanWithDimensions(siteInfo, check.area, check.height);
 
         if (check.bmd !== null || check.tscore !== null) {
