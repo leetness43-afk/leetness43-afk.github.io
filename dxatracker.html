@@ -693,16 +693,16 @@ function repairLumbarOcrLine(line) {
         .replace(/^[\s|[\]!1Il^<>~*_]+(?=[Ll][1-4iIl|aAzZbB9qQ](?:\s*[-_.\u2010-\u2015~]|\s+[0-9LlIi|4aA]|$))/, '')
         .replace(/^[\s|[\]!1Il^<>~*_]+(?=[Tt]otal(?:\s|$))/, '');
 
-    // 1. Repair range labels like "Li-L4", "L1-14", "11-L4", "11-14", "LI-LA", "L1-L9", "L1L4", "L1 - 4", "L1-L4_"
+    // 1. Repair range labels like "Li-L4", "L1-14", "11-L4", "11-14", "LI-LA", "L1-L9", "L1L4", "L1 - 4", "L1-L2", "L1-2"
     fixed = fixed.replace(
         /(^|[\s(|[\]^<>_])([LlIi1|])([1-4iIl|aAzZbB])\s*[-_.\u2010-\u2015~]?\s*[LlIi1|]?\.?([1-4iIl|aAzZbB9qQ])[_|[\].,:;*~]*(?=$|[\s),:])/g,
         (_, prefix, _l, d1, d2) => `${prefix === '|' || prefix === '[' || prefix === ']' || prefix === '^' || prefix === '_' ? '' : prefix}L${decodeDigit(d1)}-L${decodeDigit(d2)}`
     );
 
-    // 2. Repair truncated/garbled range suffix before numeric columns (e.g., "L1-L 0.971", "L1-L* 0.971", "L1-L+ 0.971", "L1-L. 0.971", "11-L 0.971")
+    // 2. Repair left-clipped range labels at start of line (e.g., "1-L4 0.971", "1-4 0.971", "1-L2 0.807", "1-2 0.807")
     fixed = fixed.replace(
-        /(^|\s)([LlIi1|])([1-4iIl|])(?:\s*[-_.\u2010-\u2015~]\s*[LlIi1|aA+*.'"`&#?_|]*|\s+[LlIi1|aA])(?=\s+[0-9])/g,
-        (_, prefix, _l, d1) => `${prefix}L${decodeDigit(d1)}-L4`
+        /^([1-4iIl|])\s*[-_.\u2010-\u2015~]\s*[LlIi1|]?([1-4iIl|aAzZbB9qQ])(?=\s+[0-9])/,
+        (_, d1, d2) => `L${decodeDigit(d1)}-L${decodeDigit(d2)}`
     );
 
     // 3. Repair single vertebra row labels at the start of a line (e.g., "Li 0.879...", "LA 0.970...", "LZ 13.58...", or "L2" alone)
@@ -825,7 +825,7 @@ function parseLumbarVertebrae(str) {
     const cleaned = String(str || '').replace(/\s+/g, '');
     const found = new Set();
 
-    const rangeMatches = [...cleaned.matchAll(/\bL([1-4])-L([1-4])\b/gi)];
+    const rangeMatches = [...cleaned.matchAll(/\bL([1-4])-L?([1-4])\b/gi)];
     rangeMatches.forEach(m => {
         const start = Math.min(parseInt(m[1], 10), parseInt(m[2], 10));
         const end = Math.max(parseInt(m[1], 10), parseInt(m[2], 10));
@@ -1053,6 +1053,11 @@ function normalizeSiteInfo(rawLine, inheritedSide = '', seenLumbarLevels = null)
 }
 
 function extractNumbersFromSegment(seg) {
+    // Capture percentage YA values (e.g., "74%", "86%") BEFORE stripping % tokens so sign reconciliation works
+    let pctYaMatch = seg.match(/(?:^|\s)(\d{2,3}(?:\.\d+)?)\s*%/);
+    let yaPct = pctYaMatch ? parseFloat(pctYaMatch[1]) : null;
+    if (yaPct !== null && (yaPct < 25 || yaPct > 165)) yaPct = null;
+
     const cleaned = seg
         .replace(/\bL[1-4]\s*-\s*L?[1-4]\b/gi, ' ')
         .replace(/\bL[1-4]\b/gi, ' ')
@@ -1070,7 +1075,6 @@ function extractNumbersFromSegment(seg) {
     let tscore = explicitTBeforeParen
         ? parseFloat(explicitTBeforeParen[1])
         : (explicitTAfter ? parseFloat(explicitTAfter[1]) : null);
-    let yaPct = null;
     let area = null;
     let height = null;
 
@@ -1099,7 +1103,7 @@ function extractNumbersFromSegment(seg) {
             bmd = tokens[bmdIdx].val;
 
             const nextTok = tokens[bmdIdx + 1];
-            if (nextTok && !nextTok.hasSign && !nextTok.hasDecimal && nextTok.val >= 25 && nextTok.val <= 165) {
+            if (yaPct === null && nextTok && !nextTok.hasSign && !nextTok.hasDecimal && nextTok.val >= 25 && nextTok.val <= 165) {
                 yaPct = nextTok.val;
             }
 
@@ -1125,7 +1129,7 @@ function extractNumbersFromSegment(seg) {
         const bmdIdx = tokens.findIndex(t => Math.abs(t.val - bmd) < 0.0005);
         const startIdx = bmdIdx !== -1 ? bmdIdx + 1 : 0;
         const nextTok = tokens[startIdx];
-        if (nextTok && !nextTok.hasSign && !nextTok.hasDecimal && nextTok.val >= 25 && nextTok.val <= 165) {
+        if (yaPct === null && nextTok && !nextTok.hasSign && !nextTok.hasDecimal && nextTok.val >= 25 && nextTok.val <= 165) {
             yaPct = nextTok.val;
         }
         if (tscore === null) {
@@ -1141,10 +1145,12 @@ function extractNumbersFromSegment(seg) {
 
     tscore = reconcileTScoreSignWithYaPct(tscore, yaPct);
 
-    const twoDecTokens = tokens.filter(t => !t.hasSign && t.decimals === 2 && (bmd === null || Math.abs(t.val - bmd) > 0.01));
-    const areaTok = twoDecTokens.find(t => t.val >= 8.0 && t.val <= 90.0);
+    // Match both 2-decimal (Hologic, e.g. 54.21) and 1-decimal (GE Lunar, e.g. 54.2) Area values
+    const areaTokens = tokens.filter(t => !t.hasSign && (t.decimals === 1 || t.decimals === 2) && (bmd === null || Math.abs(t.val - bmd) > 0.01));
+    const areaTok = areaTokens.find(t => t.val >= 8.0 && t.val <= 90.0);
     if (areaTok) area = areaTok.val;
 
+    const twoDecTokens = tokens.filter(t => !t.hasSign && t.decimals === 2 && (bmd === null || Math.abs(t.val - bmd) > 0.01));
     if (twoDecTokens.length >= 2) {
         const lastTwoDec = twoDecTokens[twoDecTokens.length - 1];
         if (lastTwoDec !== areaTok && lastTwoDec.val >= 2.5 && lastTwoDec.val <= 17.5) {
@@ -1185,20 +1191,26 @@ function selectBestLumbarCandidate(candidates, seenLumbarLevels = null) {
     }
 
     return [...resolved].sort((a, b) => {
-        if (Boolean(b.isTotalRow) !== Boolean(a.isTotalRow)) {
-            return b.isTotalRow ? 1 : -1;
+        // 1. Explicit 4-vertebra L1-L4 or Total summary row takes top priority
+        const scoreA = (a.vertebraCount >= 4 ? 100 : 0) + (a.isTotalRow ? 50 : 0) + (a.vertebraCount * 10);
+        const scoreB = (b.vertebraCount >= 4 ? 100 : 0) + (b.isTotalRow ? 50 : 0) + (b.vertebraCount * 10);
+        if (scoreB !== scoreA) {
+            return scoreB - scoreA;
         }
-        if (b.vertebraCount !== a.vertebraCount) {
-            return b.vertebraCount - a.vertebraCount;
-        }
+        // 2. Larger bone area (cm²) distinguishes multi-level composite from single/pair rows
         const areaA = a.area ?? 0;
         const areaB = b.area ?? 0;
-        if (Math.abs(areaB - areaA) > 0.01) {
+        if (Math.abs(areaB - areaA) > 1.0) {
             return areaB - areaA;
         }
+        // 3. Completeness (both BMD and T-score present)
         const compA = (a.bmd !== '' ? 1 : 0) + (a.tscore !== '' ? 1 : 0);
         const compB = (b.bmd !== '' ? 1 : 0) + (b.tscore !== '' ? 1 : 0);
-        return compB - compA;
+        if (compB !== compA) {
+            return compB - compA;
+        }
+        // 4. Later row index (summary/composite rows appear below individual L1-L4 / L1-L2 rows)
+        return (b.rowIndex ?? 0) - (a.rowIndex ?? 0);
     })[0];
 }
 
@@ -1242,7 +1254,8 @@ function tryVerticalColumnZipFallback(rawLines) {
                 tscore: +tItems[idx].toFixed(1),
                 vertebraCount: site.vertebraCount,
                 isTotalRow: Boolean(site.isTotalRow),
-                area: null
+                area: null,
+                rowIndex: idx
             };
             if (site.category === 'spine') lumbarCandidates.push(rowObj);
             else nonSpineRows.push(rowObj);
@@ -1358,7 +1371,8 @@ function parseDxaReportText(rawText) {
                             tscore: mappedT !== null ? +mappedT.toFixed(1) : '',
                             vertebraCount: siteInfo.vertebraCount,
                             isTotalRow: Boolean(siteInfo.isTotalRow),
-                            area: mappedArea
+                            area: mappedArea,
+                            rowIndex: i
                         };
                         if (siteInfo.category === 'spine') {
                             lumbarCandidates.push(rowObj);
@@ -1437,7 +1451,8 @@ function parseDxaReportText(rawText) {
                 tscore: check.tscore !== null ? +check.tscore.toFixed(1) : '',
                 vertebraCount: siteInfo.vertebraCount,
                 isTotalRow: Boolean(siteInfo.isTotalRow),
-                area: check.area
+                area: check.area,
+                rowIndex: i
             };
             if (siteInfo.category === 'spine') {
                 lumbarCandidates.push(rowObj);
